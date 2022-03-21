@@ -5,6 +5,8 @@
 #include "util/types.h"
 // #include "third_party/matplotlibcpp/include/matplotlibcpp.h"
 using namespace torch;
+using std::cout; using std::endl;
+
 
 struct NetDDPRActorImpl: nn::Module
 {   

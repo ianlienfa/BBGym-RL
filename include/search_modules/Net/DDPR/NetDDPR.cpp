@@ -25,7 +25,7 @@ void ReplayBuffer::push(vector<float> s, float a, int r, vector<float> s_, bool 
     this->s_next[this->idx] = s_;
     this->done[this->idx] = done;
     this->idx = (this->idx + 1) % max_size;
-    this->size = min(this->size + 1, max_size);
+    this->size = std::min(this->size + 1, max_size);
 }
 
 void ReplayBuffer::submit()
@@ -58,7 +58,7 @@ vector<float> StateInput::flatten_and_norm()
     p_time.resize(fixed_size);
     job_weight.resize(fixed_size);    
     auto vector_norm = [](vector<float> v) { 
-        float max = 0; float min = numeric_limits<float>::infinity();
+        float max = 0; float min = std::numeric_limits<float>::infinity();
         for(auto i : v)
         {
             max = max > i ? max : i;
@@ -155,7 +155,7 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
     Tensor s_next_tensor = torch::from_blob(s_next_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32));
     Tensor done_tensor = torch::from_blob(done.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kBool));
 
-    return make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor);
+    return std::make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor);
 }
 
 
