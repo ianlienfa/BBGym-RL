@@ -9,8 +9,8 @@ endif()
 
 
 # control variables
-set(COMMAND_ARG "main")
-# set(COMMAND_ARG "test")
+# set(COMMAND_ARG "main")
+set(COMMAND_ARG "test")
 
 ################ PRE-PACKAGE SEARCH VARIABLES SETUP ################
 # general variables
@@ -85,6 +85,7 @@ target_link_libraries(
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
     oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util
+    NetDDPRActor NetDDPRQNet NetDDPR  # Net
 )
 
 add_executable(load src/load.cpp)
@@ -95,6 +96,7 @@ target_link_libraries(
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
     oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util
+    NetDDPRActor NetDDPRQNet NetDDPR  # Net
 )
 
 ######################  SELF-DEFINED COMMANDS  ########################

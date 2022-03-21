@@ -1,0 +1,6 @@
+/src/load.cpp merge=ours
+/src/net.cpp merge=ours
+/include/search_modules/Net/* merge=ours
+/include/search_modules/strategy_providers/DDPR* merge=ours
+/CMakeLists.txt merge=ours
+/journal.md merge=ours
