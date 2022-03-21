@@ -28,22 +28,26 @@ int main(int argc, char* argv[])
     {
             // read problem
         #define INSTANCE_NUM 5
+        srand(0);
         InputHandler inputHandler((string(argv[1])));
         string filepath;
-        int instance_idx = 0;
-        do
+        int instance_idx = INSTANCE_NUM;
+        while(instance_idx--)
         {
-            filepath = inputHandler.getNextFileName();   
-            instance_idx++;
-            if(instance_idx >= INSTANCE_NUM)
-                break;
+            int step_size = rand() % 3;
+            while(step_size--)
+            {
+                filepath = inputHandler.getNextFileName();               
+                if(filepath.empty())
+                    inputHandler.reset();
+            }
             if(parse_and_init_oneRjSumCj(filepath))
             {
                 OneRjSumCj_engine solver; 
                 OneRjSumCjGraph graph;
                 graph = solver.solve(OneRjSumCjNode());  
             }
-        } while(!filepath.empty());
+        } 
     }
 
     /* For validation */
