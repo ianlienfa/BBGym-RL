@@ -168,7 +168,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     // update current livel if the current level nothing is needed to be search for    
     while(this->graph->contours[this->graph->current_level].size() == 0 && this->graph->current_level != 0)
     {
+        #if DEBUG_LEVEL >= 1
         cout << this->graph->current_level << " is empty" << endl;
+        #endif
         this->graph->current_level--;
         // this->graph->contours[this->graph->current_level].pop_front();
     }

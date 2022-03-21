@@ -92,7 +92,7 @@ vector<float> StateInput::flatten_and_norm()
     }
 
     // sequence idx normalization
-    auto seq_norm = [](float idx){return (idx - JOB_NUMBER/2.0)/JOB_NUMBER;};
+    auto seq_norm = [](float idx){return (idx - OneRjSumCjNode::jobs_num/2.0)/OneRjSumCjNode::jobs_num;};
     for_each(child_seq.begin(), child_seq.end(), seq_norm);
     for_each(parent_seq.begin(), parent_seq.end(), seq_norm);
 

@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define JOB_NUMBER 30
+#define JOB_NUMBER 100
 #define TIME_TYPE float
 
 // exit codes

@@ -8,10 +8,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 
-# control variables
-# set(COMMAND_ARG "main")
-set(COMMAND_ARG "test")
-
 ################ PRE-PACKAGE SEARCH VARIABLES SETUP ################
 # general variables
 set(CMAKE_OSX_ARCHITECTURES "x86_64") # For m1 mac
@@ -72,14 +68,21 @@ add_subdirectory(include)
 
 ###########################################################################
 # executables
-if(COMMAND_ARG STREQUAL "main")
-    add_executable(main src/main.cpp)
-elseif (COMMAND_ARG STREQUAL "test")
-    add_executable(main src/net.cpp)
-endif()
 
+add_executable(main src/main.cpp)
 target_link_libraries(
     main    # target 
+    "${TORCH_LIBRARIES}" # Torch
+    "${Python3_LIBRARIES}" # Python3
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
+    oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    LowerBound PriorityQueue JobWithReleaseDate # Util
+    NetDDPRActor NetDDPRQNet NetDDPR  # Net
+)
+
+add_executable(net src/net.cpp)
+target_link_libraries(
+    net    # target 
     "${TORCH_LIBRARIES}" # Torch
     "${Python3_LIBRARIES}" # Python3
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
