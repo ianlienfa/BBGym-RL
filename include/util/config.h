@@ -39,7 +39,7 @@
 #define bundle_OneRjSumCj_CBFS 2
 
 /* Simple Strategy Choices */
-#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS
+#define SEARCH_BUNDLE bundle_OneRjSumCj_LU_AND_SAL
 
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_LU_AND_SAL
     #define SEARCH_STRATEGY 1
@@ -79,7 +79,7 @@
 #endif 
 
 /* debugging */
-#define DEBUG_LEVEL 2
+#define DEBUG_LEVEL 0
 
 /* validations (some extra checking is done if validation level is high) */
 #define VALIDATION_LEVEL validation_level_HIGH

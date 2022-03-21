@@ -6,6 +6,7 @@ vector<TIME_TYPE> OneRjSumCjNode::job_weight;
 int OneRjSumCjNode::jobs_num;
 B OneRjSumCjNode::jobs_mask;
 float OneRjSumCjNode::time_baseline;
+string OneRjSumCjNode::instance_name;
 
 OneRjSumCjNode::OneRjSumCjNode()
 {
@@ -124,7 +125,9 @@ vector<OneRjSumCjNode::NodeInfo> OneRjSumCjNode::get_unfinished_jobs() const {
         if(!is_processed[i])
         {
             TIME_TYPE st= get_earliest_st_time(i);        
+            #if DEBUG_LEVEL >= 3
             cout << "st: " << st << endl;
+            #endif
             unfinished_jobs.push_back(OneRjSumCjNode::NodeInfo(i, st, st+processing_time[i]));
         }
     }        

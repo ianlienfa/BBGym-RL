@@ -7,10 +7,37 @@
 #include "user_def/oneRjSumCjNode.h"
 
 #include <iostream>
-using std::cin; using std::cout; using std::endl;
+#include <fstream>
+#include <filesystem>
+using namespace std;
 
-
+struct InputHandler
+{   
+    string path;
+    std::filesystem::directory_iterator current_file;
+    
+    InputHandler(string path)
+    {
+        this->path = path;
+        current_file = std::filesystem::directory_iterator(path);
+    }
+    string getCurrentFileName()
+    {
+        return string(current_file->path());
+    }
+    string getNextFileName()
+    {
+        current_file++;
+        if(current_file != std::filesystem::end(std::filesystem::directory_iterator(path)))
+        {
+            string filename = string(current_file->path());
+            return filename;
+        }
+        return "";
+    }
+};
 bool parse_and_init_oneRjSumCj();
+bool parse_and_init_oneRjSumCj(const string& file_name);
 
 
 

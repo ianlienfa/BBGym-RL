@@ -12,6 +12,7 @@ using std::bitset;
 using std::pair; using std::make_pair;
 using std::cout; using std::endl;
 using std::ostream;
+using std::string;
 
 #include "util/types.h"
 #include "BB_engine/problemNode.h"
@@ -27,6 +28,7 @@ struct OneRjSumCjNode: ProblemNode
             id(id), earlest_start_time(earlest_start_time), completion_time(completion_time){}
     };
 
+    static string instance_name;
     static vector<TIME_TYPE> processing_time;
     static vector<TIME_TYPE> release_time;
     static vector<TIME_TYPE> job_weight;    
