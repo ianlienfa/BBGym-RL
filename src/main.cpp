@@ -5,7 +5,7 @@
 #include "problem_parser/problemParser.h"
 
 int main()
-{
+{        
     OneRjSumCjPrune::prune_funcs = {
         // prune__OneRjSumCj__LU_AND_SAL__Theorem1
     };
