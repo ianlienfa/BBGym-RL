@@ -37,6 +37,10 @@ struct InputHandler
         }
         return "";
     }
+    void reset()
+    {
+        current_file = std::filesystem::directory_iterator(path);
+    }
 };
 bool parse_and_init_oneRjSumCj();
 bool parse_and_init_oneRjSumCj(const string& file_name);
