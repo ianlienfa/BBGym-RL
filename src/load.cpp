@@ -2,7 +2,6 @@
 #include <torch/torch.h>
 #include "util/TorchUtil.h"
 #include "search_modules/Net/DDPR/NetDDPR.h"
-using namespace std;
 
 float min_y = -1.93109e+06, max_y = 1.77644e+06;
 float min_x = 2, max_x = 98;

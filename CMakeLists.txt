@@ -11,7 +11,7 @@ endif()
 ################ PRE-PACKAGE SEARCH VARIABLES SETUP ################
 # general variables
 set(CMAKE_OSX_ARCHITECTURES "x86_64") # For m1 mac
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(HOME_INC_DIR ${PROJECT_PATH}/include)
 

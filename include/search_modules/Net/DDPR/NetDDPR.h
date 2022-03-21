@@ -7,7 +7,7 @@
 #include "search_modules/Net/DDPR/NetDDPRQNet.h"
 #include "user_def/oneRjSumCjNode.h"
 using namespace torch;
-using namespace std;
+using std::tuple;
 
 struct StateInput
 {
