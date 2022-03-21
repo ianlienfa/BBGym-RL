@@ -113,7 +113,7 @@ int LowerBound::SRPT(QQjr qu, bool debug)
             // if(debug) cout << "leading: " << leading << endl;
 
             // update critical time point
-            crtcl = (qu.size()) ? min(qu.front()[0].r, t + leading.p) : t + leading.p;
+            crtcl = (qu.size()) ? std::min(qu.front()[0].r, t + leading.p) : t + leading.p;
 
             // update vec and heap(if needed)
             int ci = crtcl;

@@ -24,7 +24,7 @@ OneRjSumCjNode branch_job(const OneRjSumCjNode &current_node, size_t job_id, Low
     OneRjSumCjNode new_node(current_node);
     new_node.is_processed.set(job_id);
     new_node.seq.push_back(job_id);
-    new_node.earliest_start_time = max(OneRjSumCjNode::release_time[job_id], current_node.completion_time);
+    new_node.earliest_start_time = std::max(OneRjSumCjNode::release_time[job_id], current_node.completion_time);
     new_node.completion_time = new_node.earliest_start_time + OneRjSumCjNode::processing_time[job_id]; 
     new_node.weighted_completion_time = new_node.completion_time * OneRjSumCjNode::job_weight[job_id] + current_node.weighted_completion_time;;   
     new_node.lb = lower_bound(new_node);

@@ -3,7 +3,6 @@
 
 // standard library
 #include <iostream>
-using namespace std;
 
 typedef struct JobWithReleaseDate
 {

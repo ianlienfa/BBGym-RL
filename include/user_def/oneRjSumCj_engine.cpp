@@ -105,7 +105,7 @@ TIME_TYPE OneRjSumCj_engine::objSolve(const OneRjSumCjNode &current_node) {
     }
 
     // calculate the objective value
-    auto start_time = [](int current_time, int release_date){return max(current_time, release_date);};
+    auto start_time = [](int current_time, int release_date){return std::max(current_time, release_date);};
     int current_time = 0;
     int obj = 0;
     vector<int> start_arr;
