@@ -121,7 +121,9 @@ void prune__OneRjSumCj__LU_AND_SAL__Theorem1(vector<OneRjSumCjNode>& branched_no
         {
             graph.min_obj = incumbent.weighted_completion_time;
             graph.min_seq = incumbent.seq;
+            #if DEBUG_LEVEL >= 1
             cout << "new incumbent: " << incumbent << endl;        
+            #endif
         }
         // clear branched_nodes
         branched_nodes.clear();

@@ -7,9 +7,9 @@
 #include "user_def/oneRjSumCjNode.h"
 
 #include <iostream>
+#include <fstream>
 #include <filesystem>
-using std::cin; using std::cout; using std::endl;
-using std::string;
+using namespace std;
 
 struct InputHandler
 {   
@@ -36,8 +36,8 @@ struct InputHandler
         return "";
     }
 };
-
 bool parse_and_init_oneRjSumCj();
+bool parse_and_init_oneRjSumCj(const string& file_name);
 
 
 

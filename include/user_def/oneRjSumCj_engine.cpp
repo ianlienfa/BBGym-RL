@@ -19,9 +19,7 @@ OneRjSumCj_engine::OneRjSumCj_engine(OneRjSumCjGraph graph, OneRjSumCjSearch sea
 
 OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
 {    
-#if DEBUG_LEVEL > 0
     PRE_SOLVE_PRINT_CONFIG();
-#endif
 
     // the root graph
     this->graph = searcher.init(rootProblem);
@@ -46,7 +44,6 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
     // start the branch and bound algorithm
     while(!graph.optimal_found){
         // searcher search on to a new node, make changes on its internal data structure, then return the new node
-        cout << graph.optimal_found << endl;
         this->graph.current_node = searcher.search_next();
 
         #if DEBUG_LEVEL >= 2
@@ -125,6 +122,11 @@ TIME_TYPE OneRjSumCj_engine::objSolve(const OneRjSumCjNode &current_node) {
 }
 
 void print_config(){
+    cout << "=============== Search Started ===============" << endl;
+    cout << "Working on instance: " << OneRjSumCjNode::instance_name << endl;
+    cout << "Instance size = " << OneRjSumCjNode::jobs_num << endl;
+
+    #if DEBUG_LEVEL >= 1
     cout << "configuration:" << endl;
     cout << "===============" << endl;
 
@@ -140,16 +142,19 @@ void print_config(){
     cout << "jobs_num = " << OneRjSumCjNode::jobs_num << endl;
     cout << "bit mask = " << OneRjSumCjNode::jobs_mask  << endl;
     sleep(2);
+    #endif
 }
 
 void post_print_config(const OneRjSumCjGraph &graph)
 {
     cout << endl;
-    cout << "=============== Search Ended ===============" << endl;
+    cout << "--------------- Search Result ---------------" << endl;
     cout << "number of searched nodes: " << graph.searched_node_num << endl;
     cout << "min_obj = " << graph.min_obj << endl;
     cout << "min_seq = ";
     for(auto it = graph.min_seq.begin(); it != graph.min_seq.end(); it++)
         cout << *it << " ";
     cout << endl;
+    cout << "=============== Search Ended ===============" << endl;
+    cout << endl << endl;
 }

@@ -13,7 +13,9 @@ double LowerBound::operator()(const OneRjSumCjNode &node){
     {
         for(int j = i+1; j < unfinished_job_num; j++)
         {
+            #if DEBUG_LEVEL >= 3
             cout << "j: " << j << endl; 
+            #endif
             int back_id = i;
             int front_id = j;
             if(unfinished_nodeinfo[i].completion_time < unfinished_nodeinfo[j].completion_time)

@@ -176,11 +176,13 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     }
     if(this->graph->current_level == 0)
     {
+        #if DEBUG_LEVEL >= 1
         cout << "optimal solution found" << endl;
         for(auto it: this->graph->min_seq)
             cout << it << " ";
             cout << endl;
         cout << "optimal solution WjCj: " << this->graph->min_obj << endl;  
+        #endif
         this->graph->optimal_found = true;
     }
     return branched_nodes;
