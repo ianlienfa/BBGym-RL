@@ -71,7 +71,7 @@ void pruneIncumbentCmpr(vector<OneRjSumCjNode>& branched_nodes, const OneRjSumCj
     }
 }
 
-#if (PRUNE_STRATEGY == pruneOneRjSumCj_LU_AND_SAL)
+// #if (PRUNE_STRATEGY == pruneOneRjSumCj_LU_AND_SAL)
 void prune__OneRjSumCj__LU_AND_SAL__Theorem1(vector<OneRjSumCjNode>& branched_nodes, OneRjSumCjGraph &graph) {    
     if(branched_nodes.size() == 0)
         return;
@@ -135,4 +135,4 @@ void prune__OneRjSumCj__LU_AND_SAL__Theorem1(vector<OneRjSumCjNode>& branched_no
 // void prune__OneRjSumCj__LU_AND_SAL__basicFilter(vector<OneRjSumCjNode>& branched_nodes, const OneRjSumCjGraph &graph) {    
     
 // }
-#endif
+// #endif

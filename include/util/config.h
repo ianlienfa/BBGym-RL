@@ -39,7 +39,7 @@
 #define bundle_OneRjSumCj_CBFS 2
 
 /* Simple Strategy Choices */
-#define SEARCH_BUNDLE bundle_OneRjSumCj_LU_AND_SAL
+#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS
 
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_LU_AND_SAL
     #define SEARCH_STRATEGY 1
@@ -50,9 +50,9 @@
 #endif
 
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_CBFS
-    #define SEARCH_STRATEGY 0
-    #define BRANCH_STRATEGY 1
-    #define PRUNE_STRATEGY  0
+    #define SEARCH_STRATEGY searchOneRjSumCj_CBFS
+    #define BRANCH_STRATEGY branchOneRjSumCj_LU_AND_SAL
+    #define PRUNE_STRATEGY  pruneOneRjSumCj_plain
     #define LOWER_BOUND lowerbound_oneRjSumCj_LU_AND_SAL
     #define LABELER labeler_unify
 #endif
