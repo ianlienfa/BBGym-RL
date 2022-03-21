@@ -1,0 +1,106 @@
+# general project settings
+cmake_minimum_required(VERSION 3.12)
+project(BranchAndBoundSmart CXX)
+
+############### ARCHITECTURE-RELATED VARIABLES ###############
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(MACOSX TRUE)
+endif()
+
+
+# control variables
+set(COMMAND_ARG "main")
+# set(COMMAND_ARG "test")
+
+################ PRE-PACKAGE SEARCH VARIABLES SETUP ################
+# general variables
+set(CMAKE_OSX_ARCHITECTURES "x86_64") # For m1 mac
+set(CMAKE_CXX_STANDARD 14)
+set(PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+set(HOME_INC_DIR ${PROJECT_PATH}/include)
+
+# Torch related variables
+set(TORCH_PREFIX_PATH "./libtorch")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" "${TORCH_PREFIX_PATH}")
+
+# NumPy related variables
+if(MACOSX)
+  set(PYTHON_NUMPY_INCLUDE_DIR "/opt/homebrew/Caskroom/miniforge/base/envs/ML/lib/python3.9/site-packages/numpy/core/include")
+endif()
+
+######################  PACKAGE DEPENDENCIES  ########################
+# PACKAGES 
+find_package(Torch REQUIRED)  # Torch
+
+# matlablib dependecies
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
+message("CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+find_package(Eigen3)
+
+if (${EIGEN3_FOUND})
+  include_directories(${EIGEN3_INCLUDE_DIR})
+else()
+  message(STATUS "Eigen3 not found")
+endif()
+
+find_package(Python3 COMPONENTS Interpreter Development)
+if (${Python3_FOUND})
+  include_directories(${Python3_INCLUDE_DIRS})
+else()
+  message(FATAL_ERROR "Python3 not found, please install it.")
+endif()
+
+find_package(NumPy)
+if (${PYTHON_NUMPY_FOUND})
+  include_directories(${PYTHON_NUMPY_INCLUDE_DIR})
+else()
+  message(WARNING "Python3 NumPy not found, proceeding with -DWITHOUT_NUMPY."
+  " Some functions might not work.")
+  add_definitions(-DWITHOUT_NUMPY)
+endif()
+
+################# POST-PACKAGE SEARCH VARIABLES SETUP ###############
+# Package specific configuration
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+include_directories(${TORCH_INCLUDE_DIRS})
+
+# setting include root path
+include_directories(${HOME_INC_DIR})
+
+# subdirectories
+add_subdirectory(include)
+
+###########################################################################
+# executables
+if(COMMAND_ARG STREQUAL "main")
+    add_executable(main src/main.cpp)
+elseif (COMMAND_ARG STREQUAL "test")
+    add_executable(main src/net.cpp)
+endif()
+
+target_link_libraries(
+    main    # target 
+    "${TORCH_LIBRARIES}" # Torch
+    "${Python3_LIBRARIES}" # Python3
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
+    oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    LowerBound PriorityQueue JobWithReleaseDate # Util
+)
+
+add_executable(load src/load.cpp)
+target_link_libraries(
+    load    # target 
+    "${TORCH_LIBRARIES}" # Torch
+    "${Python3_LIBRARIES}" # Python3
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
+    oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    LowerBound PriorityQueue JobWithReleaseDate # Util
+)
+
+######################  SELF-DEFINED COMMANDS  ########################
+# cmake run
+add_custom_target(run
+    ./main
+    DEPENDS main
+    WORKING_DIRECTORY ${PROJECT_PATH}/build
+)
