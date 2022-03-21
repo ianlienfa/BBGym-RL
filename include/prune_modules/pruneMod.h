@@ -13,12 +13,11 @@
 
 #include <iostream>
 #include <vector>
-using namespace std;
 
 #include "BB_engine/searchGraph.h"
 #include "BB_engine/problemNode.h"
 #include "util/config.h"
-
+using std::vector;
 
 struct PruneMod
 {

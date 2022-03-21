@@ -9,7 +9,9 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-using namespace std;
+using std::cout; using std::endl;
+using std::cin;
+using std::ifstream;
 
 struct InputHandler
 {   
