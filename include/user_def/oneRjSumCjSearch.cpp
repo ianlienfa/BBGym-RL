@@ -7,6 +7,12 @@ OneRjSumCjSearch::OneRjSumCjSearch(){
     #endif
 }
 
+OneRjSumCjSearch::OneRjSumCjSearch(){
+    #if LABELER == labeler_bynet
+        std::cout << "Required to label by net, however net is not initialized, exiting" << std::endl;
+        exit(LOGIC_ERROR);
+    #endif
+}
 void OneRjSumCjSearch::fill_graph(OneRjSumCjGraph *graph) {
     this->graph = graph;
 }

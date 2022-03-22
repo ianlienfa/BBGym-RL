@@ -26,7 +26,6 @@ struct OneRjSumCjSearch: SearchMod
     std::shared_ptr<DDPRLabeler> labeler;
     OneRjSumCjSearch(std::shared_ptr<DDPRLabeler> labeler): labeler(labeler) {}
 #endif
-
     OneRjSumCjSearch();
     bool get_find_optimal();    
     void fill_graph(OneRjSumCjGraph *graph);

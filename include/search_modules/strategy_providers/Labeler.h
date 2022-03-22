@@ -5,7 +5,7 @@
 
 struct Labeler
 {
-    Labeler(){}    
+    Labeler(){}
 };
 
 
