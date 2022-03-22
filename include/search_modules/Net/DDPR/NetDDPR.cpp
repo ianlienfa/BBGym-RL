@@ -41,84 +41,11 @@ void ReplayBufferImpl::submit()
     }
 }
 
-
-// ! The size of the state input is fixed here!
 vector<float> StateInput::flatten_and_norm()
 {   
-    int fixed_size = FIXED_JOB_SIZE;
-    vector<float> flat_state;
-
-    /* static features: 
-        p, r, w    
-    */
-    vector<float> r_time(OneRjSumCjNode::release_time);
-    vector<float> p_time(OneRjSumCjNode::processing_time);
-    vector<float> job_weight(OneRjSumCjNode::job_weight);
-    r_time.resize(fixed_size);
-    p_time.resize(fixed_size);
-    job_weight.resize(fixed_size);    
-    auto vector_norm = [](vector<float> v) { 
-        float max = 0; float min = std::numeric_limits<float>::infinity();
-        for(auto i : v)
-        {
-            max = max > i ? max : i;
-            min = min < i ? min : i;
-        }
-        // +1 makes sure that the processing time is not zero
-        for_each(v.begin(), v.end(), [&](float& i) { i = (i - min + 1) / (max - min); });
-    };
-    vector_norm(r_time);
-    vector_norm(p_time);
-    vector_norm(job_weight);
-    flat_state.insert(flat_state.end(), make_move_iterator(r_time.begin()), make_move_iterator(r_time.end()));
-    flat_state.insert(flat_state.end(), make_move_iterator(p_time.begin()), make_move_iterator(p_time.end()));
-    flat_state.insert(flat_state.end(), make_move_iterator(job_weight.begin()), make_move_iterator(job_weight.end()));    
-
-    vector<float> parent_state;
-    vector<float> child_state;    
-    vector<float> parent_seq(fixed_size, 0.0);
-    vector<float> child_seq(fixed_size, 0.0);
-    vector<float> parent_visit(fixed_size, 0.0);
-    vector<float> child_visit(fixed_size, 0.0);
-    for(int i = 1; i < node.is_processed.size(); i++)
-    {
-        child_visit[i-1] = (node.is_processed[i]) ? 1.0 : 0.0;
-        parent_visit[i-1] = (node_parent.is_processed[i-1]) ? 1.0 : 0.0;
-    }    
-    for(int i = 0; i < node.seq.size(); i++)
-    {
-        child_seq[i] = float(node.seq[i]);
-        parent_seq[i] = float(node_parent.seq[i]);
-    }
-
-    // sequence idx normalization
-    auto seq_norm = [](float idx){return (idx - OneRjSumCjNode::jobs_num/2.0)/OneRjSumCjNode::jobs_num;};
-    for_each(child_seq.begin(), child_seq.end(), seq_norm);
-    for_each(parent_seq.begin(), parent_seq.end(), seq_norm);
-
-    parent_state.insert(parent_state.end(), make_move_iterator(parent_visit.begin()), make_move_iterator(parent_visit.end()));
-    parent_state.insert(parent_state.end(), make_move_iterator(parent_seq.begin()), make_move_iterator(parent_seq.end()));
-    child_state.insert(child_state.end(), make_move_iterator(child_visit.begin()), make_move_iterator(child_visit.end()));
-    child_state.insert(child_state.end(), make_move_iterator(child_seq.begin()), make_move_iterator(child_seq.end()));
-
-    // completion time normalization
-    auto time_norm = [](float time){
-        return time - OneRjSumCjNode::time_baseline;
-    };
-    parent_state.push_back(time_norm(node_parent.lb));
-    parent_state.push_back(time_norm(node_parent.earliest_start_time));
-    parent_state.push_back(time_norm(node_parent.completion_time));
-    parent_state.push_back(time_norm(node_parent.weighted_completion_time));
-    child_state.push_back(time_norm(node_parent.lb));
-    child_state.push_back(time_norm(node_parent.earliest_start_time));
-    child_state.push_back(time_norm(node_parent.completion_time));
-    child_state.push_back(time_norm(node_parent.weighted_completion_time));
-
-    flat_state.insert(flat_state.end(), make_move_iterator(parent_state.begin()), make_move_iterator(parent_state.end()));
-    flat_state.insert(flat_state.end(), make_move_iterator(child_state.begin()), make_move_iterator(child_state.end()));
-
-    return flat_state;
+    
 }
+
 
 // should output in tensor form
 tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::get(vector<int> indecies)

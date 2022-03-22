@@ -2,3 +2,4 @@
 /libtorch
 /.vscode
 .DS_Store
+/deprecated
