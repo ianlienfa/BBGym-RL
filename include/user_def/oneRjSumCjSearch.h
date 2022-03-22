@@ -4,7 +4,6 @@
 #include <iostream>
 #include <vector>
 #include <utility>
-#include <optional>
 using std::vector;
 using std::cerr;
 using std::make_pair;
