@@ -34,6 +34,9 @@ struct OneRjSumCjNode: ProblemNode
     static vector<TIME_TYPE> job_weight;    
     static int jobs_num;
     static B jobs_mask;
+    /** 
+     * Defined as \sum_j{(r_max + p_j) * W_j}
+     */  
     static float worst_upperbound;
 
     // node dependent data
