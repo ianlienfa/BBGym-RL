@@ -17,8 +17,8 @@ bool parse_and_init_oneRjSumCj()
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::release_time[i]; } 
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::job_weight[i]; } 
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){
-        OneRjSumCjNode::time_baseline += OneRjSumCjNode::processing_time[i];
-        OneRjSumCjNode::time_baseline += OneRjSumCjNode::release_time[i];
+        OneRjSumCjNode::worst_upperbound += OneRjSumCjNode::processing_time[i];
+        OneRjSumCjNode::worst_upperbound += OneRjSumCjNode::release_time[i];
     }
     cin >> tmp;
     if(tmp != -1){ 
@@ -48,8 +48,8 @@ bool parse_and_init_oneRjSumCj(const string& file_name)
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){fin >> OneRjSumCjNode::release_time[i]; } 
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){fin >> OneRjSumCjNode::job_weight[i]; } 
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){
-        OneRjSumCjNode::time_baseline += OneRjSumCjNode::processing_time[i];
-        OneRjSumCjNode::time_baseline += OneRjSumCjNode::release_time[i];
+        OneRjSumCjNode::worst_upperbound += OneRjSumCjNode::processing_time[i];
+        OneRjSumCjNode::worst_upperbound += OneRjSumCjNode::release_time[i];
     }
     fin >> tmp;
     if(tmp != -1){ 

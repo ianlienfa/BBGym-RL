@@ -34,7 +34,7 @@ struct OneRjSumCjNode: ProblemNode
     static vector<TIME_TYPE> job_weight;    
     static int jobs_num;
     static B jobs_mask;
-    static float time_baseline;
+    static float worst_upperbound;
 
     // node dependent data
     B is_processed;
