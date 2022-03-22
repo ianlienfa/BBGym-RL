@@ -34,13 +34,13 @@ int main(int argc, char* argv[])
         int instance_idx = INSTANCE_NUM;
         while(instance_idx--)
         {
-            int step_size = rand() % 3;
-            while(step_size--)
+            int step_size = rand() % 3;            
+            do
             {
-                filepath = inputHandler.getNextFileName();               
+                filepath = inputHandler.getNextFileName();  
                 if(filepath.empty())
                     inputHandler.reset();
-            }
+            }while(step_size--);
             if(parse_and_init_oneRjSumCj(filepath))
             {
                 OneRjSumCj_engine solver; 

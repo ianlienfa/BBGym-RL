@@ -5,7 +5,7 @@ vector<TIME_TYPE> OneRjSumCjNode::release_time;
 vector<TIME_TYPE> OneRjSumCjNode::job_weight;
 int OneRjSumCjNode::jobs_num;
 B OneRjSumCjNode::jobs_mask;
-float OneRjSumCjNode::time_baseline;
+float OneRjSumCjNode::worst_upperbound;
 string OneRjSumCjNode::instance_name;
 
 OneRjSumCjNode::OneRjSumCjNode()
