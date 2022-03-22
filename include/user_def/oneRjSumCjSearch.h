@@ -21,7 +21,7 @@ struct OneRjSumCjSearch: SearchMod
 #if SEARCH_STRATEGY == searchOneRjSumCj_CBFS        
     PlainLabeler labeler;
 #endif
-
+    OneRjSumCjSearch();
     bool get_find_optimal();    
     void fill_graph(OneRjSumCjGraph *graph);
     void history_fill();

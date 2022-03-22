@@ -8,12 +8,8 @@ OneRjSumCj_engine::OneRjSumCj_engine()
 }
 
 OneRjSumCj_engine::OneRjSumCj_engine(OneRjSumCjGraph graph, OneRjSumCjSearch searcher, OneRjSumCjBranch brancher, OneRjSumCjPrune pruner, LowerBound lowerbound)
+: graph(graph), searcher(searcher), brancher(brancher), pruner(pruner), lowerbound(lowerbound)
 {
-    this->graph = graph;
-    this->searcher = searcher;
-    this->brancher = brancher;
-    this->pruner = pruner;
-    this->lowerbound = lowerbound;
     this->rootProblem = OneRjSumCjNode();
 }
 
