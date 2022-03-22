@@ -3,6 +3,7 @@
 #include "user_def/oneRjSumCj_engine.h"
 #include "user_def/oneRjSumCjPrune.h"
 #include "problem_parser/problemParser.h"
+#include "search_modules/Net/DDPR/NetDDPR.h"
 
 int main(int argc, char* argv[])
 {        
@@ -22,28 +23,36 @@ int main(int argc, char* argv[])
             OneRjSumCjGraph graph;
             graph = solver.solve(OneRjSumCjNode());  
         }
-        return 0;
     }
     else
     {
             // read problem
         #define INSTANCE_NUM 5
+        srand(0);
         InputHandler inputHandler((string(argv[1])));
         string filepath;
-        int instance_idx = 0;
-        do
+        int instance_idx = INSTANCE_NUM;
+        while(instance_idx--)
         {
-            filepath = inputHandler.getNextFileName();   
-            instance_idx++;
-            if(instance_idx >= INSTANCE_NUM)
-                break;
+            int step_size = rand() % 3;            
+            do
+            {
+                filepath = inputHandler.getNextFileName();  
+                if(filepath.empty())
+                    inputHandler.reset();
+            }while(step_size--);
             if(parse_and_init_oneRjSumCj(filepath))
             {
-                OneRjSumCj_engine solver; 
+                std::shared_ptr<DDPRLabeler> labeler = std::make_shared<DDPRLabeler>(int64_t(StateInput(OneRjSumCjNode(), OneRjSumCjNode()).flatten_and_norm().size()), 1, Pdd(0.0, 10.0));
+                OneRjSumCjSearch searcher(labeler);
+                OneRjSumCjBranch brancher;
+                OneRjSumCjPrune pruner;
+                LowerBound lowerbound;
                 OneRjSumCjGraph graph;
+                OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());  
             }
-        } while(!filepath.empty());
+        } 
     }
 
     /* For validation */

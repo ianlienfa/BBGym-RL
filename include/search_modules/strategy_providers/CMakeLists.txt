@@ -10,3 +10,9 @@ add_library(
     PlainLabeler.h
     PlainLabeler.cpp
 )
+
+add_library(
+    DDPRLabeler
+    DDPRLabeler.h
+    DDPRLabeler.cpp
+)

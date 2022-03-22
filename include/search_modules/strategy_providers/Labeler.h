@@ -5,8 +5,7 @@
 
 struct Labeler
 {
-    Labeler(){}
-    virtual int operator()(const OneRjSumCjNode &node) const = 0;
+    Labeler(){}    
 };
 
 

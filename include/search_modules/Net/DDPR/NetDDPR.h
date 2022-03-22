@@ -13,12 +13,12 @@ struct StateInput
 {
     const OneRjSumCjNode &node_parent;   
     const OneRjSumCjNode &node;   
-            
+    StateInput(const OneRjSumCjNode &node_parent, const OneRjSumCjNode &node) : node_parent(node_parent), node(node) {}
     vector<float> flatten_and_norm(); 
 };
 
 // the saved format should be elastic
-struct ReplayBuffer
+struct ReplayBufferImpl
 {
 private:
     bool enter_data_prep_sec;      
@@ -36,18 +36,20 @@ public:
     void enter_data_prep_section(){enter_data_prep_sec = true;};    
     void leave_data_prep_section(){enter_data_prep_sec = false;};    
     bool safe_to_submit(){return !enter_data_prep_sec;};        
+    bool isin_prep(){return enter_data_prep_sec;};        
     vector<float> s_prep;
     vector<float> s_next_prep;
     float label_prep;
     float reward_prep;
     float done_prep;
 
-    ReplayBuffer(int max_size);    
+    ReplayBufferImpl(int max_size);    
     const int get_size(){return size;}
     void push(vector<float> s, float a, int r, vector<float> s_, bool done);
     tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> get(vector<int> indecies);
     void submit();
 };
+typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;
 
 struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
 {

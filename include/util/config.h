@@ -3,6 +3,7 @@
 
 #define JOB_NUMBER 100
 #define TIME_TYPE float
+#define FIXED_JOB_SIZE 100
 
 // exit codes
 #define NOT_INIT 50
@@ -35,12 +36,18 @@
 #define labeler_bynet 2
 
 /* Available Solver Bundles */
+#define bundle_NULL 0
 #define bundle_OneRjSumCj_LU_AND_SAL 1
 #define bundle_OneRjSumCj_CBFS 2
+#define bundle_OneRjSumCj_CBFS_Net 3
+
+/* ==================== Simple Strategy Choices ========================== */
 
 /* Simple Strategy Choices */
-#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS
+#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS_Net
 
+
+/* ======================================================================= */
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_LU_AND_SAL
     #define SEARCH_STRATEGY 1
     #define BRANCH_STRATEGY 1
@@ -57,15 +64,23 @@
     #define LABELER labeler_unify
 #endif
 
+#if SEARCH_BUNDLE == bundle_OneRjSumCj_CBFS_Net
+    #define SEARCH_STRATEGY searchOneRjSumCj_CBFS
+    #define BRANCH_STRATEGY branchOneRjSumCj_LU_AND_SAL
+    #define PRUNE_STRATEGY  pruneOneRjSumCj_plain
+    #define LOWER_BOUND lowerbound_oneRjSumCj_LU_AND_SAL
+    #define LABELER labeler_bynet
+#endif
+
 /* Problem specific specifications <-- Change Specific Solving Strategies Here!
    Note that some of the strategies are not applicable to all problems.
  */
-#if SEARCH_BUNDLE == 0 
-    #define SEARCH_STRATEGY 1
-    #define BRANCH_STRATEGY 1
-    #define PRUNE_STRATEGY  1
-    #define LOWER_BOUND lowerbound_oneRjSumCj_LU_AND_SAL
-    #define LABELER labeler_unify
+#if SEARCH_BUNDLE == bundle_NULL 
+    #define SEARCH_STRATEGY 
+    #define BRANCH_STRATEGY 
+    #define PRUNE_STRATEGY  
+    #define LOWER_BOUND 
+    #define LABELER 
 #endif 
 /* PRUNE STRATEGY CAN BE CHOOSED BY PLACING FUNCTION IN OneRjSUMCjPrune::prune_funcs */
 

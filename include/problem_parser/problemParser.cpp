@@ -53,7 +53,7 @@ bool parse_and_init_oneRjSumCj(const string& file_name)
     }
     fin >> tmp;
     if(tmp != -1){ 
-        cout << "input error" << endl;
+        cout << file_name << ": input error" << endl;
         return false;
     }
     fin.close();

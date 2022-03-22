@@ -1,6 +1,6 @@
 #include "search_modules/Net/DDPR/NetDDPR.h"
 
-ReplayBuffer::ReplayBuffer(int max_size) {
+ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     this->max_size = max_size;
     this->idx = 0;
     this->size = 0;
@@ -11,7 +11,7 @@ ReplayBuffer::ReplayBuffer(int max_size) {
     done.resize(max_size);
 }
 
-void ReplayBuffer::push(vector<float> s, float a, int r, vector<float> s_, bool done)
+void ReplayBufferImpl::push(vector<float> s, float a, int r, vector<float> s_, bool done)
 {
     if(idx >= max_size)
     {
@@ -28,7 +28,7 @@ void ReplayBuffer::push(vector<float> s, float a, int r, vector<float> s_, bool 
     this->size = std::min(this->size + 1, max_size);
 }
 
-void ReplayBuffer::submit()
+void ReplayBufferImpl::submit()
 {    
     if(safe_to_submit())
     {
@@ -45,7 +45,7 @@ void ReplayBuffer::submit()
 // ! The size of the state input is fixed here!
 vector<float> StateInput::flatten_and_norm()
 {   
-    int fixed_size = 100;
+    int fixed_size = FIXED_JOB_SIZE;
     vector<float> flat_state;
 
     /* static features: 
@@ -121,7 +121,7 @@ vector<float> StateInput::flatten_and_norm()
 }
 
 // should output in tensor form
-tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBuffer::get(vector<int> indecies)
+tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::get(vector<int> indecies)
 {
     int batch_size = indecies.size();
     int state_feature_size = s[0].size();

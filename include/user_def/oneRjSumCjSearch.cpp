@@ -1,5 +1,11 @@
 #include "oneRjSumCjSearch.h"
 
+OneRjSumCjSearch::OneRjSumCjSearch(){
+    #if LABELER == labeler_bynet
+        std::cout << "Required to label by net, however net is not initialized, exiting" << std::endl;
+        exit(LOGIC_ERROR);
+    #endif
+}
 
 void OneRjSumCjSearch::fill_graph(OneRjSumCjGraph *graph) {
     this->graph = graph;
@@ -73,9 +79,33 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     // push the branched nodes into the contour
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
         // label and push
-        int label = labeler(*it);
+        StateInput stateInput(current_node, *it);
+        vector<float> s = stateInput.flatten_and_norm();
+        float label = (*labeler)(s);  
+        if(!labeler->buffer->isin_prep()) 
+        {     
+            labeler->buffer->enter_data_prep_section();
+            labeler->buffer->s_prep = s;
+            labeler->buffer->label_prep = label;
+        }
+        else
+        {
+            // Finish the last data prep section
+            labeler->buffer->s_next_prep = s;
+            labeler->buffer->reward_prep = 0.0;
+            labeler->buffer->done_prep = 0.0;
+            labeler->buffer->leave_data_prep_section();
+            labeler->buffer->submit();
+            
+            // start the new data prep section
+            labeler->buffer->enter_data_prep_section();
+            labeler->buffer->s_prep = s;
+            labeler->buffer->label_prep = label;
+        }
 
         // prepare the data    
+        // 注意done的部分！
+        throw NotImplemented;
         
 
 

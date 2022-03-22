@@ -4,24 +4,31 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <optional>
 using std::vector;
 using std::cerr;
 using std::make_pair;
+
 
 #include "search_modules/searchMod.h"
 #include "user_def/oneRjSumCjNode.h"
 #include "user_def/oneRjSumCjGraph.h"
 #include "search_modules/strategy_providers/PlainLabeler.h"
+#include "search_modules/strategy_providers/DDPRLabeler.h"
 #include "util/LowerBound.h"
 
 struct OneRjSumCjSearch: SearchMod
 {
     OneRjSumCjGraph *graph;
 
-#if SEARCH_STRATEGY == searchOneRjSumCj_CBFS        
-    PlainLabeler labeler;
+#if LABELER == labeler_unify        
+    std::shared_ptr<PlainLabeler> labeler;
+#elif LABELER == labeler_bynet
+    std::shared_ptr<DDPRLabeler> labeler;
+    OneRjSumCjSearch(std::shared_ptr<DDPRLabeler> labeler): labeler(labeler) {}
 #endif
 
+    OneRjSumCjSearch();
     bool get_find_optimal();    
     void fill_graph(OneRjSumCjGraph *graph);
     void history_fill();

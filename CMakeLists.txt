@@ -11,7 +11,7 @@ endif()
 ################ PRE-PACKAGE SEARCH VARIABLES SETUP ################
 # general variables
 set(CMAKE_OSX_ARCHITECTURES "x86_64") # For m1 mac
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(HOME_INC_DIR ${PROJECT_PATH}/include)
 
@@ -77,7 +77,7 @@ target_link_libraries(
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
     oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util
-    NetDDPRActor NetDDPRQNet NetDDPR  # Net
+    NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler# Net
 )
 
 add_executable(net src/net.cpp)
@@ -88,7 +88,7 @@ target_link_libraries(
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
     oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util
-    NetDDPRActor NetDDPRQNet NetDDPR  # Net
+    NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
 )
 
 add_executable(load src/load.cpp)
@@ -99,7 +99,6 @@ target_link_libraries(
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
     oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util
-    NetDDPRActor NetDDPRQNet NetDDPR  # Net
 )
 
 ######################  SELF-DEFINED COMMANDS  ########################
