@@ -41,6 +41,8 @@ void ReplayBufferImpl::submit()
     }
 }
 
+
+
 vector<float> StateInput::flatten_and_norm()
 {   
     

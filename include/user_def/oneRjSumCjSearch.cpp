@@ -84,6 +84,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     #endif
     // push the branched nodes into the contour
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
+        
         // label and push
         StateInput stateInput(current_node, *it);
         vector<float> s = stateInput.flatten_and_norm();
