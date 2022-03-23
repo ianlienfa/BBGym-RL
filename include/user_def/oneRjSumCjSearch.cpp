@@ -73,7 +73,6 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     (void) current_node;
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
-    cout << "searched_node_num: " << this->graph->searched_node_num << endl;
 
     // push the branched nodes into the contour
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){

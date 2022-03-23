@@ -39,7 +39,7 @@
 #define bundle_OneRjSumCj_CBFS 2
 
 /* Simple Strategy Choices */
-#define SEARCH_BUNDLE bundle_OneRjSumCj_LU_AND_SAL
+#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS
 
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_LU_AND_SAL
     #define SEARCH_STRATEGY 1

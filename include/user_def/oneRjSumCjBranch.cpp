@@ -36,6 +36,15 @@ vector<OneRjSumCjNode> OneRjSumCjBranch::branch(const OneRjSumCjNode &current_no
     #endif
     // Create Dense Set of Jobs
     vector<OneRjSumCjNode> V_j;
+
+    // if better incumbent solution has found, skip branching
+    if(current_node.lb >= this->graph->min_obj) {
+        #if DEBUG_LEVEL >= 2
+            cout << "prepruned parent node" << endl;
+        #endif
+    }
+
+    // Branching 
     int min_Cj = INT32_MAX;
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++)
     {
