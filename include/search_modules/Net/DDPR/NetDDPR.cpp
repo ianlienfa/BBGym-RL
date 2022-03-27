@@ -43,9 +43,54 @@ void ReplayBufferImpl::submit()
 
 
 
-vector<float> StateInput::flatten_and_norm()
+vector<float> StateInput::get_state_encoding(bool get_terminal = false)
+{    
+    vector<float> state_encoding;
+
+    // for terminal state
+    if(get_terminal)
+    {
+        return state_encoding.assign(state_dim, 0.0);
+    }
+
+
+    vector<float> current_node_state = flatten_and_norm(this->node);
+    vector<float> parent_node_state = flatten_and_norm(this->node);
+    state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
+    state_encoding.insert(state_encoding.end(), make_move_iterator(parent_node_state.begin()), make_move_iterator(parent_node_state.end()));
+
+    // initialize the state encoding dimension
+    if(state_dim == 0) state_dim = state_encoding.size();    
+    return state_encoding;
+}
+
+vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
 {   
-    
+    float state_processed_rate = 0.0,
+        norm_lb = 0.0,
+        norm_weighted_completion_time = 0.0,
+        norm_current_feasible_solution = 0.0
+    ;
+
+    vector<float> node_state_encoding;
+
+    // state_processed_rate
+    state_processed_rate = node.seq.size() / (float) OneRjSumCjNode::jobs_num;
+    node_state_encoding.push_back(state_processed_rate);
+
+    // norm_lb
+    norm_lb = node.lb / (float) OneRjSumCjNode::worst_upperbound;
+    node_state_encoding.push_back(norm_lb);
+
+    // norm_weighted_completion_time
+    norm_weighted_completion_time = node.weighted_completion_time / (float) OneRjSumCjNode::worst_upperbound;
+    node_state_encoding.push_back(norm_weighted_completion_time);
+
+    // norm_feasible_solution
+    norm_current_feasible_solution = graph.min_obj / (float) OneRjSumCjNode::worst_upperbound;
+    node_state_encoding.push_back(norm_current_feasible_solution);
+
+    return node_state_encoding;
 }
 
 

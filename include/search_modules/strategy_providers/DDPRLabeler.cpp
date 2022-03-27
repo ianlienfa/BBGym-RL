@@ -52,12 +52,26 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
     buffer_size = options.buffer_size;
     batch_size = options.batch_size;
     update_freq = options.update_freq;
+    epsilon = options.epsilon;
 }
 
 
-float DDPRLabeler::operator()(StateInput input) 
+// float DDPRLabeler::operator()(StateInput input) 
+// {        
+//     vector<float> flatten = input.get_state_encoding();
+//     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
+//     float label;
+//     // forward and get label
+//     {
+//         InferenceMode guard(true);
+//         label = net->pi->forward(tensor_in).item<float>();
+//     }
+//     return label;
+// }
+
+
+float DDPRLabeler::operator()(vector<float> flatten, bool is_train = false) 
 {        
-    vector<float> flatten = input.flatten_and_norm();
     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
     float label;
     // forward and get label
@@ -65,19 +79,25 @@ float DDPRLabeler::operator()(StateInput input)
         InferenceMode guard(true);
         label = net->pi->forward(tensor_in).item<float>();
     }
-    return label;
-}
-
-
-float DDPRLabeler::operator()(vector<float> flatten) 
-{        
-    torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
-    float label;
-    // forward and get label
-    {
-        InferenceMode guard(true);
-        label = net->pi->forward(tensor_in).item<float>();
+    // add exploration noise if training
+    if(is_train)
+    {       
+        float random_num = (rand() % 10) / 10.0; 
+        if(random_num < epsilon)
+        {
+            // do last action
+            if(random_num < epsilon / 2)
+            {
+                label = last_action;
+            }
+            // round to nearest contour
+            else
+            {
+                label = round(label);
+            }
+        }
     }
+    last_action = label;
     return label;
 }
 

@@ -6,6 +6,7 @@
 #include "search_modules/Net/DDPR/NetDDPRActor.h"
 #include "search_modules/Net/DDPR/NetDDPRQNet.h"
 #include "user_def/oneRjSumCjNode.h"
+#include "user_def/oneRjSumCjGraph.h"
 using namespace torch;
 using std::tuple;
 
@@ -13,8 +14,11 @@ struct StateInput
 {
     const OneRjSumCjNode &node_parent;   
     const OneRjSumCjNode &node;   
-    StateInput(const OneRjSumCjNode &node_parent, const OneRjSumCjNode &node) : node_parent(node_parent), node(node) {}
-    vector<float> flatten_and_norm(); 
+    const OneRjSumCjGraph &graph;
+    int state_dim = 0;
+    StateInput(const OneRjSumCjNode &node_parent, const OneRjSumCjNode &node, const OneRjSumCjGraph &graph) : node_parent(node_parent), node(node), graph(graph) {}
+    vector<float> flatten_and_norm(const OneRjSumCjNode &node);
+    vector<float> get_state_encoding(bool get_terminal = false);
 };
 
 // the saved format should be elastic

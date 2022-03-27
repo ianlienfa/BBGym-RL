@@ -86,9 +86,10 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
         
         // label and push
-        StateInput stateInput(current_node, *it);
-        vector<float> s = stateInput.flatten_and_norm();
+        StateInput stateInput(current_node, *it, *this->graph);
+        vector<float> s = stateInput.get_state_encoding();
         float label = (*labeler)(s);  
+
         if(!labeler->buffer->isin_prep()) 
         {     
             labeler->buffer->enter_data_prep_section();
@@ -98,8 +99,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         else
         {
             // Finish the last data prep section
-            labeler->buffer->s_next_prep = s;
-            labeler->buffer->reward_prep = 0.0;
+            labeler->buffer->s_next_prep = s;            
+            // If the new node is search instead of branching nodes from same parent, reward = -1
+            labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? -1.0 : 0.0;
             labeler->buffer->done_prep = 0.0;
             labeler->buffer->leave_data_prep_section();
             labeler->buffer->submit();
@@ -109,12 +111,6 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             labeler->buffer->s_prep = s;
             labeler->buffer->label_prep = label;
         }
-
-        // prepare the data    
-        // 注意done的部分！
-        throw NotImplemented;
-        
-
 
         map<int, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = this->graph->contours.find(label);
         if(target_contour_iter == this->graph->contours.end())
@@ -157,6 +153,15 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         {
             // only one contour left and the contour is empty, we need to stop
             this->graph->optimal_found = true;
+
+            /* complete the incomplete data prep section */
+            // create a dummy stateInput only to call the labeler for a terminal state representation return
+            StateInput dummy(current_node, current_node, *this->graph);
+            labeler->buffer->s_next_prep = dummy.get_state_encoding(true);            
+            labeler->buffer->reward_prep = 0.0;
+            labeler->buffer->done_prep = 1.0;
+            labeler->buffer->leave_data_prep_section();
+            labeler->buffer->submit();
         }
         this->graph->contours.erase(current_iter);
     }
