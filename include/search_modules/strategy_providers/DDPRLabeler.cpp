@@ -11,6 +11,7 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
 
     // set up random seeds
     srand(0);
+    torch::manual_seed(0);
 
     // set up MLP
     net = NetDDPR(state_dim, action_dim, action_range);
@@ -140,18 +141,38 @@ torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 
 void DDPRLabeler::update(Batch &batch_data)
 {
-    // compute loss
-    torch::Tensor q_loss = compute_q_loss(batch_data);
-    torch::Tensor pi_loss = compute_pi_loss(batch_data);
-
-    // update
+    // update q  
     optimizer_q->zero_grad();
+    torch::Tensor q_loss = compute_q_loss(batch_data);
     q_loss.backward();
     optimizer_q->step();
 
-    optimizer_pi->zero_grad();
+    // stablize the gradient for q-network
+    for(auto& p : net->q->parameters())
+        p.requires_grad_(false);
+
+    // update pi
+    optimizer_pi->zero_grad();        
+    torch::Tensor pi_loss = compute_pi_loss(batch_data);    
     pi_loss.backward();
     optimizer_pi->step();
+
+    // resume gradient computation for q-network
+    for(auto& p : net->q->parameters())
+        p.requires_grad_(true);
+    
+    {
+        // update target network
+        torch::NoGradGuard no_grad;
+        for (auto& p = net->parameters().begin(), p_tar = net_tar->parameters().begin(); p != net->parameters().end(); ++p, ++p_tar)
+        {
+            (*p_tar).data().mul_(this->polyak);
+            (*p_tar).data().add_((1 - this->polyak) * (*p_tar));
+        }
+    }
+
+    // losses memoization
+    loss_epoch.push_back(q_loss.item<float>());
 }
 
 

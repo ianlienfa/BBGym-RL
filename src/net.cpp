@@ -39,6 +39,7 @@ int main(int argc, char* argv[])
             return std::rand() % max_num;
         };
 
+        PlainLabeler plainLabeler;
         std::shared_ptr<DDPRLabeler> labeler = 
             std::make_shared<DDPRLabeler>(
                 int64_t(StateInput(dummy_node, dummy_node, dummy_graph).get_state_encoding().size()), 
@@ -47,6 +48,24 @@ int main(int argc, char* argv[])
                               note that the -5 and 5 should not be a feasible output, 
                               this is to preserve the extendibility of labeling */
             );
+
+         /* 
+            SOLVE_CALLBACK() is called at each search-branch-prune iteration,
+            we call network update at some steps.
+        */
+        #undef SOLVE_CALLBACK
+        #define SOLVE_CALLBACK() \
+        { \
+            if(labeler->step % labeler->update_freq == 0) \
+            { \
+                int buffer_size = labeler->buffer->get_size(); \
+                vector<int> v(labeler->buffer_size);  \
+                generate(v.begin(), v.end(), rand_in_range(buffer_size)); \
+                Batch batch = labeler->buffer->get(v); \
+                labeler->update(batch); \
+            } \
+        }      
+
         while(instance_idx--)
         {
             int step_size = rand() % 3;            
@@ -65,26 +84,11 @@ int main(int argc, char* argv[])
                 OneRjSumCjGraph graph;
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());  
-            }
-
-            /* 
-                SOLVE_CALLBACK() is called at each search-branch-prune iteration,
-                we call network update at some steps.
-            */
-            #undef SOLVE_CALLBACK
-            #define SOLVE_CALLBACK() \
-            { \
-                if(labeler->step % labeler->update_freq == 0) \
-                { \
-                    int buffer_size = labeler->buffer->get_size(); \
-                    vector<int> v(labeler->buffer_size);  \
-                    generate(v.begin(), v.end(), rand_in_range(buffer_size)); \
-                    Batch batch = labeler->buffer->get(v); \
-                    labeler->update(batch); \
-                } \
-            }         
-                                       
-            labeler->epoch++;            
+                
+                // print number of node searched
+                cout << "Number of nodes searched (net): " << graph.searched_node_num << endl;
+            }                                          
+            labeler->epoch++;                    
         } 
     }
 
