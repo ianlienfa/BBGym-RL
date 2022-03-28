@@ -1,2 +1,2 @@
-add_subdirectory(Net)
 add_subdirectory(strategy_providers)
+add_subdirectory(Net)

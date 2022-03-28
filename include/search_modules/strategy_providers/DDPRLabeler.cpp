@@ -1,5 +1,21 @@
 #include "search_modules/strategy_providers/DDPRLabeler.h"
 
+DDPRLabelerOptions::DDPRLabelerOptions(){
+    gamma=0.99;
+    lr_q=1e-3;
+    lr_pi=1e-3;
+    polyak=0.995;
+    num_epoch=150;
+    max_steps=1000;
+    update_start_epoch=10;
+    buffer_size=int64_t(1e6);
+    noise_scale=0.1;
+    epsilon = 0.5;
+    batch_size=100;
+    update_freq=50;
+    operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
+}
+
 DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, DDPRLabelerOptions options)
 : state_dim(state_dim), action_dim(action_dim), action_range(action_range)
 {       
@@ -77,7 +93,7 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 // }
 
 
-float DDPRLabeler::operator()(vector<float> flatten, bool is_train = false) 
+float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
 {        
     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
     float label;
@@ -88,7 +104,13 @@ float DDPRLabeler::operator()(vector<float> flatten, bool is_train = false)
         // Clipping and extending is done in forward function
     }
     // add exploration noise if training
-    if(is_train)
+    if(operator_option == OperatorOptions::RANDOM)
+    {
+        float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  // 0.0 ~ 1.0
+        label = r * action_range.second; // 0.0 ~ action_range.second
+        label = ((rand() % 10) / 10.0 < epsilon) ? floor(label) : label;  // add some prob to go to same contour
+    }
+    else if(operator_option == OperatorOptions::TRAIN)
     {       
         float random_num = (rand() % 10) / 10.0; 
         if(random_num < epsilon)
@@ -164,10 +186,10 @@ void DDPRLabeler::update(Batch &batch_data)
     {
         // update target network
         torch::NoGradGuard no_grad;
-        for (auto& p = net->parameters().begin(), p_tar = net_tar->parameters().begin(); p != net->parameters().end(); ++p, ++p_tar)
+        for (auto p = net->parameters().begin(), p_tar = net_tar->parameters().begin(); p != net->parameters().end(); ++p, ++p_tar)
         {
             (*p_tar).data().mul_(this->polyak);
-            (*p_tar).data().add_((1 - this->polyak) * (*p_tar));
+            (*p_tar).data().add_((1 - this->polyak) * (*p).data());
         }
     }
 

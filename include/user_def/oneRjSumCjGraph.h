@@ -14,9 +14,9 @@ using std::numeric_limits;
 #include "util/types.h"
 #include "util/PriorityQueue.h"
 #include "util/config.h"
-#if (Labeling_Strategy == RL_DDPR)
-    #include "search_modules/Net/DDPR/NetDDPR.h"
-#endif
+// #if (Labeling_Strategy == RL_DDPR)
+//     #include "search_modules/Net/DDPR/NetDDPR.h"
+// #endif
 struct OneRjSumCjGraph: SearchGraph
 {
     // static during search

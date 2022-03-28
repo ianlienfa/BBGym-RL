@@ -86,9 +86,9 @@ target_link_libraries(
     "${TORCH_LIBRARIES}" # Torch
     "${Python3_LIBRARIES}" # Python3
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
-    oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
+    oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util
-    NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
 )
 
 add_executable(load src/load.cpp)

@@ -5,22 +5,23 @@
 #include "search_modules/strategy_providers/Labeler.h"
 #include "search_modules/Net/DDPR/NetDDPR.h"
 
-typedef tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
+typedef std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
 
 struct DDPRLabelerOptions{
-    float gamma=0.99;
-    float lr_q=1e-3;
-    float lr_pi=1e-3;
-    float polyak=0.995;
-    int64_t num_epoch=150;
-    int64_t max_steps=1000;
-    int64_t update_start_epoch=10;
-    int64_t buffer_size=int64_t(1e6);
-    float noise_scale=0.1;
-    float epsilon = 0.5;
-    int64_t batch_size=100;
-    int64_t update_freq=50;
-    DDPRLabelerOptions(){};
+    float gamma;
+    float lr_q;
+    float lr_pi;
+    float polyak;
+    int64_t num_epoch;
+    int64_t max_steps;
+    int64_t update_start_epoch;
+    int64_t buffer_size;
+    float noise_scale;
+    float epsilon ;
+    int64_t batch_size;
+    int64_t update_freq;
+    int operator_option;
+    DDPRLabelerOptions();
 };
 
 struct DDPRLabeler: Labeler
@@ -41,6 +42,7 @@ struct DDPRLabeler: Labeler
     int64_t buffer_size;
     int64_t batch_size;
     int64_t update_freq;
+    int64_t operator_options;
     
     NetDDPR net{nullptr};
     NetDDPR net_tar{nullptr};    
@@ -64,7 +66,7 @@ struct DDPRLabeler: Labeler
     DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, DDPRLabelerOptions options = DDPRLabelerOptions());
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
-    float operator()(vector<float> flatten, int operator_options);
+    float operator()(vector<float> flatten, int operator_option);
     float ddpg_train(torch::Tensor tensor_in);
 
     torch::Tensor compute_q_loss(const Batch &batch_data);
@@ -72,5 +74,8 @@ struct DDPRLabeler: Labeler
     void update(Batch &batch_data);
     float get_action(const StateInput &input);
 };
+
+
+
 
 #endif

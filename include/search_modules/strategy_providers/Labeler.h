@@ -6,6 +6,7 @@
 struct Labeler
 {
     Labeler(){}
+    // virtual float operator()(vector<float> flatten);
 };
 
 

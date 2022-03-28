@@ -1,9 +1,26 @@
 #include <iostream>
+#include <stdexcept>
+#include <memory>
+
 
 #include "user_def/oneRjSumCj_engine.h"
 #include "user_def/oneRjSumCjPrune.h"
 #include "problem_parser/problemParser.h"
 #include "search_modules/Net/DDPR/NetDDPR.h"
+
+
+std::string exec(const char* cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
 
 int main(int argc, char* argv[])
 {        
@@ -77,6 +94,8 @@ int main(int argc, char* argv[])
             }while(step_size--);
             if(parse_and_init_oneRjSumCj(filepath))
             {
+                string cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
+                exec(cmd.c_str());
                 OneRjSumCjSearch searcher(labeler);
                 OneRjSumCjBranch brancher;
                 OneRjSumCjPrune pruner;

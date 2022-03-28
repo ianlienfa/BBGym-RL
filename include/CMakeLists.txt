@@ -71,7 +71,6 @@ add_library(
 )
 target_include_directories(TorchUtil INTERFACE util)
 
-
 add_subdirectory(user_def)
-add_subdirectory(third_party)
 add_subdirectory(search_modules)
+add_subdirectory(third_party)

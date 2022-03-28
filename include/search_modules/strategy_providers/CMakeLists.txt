@@ -16,3 +16,5 @@ add_library(
     DDPRLabeler.h
     DDPRLabeler.cpp
 )
+
+target_link_libraries(DDPRLabeler NetDDPR)

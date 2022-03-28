@@ -14,3 +14,5 @@ add_library(
     DDPR/NetDDPR.cpp
 )
 
+target_link_libraries(NetDDPR oneRjSumCjGraph)
+

@@ -43,14 +43,15 @@ void ReplayBufferImpl::submit()
 
 
 
-vector<float> StateInput::get_state_encoding(bool get_terminal = false)
+vector<float> StateInput::get_state_encoding(bool get_terminal)
 {    
     vector<float> state_encoding;
 
     // for terminal state
     if(get_terminal)
     {
-        return state_encoding.assign(state_dim, 0.0);
+        state_encoding.assign(state_dim, 0.0);
+        return state_encoding;
     }
 
 

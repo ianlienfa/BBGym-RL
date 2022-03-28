@@ -33,3 +33,7 @@ add_library(
     oneRjSumCjSearch.h
     oneRjSumCjSearch.cpp
 )
+
+target_link_libraries(
+    oneRjSumCjSearch DDPRLabeler
+)
