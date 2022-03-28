@@ -7,7 +7,7 @@ NetDDPRActorImpl::NetDDPRActorImpl(int64_t state_dim, Pdd action_range)
             nn::Linear(state_dim, 64),
             nn::Tanh(),
             nn::Linear(64, 1),
-            nn::Tanh()
+            nn::Sigmoid()
         )
     );       
     this->state_dim = state_dim;

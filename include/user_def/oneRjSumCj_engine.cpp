@@ -39,6 +39,8 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
     
     // start the branch and bound algorithm
     while(!graph.optimal_found){
+        SOLVE_CALLBACK();
+
         // searcher search on to a new node, make changes on its internal data structure, then return the new node
         this->graph.current_node = searcher.search_next();
 

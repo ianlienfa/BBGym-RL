@@ -26,12 +26,27 @@ int main(int argc, char* argv[])
     }
     else
     {
-            // read problem
+        // read problem
         #define INSTANCE_NUM 5
         srand(0);
         InputHandler inputHandler((string(argv[1])));
         string filepath;
         int instance_idx = INSTANCE_NUM;
+        
+        OneRjSumCjGraph dummy_graph;
+        OneRjSumCjNode dummy_node;
+        auto rand_in_range = [](int max_num){
+            return std::rand() % max_num;
+        };
+
+        std::shared_ptr<DDPRLabeler> labeler = 
+            std::make_shared<DDPRLabeler>(
+                int64_t(StateInput(dummy_node, dummy_node, dummy_graph).get_state_encoding().size()), 
+                1, 
+                Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
+                              note that the -5 and 5 should not be a feasible output, 
+                              this is to preserve the extendibility of labeling */
+            );
         while(instance_idx--)
         {
             int step_size = rand() % 3;            
@@ -43,7 +58,6 @@ int main(int argc, char* argv[])
             }while(step_size--);
             if(parse_and_init_oneRjSumCj(filepath))
             {
-                std::shared_ptr<DDPRLabeler> labeler = std::make_shared<DDPRLabeler>(int64_t(StateInput(OneRjSumCjNode(), OneRjSumCjNode()).flatten_and_norm().size()), 1, Pdd(0.0, 10.0));
                 OneRjSumCjSearch searcher(labeler);
                 OneRjSumCjBranch brancher;
                 OneRjSumCjPrune pruner;
@@ -52,6 +66,25 @@ int main(int argc, char* argv[])
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());  
             }
+
+            /* 
+                SOLVE_CALLBACK() is called at each search-branch-prune iteration,
+                we call network update at some steps.
+            */
+            #undef SOLVE_CALLBACK
+            #define SOLVE_CALLBACK() \
+            { \
+                if(labeler->step % labeler->update_freq == 0) \
+                { \
+                    int buffer_size = labeler->buffer->get_size(); \
+                    vector<int> v(labeler->buffer_size);  \
+                    generate(v.begin(), v.end(), rand_in_range(buffer_size)); \
+                    Batch batch = labeler->buffer->get(v); \
+                    labeler->update(batch); \
+                } \
+            }         
+                                       
+            labeler->epoch++;            
         } 
     }
 

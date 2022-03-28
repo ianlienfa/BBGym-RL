@@ -88,7 +88,18 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         // label and push
         StateInput stateInput(current_node, *it, *this->graph);
         vector<float> s = stateInput.get_state_encoding();
-        float label = (*labeler)(s);  
+        float label;
+        if(labeler->step < labeler->max_steps)
+        {
+            label = (*labeler)(s, DDPRLabeler::OperatorOptions::RANDOM);  
+        }
+        else
+        {
+            label = (*labeler)(s, DDPRLabeler::OperatorOptions::TRAIN);  
+        }
+
+        // increase the step count
+        labeler->step++;
 
         if(!labeler->buffer->isin_prep()) 
         {     
@@ -112,6 +123,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             labeler->buffer->label_prep = label;
         }
 
+        // Push the label(action) into contour : step()
         map<int, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = this->graph->contours.find(label);
         if(target_contour_iter == this->graph->contours.end())
         {
@@ -131,7 +143,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         }        
     }
 
-    // clean contour
+    // clean contour 
     if(this->graph->current_contour_iter->second.empty())
     {
         // if the current contour is empty, we need to find the next contour
@@ -149,13 +161,13 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 this->graph->current_contour_iter = this->graph->contours.begin();
             }
         }
-        else
+        else /* early leaving from the environment */
         {
             // only one contour left and the contour is empty, we need to stop
             this->graph->optimal_found = true;
-
+            
             /* complete the incomplete data prep section */
-            // create a dummy stateInput only to call the labeler for a terminal state representation return
+            // create a dummy stateInput only to call the labeler for a terminal state representation return            
             StateInput dummy(current_node, current_node, *this->graph);
             labeler->buffer->s_next_prep = dummy.get_state_encoding(true);            
             labeler->buffer->reward_prep = 0.0;

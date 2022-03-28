@@ -19,12 +19,12 @@ struct DDPRLabelerOptions{
     float noise_scale=0.1;
     float epsilon = 0.5;
     int64_t batch_size=100;
-    int64_t update_freq=5;
+    int64_t update_freq=50;
     DDPRLabelerOptions(){};
 };
 
 struct DDPRLabeler: Labeler
-{    
+{        
     int64_t state_dim;
     int64_t action_dim;
     Pdd action_range;
@@ -51,14 +51,20 @@ struct DDPRLabeler: Labeler
     float last_action;
     vector<float> test_loss;
     vector<float> loss_epoch;
-    int step;
-    int epoch;
+    int64_t step;
+    int64_t epoch;
 
+    // Operator choices
+    struct OperatorOptions{
+        static constexpr int RANDOM = 0;
+        static constexpr int TRAIN = 1;
+        static constexpr int INFERENCE = 2;
+    };
 
     DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, DDPRLabelerOptions options = DDPRLabelerOptions());
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
-    float operator()(vector<float> flatten, bool is_train = false);
+    float operator()(vector<float> flatten, int operator_options);
     float ddpg_train(torch::Tensor tensor_in);
 
     torch::Tensor compute_q_loss(const Batch &batch_data);

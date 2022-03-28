@@ -23,6 +23,12 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     // set up optimizer
     optimizer_q = std::make_shared<torch::optim::Adam>(net->q->parameters(), lr_q);
     optimizer_pi = std::make_shared<torch::optim::Adam>(net->pi->parameters(), lr_pi);    
+
+    // set up tracking param
+    last_action = 0.0;
+    step = 0;
+    epoch = 0;
+
 }
 
 // DDPRLabeler::operator()(const OneRjSumCjNode &node) const
@@ -77,7 +83,8 @@ float DDPRLabeler::operator()(vector<float> flatten, bool is_train = false)
     // forward and get label
     {
         InferenceMode guard(true);
-        label = net->pi->forward(tensor_in).item<float>();
+        label = net->pi->forward(tensor_in).item<float>();        
+        // Clipping and extending is done in forward function
     }
     // add exploration noise if training
     if(is_train)
@@ -90,10 +97,14 @@ float DDPRLabeler::operator()(vector<float> flatten, bool is_train = false)
             {
                 label = last_action;
             }
-            // round to nearest contour
+            // floor to nearest contour
             else
             {
-                label = round(label);
+                /* 
+                    The rounding should be floor() instead of round()
+                    to preserve the extendibility of the action space.
+                */
+                label = floor(label);                
             }
         }
     }

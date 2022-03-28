@@ -93,6 +93,10 @@
     #define POST_SOLVE_PRINT_CONFIG(graph)  post_print_config(graph)
 #endif 
 
+#ifndef SOLVE_CALLBACK
+    #define SOLVE_CALLBACK() 
+#endif
+
 /* debugging */
 #define DEBUG_LEVEL 0
 
