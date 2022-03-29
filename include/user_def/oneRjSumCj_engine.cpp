@@ -151,6 +151,7 @@ void post_print_config(const OneRjSumCjGraph &graph)
 {
     cout << endl;
     cout << "--------------- Search Result ---------------" << endl;
+    cout << "instance: " << OneRjSumCjNode::instance_name << endl;
     cout << "number of searched nodes: " << graph.searched_node_num << endl;
     cout << "min_obj = " << graph.min_obj << endl;
     cout << "min_seq = ";

@@ -146,7 +146,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         // if there's contour left after deletion, cycle back or go to the next
         if(this->graph->contours.size() > 1)
         {
-            if(this->graph->current_contour_iter != this->graph->contours.end())
+            auto inspection_iter = this->graph->current_contour_iter;
+            inspection_iter++;
+            if(inspection_iter != this->graph->contours.end())
             {
                 ++this->graph->current_contour_iter;
             }
@@ -172,6 +174,16 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         this->graph->contours.erase(current_iter);
     }
     
+    #if DEBUG_LEVEL >=2
+    cout << "labeler.step: " << labeler->step << endl;
+    cout << "------------------" << endl;
+    for(auto it = this->graph->contours.begin(); it != this->graph->contours.end(); ++it)
+    {
+        std::cout << " " << it->first << " " << it->second.size() << "\n";
+    }
+    cout << "current_iter: " << this->graph->current_contour_iter->first << endl;
+    #endif
+
     return branched_nodes;
 }
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)

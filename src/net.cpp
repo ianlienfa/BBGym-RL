@@ -31,14 +31,51 @@ int main(int argc, char* argv[])
     OneRjSumCjPrune::safe_prune_funcs = {
         pruneIncumbentCmpr
     };
+
+    OneRjSumCjGraph dummy_graph;
+    OneRjSumCjNode dummy_node;
+    auto rand_in_range = [](int max_num){
+        return std::rand() % max_num;
+    };
+
+    PlainLabeler plainLabeler;
+    std::shared_ptr<DDPRLabeler> labeler = 
+        std::make_shared<DDPRLabeler>(
+            int64_t(StateInput(dummy_node, dummy_node, dummy_graph).get_state_encoding().size()), 
+            1, 
+            Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
+                            note that the -5 and 5 should not be a feasible output, 
+                            this is to preserve the extendibility of labeling */
+        );
+
+    /* 
+        SOLVE_CALLBACK() is called at each search-branch-prune iteration,
+        we call network update at some steps.
+    */
+    #undef SOLVE_CALLBACK
+    #define SOLVE_CALLBACK() \
+    { \
+        if(labeler->step % labeler->update_freq == 0) \
+        { \
+            int buffer_size = labeler->buffer->get_size(); \
+            vector<int> v(labeler->buffer_size);  \
+            generate(v.begin(), v.end(), rand_in_range(buffer_size)); \
+            Batch batch = labeler->buffer->get(v); \
+            labeler->update(batch); \
+        } \
+    }      
         
     if (argc != 2)
     {
         if(parse_and_init_oneRjSumCj())
         {
-            OneRjSumCj_engine solver; 
+            OneRjSumCjSearch searcher(labeler);
+            OneRjSumCjBranch brancher;
+            OneRjSumCjPrune pruner;
+            LowerBound lowerbound;
             OneRjSumCjGraph graph;
-            graph = solver.solve(OneRjSumCjNode());  
+            OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
+            graph = solver.solve(OneRjSumCjNode());    
         }
     }
     else
@@ -49,40 +86,7 @@ int main(int argc, char* argv[])
         InputHandler inputHandler((string(argv[1])));
         string filepath;
         int instance_idx = INSTANCE_NUM;
-        
-        OneRjSumCjGraph dummy_graph;
-        OneRjSumCjNode dummy_node;
-        auto rand_in_range = [](int max_num){
-            return std::rand() % max_num;
-        };
-
-        PlainLabeler plainLabeler;
-        std::shared_ptr<DDPRLabeler> labeler = 
-            std::make_shared<DDPRLabeler>(
-                int64_t(StateInput(dummy_node, dummy_node, dummy_graph).get_state_encoding().size()), 
-                1, 
-                Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
-                              note that the -5 and 5 should not be a feasible output, 
-                              this is to preserve the extendibility of labeling */
-            );
-
-         /* 
-            SOLVE_CALLBACK() is called at each search-branch-prune iteration,
-            we call network update at some steps.
-        */
-        #undef SOLVE_CALLBACK
-        #define SOLVE_CALLBACK() \
-        { \
-            if(labeler->step % labeler->update_freq == 0) \
-            { \
-                int buffer_size = labeler->buffer->get_size(); \
-                vector<int> v(labeler->buffer_size);  \
-                generate(v.begin(), v.end(), rand_in_range(buffer_size)); \
-                Batch batch = labeler->buffer->get(v); \
-                labeler->update(batch); \
-            } \
-        }      
-
+    
         while(instance_idx--)
         {
             int step_size = rand() % 3;            
@@ -103,9 +107,6 @@ int main(int argc, char* argv[])
                 OneRjSumCjGraph graph;
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());  
-                
-                // print number of node searched
-                cout << "Number of nodes searched (net): " << graph.searched_node_num << endl;
             }                                          
             labeler->epoch++;                    
         } 
