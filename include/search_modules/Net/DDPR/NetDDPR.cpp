@@ -134,15 +134,28 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 }
 
 
-NetDDPRImpl::NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range)
+NetDDPRImpl::NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range, string q_path, string pi_path)
 {
     this->state_dim = state_dim;
     this->action_dim = action_dim;
     this->action_range = action_range;
 
-    this->q = register_module("QNet", NetDDPRQNet(state_dim, action_dim));
-    this->pi = register_module("PolicyNet", NetDDPRActor(state_dim, action_range));
+    NetDDPRQNet q_net(state_dim, action_dim);
+    module_info(*q_net);
+    NetDDPRActor pi_net(state_dim, action_range);
+    module_info(*pi_net);
+
+    if(q_path != "" && pi_path != "")
+    {
+        torch::load(q_net, q_path);
+        torch::load(pi_net, pi_path);
+    }
+    
+    this->q = register_module("QNet", q_net);
+    this->pi = register_module("PolicyNet", pi_net);
 }
+
+
 
 float NetDDPRImpl::act(torch::Tensor s)
 {
@@ -154,5 +167,11 @@ float NetDDPRImpl::act(torch::Tensor s)
     }
     #endif
     return this->pi->forward(s).item<float>();
+}
+
+void NetDDPRImpl::save(string pi_path, string q_path)
+{
+    torch::save(this->pi, pi_path);
+    torch::save(this->q, q_path);
 }
 

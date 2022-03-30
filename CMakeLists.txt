@@ -85,7 +85,7 @@ target_link_libraries(
     net    # target 
     "${TORCH_LIBRARIES}" # Torch
     "${Python3_LIBRARIES}" # Python3
-    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
     oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
     oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util

@@ -46,6 +46,8 @@ int main(int argc, char* argv[])
             Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
                             note that the -5 and 5 should not be a feasible output, 
                             this is to preserve the extendibility of labeling */
+            // ,"../saved_model/qNet.pt"
+            // ,"../saved_model/piNet.pt"
         );
 
     /* 
@@ -109,8 +111,11 @@ int main(int argc, char* argv[])
                 graph = solver.solve(OneRjSumCjNode());  
             }                                          
             labeler->epoch++;                    
-        } 
+        }         
     }
+
+    labeler->save("../saved_model/qNet.pt", "../saved_model/piNet.pt");
+    
 
     /* For validation */
     // int min_obj = INT_MAX;

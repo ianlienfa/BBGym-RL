@@ -16,7 +16,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
-DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, DDPRLabelerOptions options)
+DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, DDPRLabelerOptions options)
 : state_dim(state_dim), action_dim(action_dim), action_range(action_range)
 {       
     // parameters init
@@ -30,7 +30,7 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     torch::manual_seed(0);
 
     // set up MLP
-    net = NetDDPR(state_dim, action_dim, action_range);
+    net = NetDDPR(state_dim, action_dim, action_range, load_q_path, load_pi_path);
     auto net_copy_ptr = net->clone();
     net_tar = std::dynamic_pointer_cast<NetDDPRImpl>(net_copy_ptr);
 
@@ -46,6 +46,11 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     step = 0;
     epoch = 0;
 
+}
+
+void DDPRLabeler::save(string q_path, string pi_path)
+{
+    net->save(q_path, pi_path);
 }
 
 // DDPRLabeler::operator()(const OneRjSumCjNode &node) const

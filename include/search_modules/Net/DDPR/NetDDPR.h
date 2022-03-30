@@ -3,6 +3,7 @@
 #include <iostream>
 #include <torch/torch.h>
 // #include "third_party/matplotlibcpp/include/matplotlibcpp.h"
+#include "util/TorchUtil.h"
 #include "search_modules/Net/DDPR/NetDDPRActor.h"
 #include "search_modules/Net/DDPR/NetDDPRQNet.h"
 #include "user_def/oneRjSumCjNode.h"
@@ -64,7 +65,8 @@ struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
     NetDDPRActor pi{nullptr};
     NetDDPRQNet q{nullptr};
 
-    NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range);
+    NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range, string q_path = "", string pi_path = "");
+    void save(string pi_path, string q_path);
     float act(torch::Tensor s);
     void reset() override
     {
