@@ -6,7 +6,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_pi=1e-3;
     polyak=0.995;
     num_epoch=150;
-    max_steps=1000;
+    max_steps=10000;
     update_start_epoch=10;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
@@ -19,6 +19,12 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
 DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, DDPRLabelerOptions options)
 : state_dim(state_dim), action_dim(action_dim), action_range(action_range)
 {       
+
+    // Debug
+    cout << "state_dim: " << state_dim << endl;
+    cout << "action_dim: " << action_dim << endl;
+    cout << "action_range: " << action_range.first << " " << action_range.second << endl;
+
     // parameters init
     fill_option(options);
 
@@ -99,13 +105,19 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 
 
 float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
-{        
+{
+    #if DEBUG_LEVEL >= 2
+    cout << "flattened array: ";
+    for(auto it: flatten)
+        cout<<it<<" ";
+    cout<<endl;
+    #endif
     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
     float label;
     // forward and get label
     {
         InferenceMode guard(true);
-        label = net->pi->forward(tensor_in).item<float>();        
+        label = net->pi->forward(tensor_in).item<float>();  
         // Clipping and extending is done in forward function
     }
     // add exploration noise if training
@@ -113,7 +125,7 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
     {
         float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  // 0.0 ~ 1.0
         label = r * action_range.second; // 0.0 ~ action_range.second
-        label = ((rand() % 10) / 10.0 < epsilon) ? floor(label) : label;  // add some prob to go to same contour
+        label = ((rand() % 10) / 10.0 < epsilon) ? floor(label) : last_action;  // add some prob to go to same contour
     }
     else if(operator_option == OperatorOptions::TRAIN)
     {       
@@ -152,27 +164,50 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     torch::Tensor target_qval;
     {
         torch::NoGradGuard no_grad;
-        target_qval = r + this->gamma * (1 - done) * net_tar->q->forward(s_next, net_tar->pi->forward(s_next));        
+        target_qval = r + this->gamma * ~(done) * net_tar->q->forward(s_next, net_tar->pi->forward(s_next));        
         // Is this the right way to do it?
     }
-    torch::Tensor loss = (net->q->forward(s, a) - target_qval).pow(2).mean();
+    cout << "target_qval: " << target_qval << endl;
+    cout << "a: " << a << endl;
+    torch::Tensor qval = net->q->forward(s, a);
+    cout << "qval: " << qval << endl;    
+    torch::Tensor loss = qval - target_qval; // diff
+    cout << "loss_diff: " << loss << endl;
+    loss = loss.pow(2);
+    cout << "loss_pow2: " << loss << endl;
+    loss = loss.mean();
+    cout << "loss_mean: " << loss << endl;
+    // loss = (net->q->forward(s, a) - target_qval).pow(2).mean();
     return loss;
 }
 
 torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 {
     const torch::Tensor &s = get<0>(batch_data);
-    torch::Tensor loss = -(net->q->forward(s, net->pi(s))).mean();
+    torch::Tensor loss = -(net->q->forward(s, net->pi->forward(s))).mean();
     return loss;
 }
 
-void DDPRLabeler::update(Batch &batch_data)
-{
+void DDPRLabeler::update(const Batch &batch_data)
+{   
+    using std::cout, std::endl; 
+    cout << "before update" << endl;
+    cout << "-------------" << endl;
+    layer_weight_print(*(net->q));
+    layer_weight_print(*(net->pi));
+    cout << "-------------" << endl << endl;
+
     // update q  
     optimizer_q->zero_grad();
     torch::Tensor q_loss = compute_q_loss(batch_data);
+    cout << "q_loss: " << q_loss << endl;
     q_loss.backward();
     optimizer_q->step();
+
+    cout << "updated q" << endl;
+    cout << "-------------" << endl;
+    layer_weight_print(*(net->q));
+    cout << "-------------" << endl << endl;
 
     // stablize the gradient for q-network
     for(auto& p : net->q->parameters())
@@ -184,6 +219,11 @@ void DDPRLabeler::update(Batch &batch_data)
     pi_loss.backward();
     optimizer_pi->step();
 
+    cout << "updated pi" << endl;
+    cout << "-------------" << endl;
+    layer_weight_print(*(net->pi));
+    cout << "-------------" << endl << endl;
+
     // resume gradient computation for q-network
     for(auto& p : net->q->parameters())
         p.requires_grad_(true);
@@ -191,6 +231,10 @@ void DDPRLabeler::update(Batch &batch_data)
     {
         // update target network
         torch::NoGradGuard no_grad;
+        cout << "no grad" << endl;
+        cout << "-------------" << endl;
+        layer_weight_print(*(net));
+        cout << "-------------" << endl << endl;
         for (auto p = net->parameters().begin(), p_tar = net_tar->parameters().begin(); p != net->parameters().end(); ++p, ++p_tar)
         {
             (*p_tar).data().mul_(this->polyak);

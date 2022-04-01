@@ -10,16 +10,18 @@ bool parse_and_init_oneRjSumCj()
     OneRjSumCjNode::release_time.resize(OneRjSumCjNode::jobs_num+1);
     OneRjSumCjNode::job_weight.resize(OneRjSumCjNode::jobs_num+1);
     OneRjSumCjNode::jobs_mask = B(0).set().reset(0);
+
+    // construct
+    for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::processing_time[i]; } 
+    for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::release_time[i]; } 
+    for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::job_weight[i]; } 
+
     TIME_TYPE r_max = *(std::max_element(OneRjSumCjNode::release_time.begin(), OneRjSumCjNode::release_time.end()));
     TIME_TYPE p_sum = 0;
     for(auto &p: OneRjSumCjNode::processing_time)
         p_sum += p;
     TIME_TYPE worst_cj = r_max + p_sum;
 
-    // construct
-    for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::processing_time[i]; } 
-    for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::release_time[i]; } 
-    for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){cin >> OneRjSumCjNode::job_weight[i]; } 
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){
         OneRjSumCjNode::worst_upperbound += worst_cj * OneRjSumCjNode::job_weight[i];
     }

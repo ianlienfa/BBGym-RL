@@ -82,16 +82,25 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         // label and push
         StateInput stateInput(current_node, *it, *this->graph);
         vector<float> s = stateInput.get_state_encoding();
-        float label;
+        float label = 0;
         if(labeler->step < labeler->max_steps)
         {
             label = (*labeler)(s, DDPRLabeler::OperatorOptions::RANDOM);  
+            #if TORCH_DEBUG == 1                        
+            if(std::isnan(label))
+                throw std::runtime_error("Labeler returned NaN");
+            #endif
+
         }
         else
         {
             label = (*labeler)(s, DDPRLabeler::OperatorOptions::TRAIN);  
+            #if TORCH_DEBUG == 1                        
+            if(std::isnan(label))
+                throw std::runtime_error("Labeler returned NaN");
+            #endif
         }
-
+                
         // increase the step count
         labeler->step++;
 
@@ -118,7 +127,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         }
 
         // Push the label(action) into contour : step()
-        map<int, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = this->graph->contours.find(label);
+        map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = this->graph->contours.find(label);
         if(target_contour_iter == this->graph->contours.end())
         {
             PriorityQueue<OneRjSumCjNode> pq_insert(OneRjSumCjNode::cmpr);
@@ -137,27 +146,25 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         }        
     }
 
-    // clean contour 
+    // locate the next contour
+    map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator next_iter = this->graph->current_contour_iter;
+    // if there's contour left after deletion, cycle back or go to the next
+    if(this->graph->contours.size() > 1)
+    {        
+        next_iter++;
+        if(next_iter == this->graph->contours.end())
+        {
+            next_iter = this->graph->contours.begin();
+        }        
+    }
+
+    // clean current contour if needed
     if(this->graph->current_contour_iter->second.empty())
     {
         // if the current contour is empty, we need to find the next contour
-        map<int, PriorityQueue<OneRjSumCjNode>>::iterator current_iter = this->graph->current_contour_iter;
-        
-        // if there's contour left after deletion, cycle back or go to the next
-        if(this->graph->contours.size() > 1)
-        {
-            auto inspection_iter = this->graph->current_contour_iter;
-            inspection_iter++;
-            if(inspection_iter != this->graph->contours.end())
-            {
-                ++this->graph->current_contour_iter;
-            }
-            else
-            {
-                this->graph->current_contour_iter = this->graph->contours.begin();
-            }
-        }
-        else /* early leaving from the environment */
+        map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator current_iter = this->graph->current_contour_iter;       
+ 
+        if(this->graph->contours.size() <= 1) /* early leaving from the environment */
         {
             // only one contour left and the contour is empty, we need to stop
             this->graph->optimal_found = true;
@@ -173,6 +180,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         }
         this->graph->contours.erase(current_iter);
     }
+    
+    // update the current contour
+    this->graph->current_contour_iter = next_iter;
     
     #if DEBUG_LEVEL >=2
     cout << "labeler.step: " << labeler->step << endl;

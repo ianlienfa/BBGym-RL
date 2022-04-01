@@ -3,6 +3,7 @@
 #include <iostream>
 #include <torch/torch.h>
 // #include "third_party/matplotlibcpp/include/matplotlibcpp.h"
+#include "util/TorchUtil.h"
 using namespace torch;
 
 

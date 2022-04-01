@@ -2,6 +2,11 @@
 cmake_minimum_required(VERSION 3.12)
 project(BranchAndBoundSmart CXX)
 
+
+############### DEBUG ###############
+set(CMAKE_BUILD_TYPE Debug)
+
+
 ############### ARCHITECTURE-RELATED VARIABLES ###############
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(MACOSX TRUE)
@@ -83,7 +88,7 @@ target_link_libraries(
 add_executable(net src/net.cpp)
 target_link_libraries(
     net    # target 
-    "${TORCH_LIBRARIES}" # Torch
+    "${TORCH_LIBRARIES}" TorchUtil # Torch 
     "${Python3_LIBRARIES}" # Python3
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
     oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
@@ -94,10 +99,11 @@ target_link_libraries(
 add_executable(load src/load.cpp)
 target_link_libraries(
     load    # target 
-    "${TORCH_LIBRARIES}" # Torch
+    "${TORCH_LIBRARIES}" TorchUtil # Torch 
     "${Python3_LIBRARIES}" # Python3
-    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
-    oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
+    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
+    oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
     LowerBound PriorityQueue JobWithReleaseDate # Util
 )
 
@@ -106,5 +112,10 @@ target_link_libraries(
 add_custom_target(run
     ./main
     DEPENDS main
+    WORKING_DIRECTORY ${PROJECT_PATH}/build
+)
+
+add_custom_target(cls
+    rm -f *.out
     WORKING_DIRECTORY ${PROJECT_PATH}/build
 )

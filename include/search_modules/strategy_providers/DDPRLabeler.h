@@ -6,6 +6,7 @@
 #include "search_modules/Net/DDPR/NetDDPR.h"
 
 typedef std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
+typedef std::tuple<vector<vector<float>>, vector<float>, vector<float>, vector<vector<float>>, vector<float>> RawBatch;
 
 struct DDPRLabelerOptions{
     float gamma;
@@ -72,7 +73,7 @@ struct DDPRLabeler: Labeler
 
     torch::Tensor compute_q_loss(const Batch &batch_data);
     torch::Tensor compute_pi_loss(const Batch &batch_data);
-    void update(Batch &batch_data);
+    void update(const Batch &batch_data);
     float get_action(const StateInput &input);
 };
 

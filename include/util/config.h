@@ -4,6 +4,7 @@
 #define JOB_NUMBER 100
 #define TIME_TYPE float
 #define FIXED_JOB_SIZE 100
+#define CONTOUR_TYPE float
 
 // exit codes
 #define NOT_INIT 50
@@ -93,12 +94,14 @@
     #define POST_SOLVE_PRINT_CONFIG(graph)  post_print_config(graph)
 #endif 
 
-#ifndef SOLVE_CALLBACK
-    #define SOLVE_CALLBACK() 
+#ifndef SOLVE_CALLBACK    
+    extern void solveCallbackImpl( void* );
+    #define SOLVE_CALLBACK(engine) solveCallbackImpl(engine)
 #endif
 
 /* debugging */
 #define DEBUG_LEVEL 0
+#define TORCH_DEBUG 1
 
 /* validations (some extra checking is done if validation level is high) */
 #define VALIDATION_LEVEL validation_level_HIGH

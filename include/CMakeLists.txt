@@ -67,9 +67,9 @@ add_library(
 
 add_library(
     TorchUtil
-    INTERFACE 
+    util/TorchUtil.h
+    util/TorchUtil.cpp 
 )
-target_include_directories(TorchUtil INTERFACE util)
 
 add_subdirectory(user_def)
 add_subdirectory(search_modules)

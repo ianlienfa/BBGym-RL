@@ -27,8 +27,8 @@ struct OneRjSumCjGraph: SearchGraph
     long long searched_node_num;
 
 #if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
-    map<int, PriorityQueue<OneRjSumCjNode>> contours;
-    map<int, PriorityQueue<OneRjSumCjNode>>::iterator current_contour_iter;
+    map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> contours;
+    map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator current_contour_iter;
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)
     vector<deque<OneRjSumCjNode>> contours;
     int current_level;
@@ -58,7 +58,7 @@ struct OneRjSumCjGraph: SearchGraph
             exit(INVALID_INPUT);
         }
 #if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
-        contours = map<int, PriorityQueue<OneRjSumCjNode>>();
+        contours = map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>();
         current_contour_iter = contours.begin();
 #endif
         min_seq = Vi();

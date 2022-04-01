@@ -1,5 +1,18 @@
 #include <iostream>
+#include <vector>
 #include <torch/torch.h>
+
+using std::vector, std::string, std::cout, std::endl;
+int main()
+{
+    vector<int> shape = {1, 3, 224, 224};
+    torch::Tensor tensor1 = torch::from_blob(shape.data(), {1, 4}, torch::TensorOptions().dtype(torch::kInt32));
+    torch::Tensor tensor2 = tensor1.clone();
+    tensor1.mul_(2);
+    tensor2.mul_(3);
+    cout << tensor1 << endl;
+    cout << tensor2 << endl;
+}
 
 // #include "util/TorchUtil.h"
 // #include "search_modules/Net/DDPR/NetDDPR.h"

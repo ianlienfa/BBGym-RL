@@ -3,7 +3,7 @@
 #include <iostream>
 #include <torch/torch.h>
 // #include "third_party/matplotlibcpp/include/matplotlibcpp.h"
-#include "util/TorchUtil.h"
+// #include "util/TorchUtil.h"
 #include "search_modules/Net/DDPR/NetDDPRActor.h"
 #include "search_modules/Net/DDPR/NetDDPRQNet.h"
 #include "user_def/oneRjSumCjNode.h"
@@ -34,6 +34,7 @@ public:
     vector<vector<float>> s_next;
     vector<float> done;    
     int max_size;
+    int s_feature_size;
     int idx;
     int size;
 
@@ -51,6 +52,8 @@ public:
     ReplayBufferImpl(int max_size);    
     const int get_size(){return size;}
     void push(vector<float> s, float a, int r, vector<float> s_, bool done);
+    // const tuple<vector<vector<float>>, vector<float>, vector<float>, vector<vector<float>>, vector<float>> & sample(vector<int> indecies);
+    // tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(const tuple<vector<vector<float>>, vector<float>, vector<float>, vector<vector<float>>, vector<float>> & raw_batch);
     tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> get(vector<int> indecies);
     void submit();
 };

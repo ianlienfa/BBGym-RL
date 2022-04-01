@@ -22,6 +22,28 @@ std::string exec(const char* cmd) {
     return result;
 }
 
+/* 
+    SOLVE_CALLBACK() is called at each search-branch-prune iteration,
+    we call network update at some steps.
+*/    
+
+void solveCallbackImpl(void* engine_ptr)
+{     
+    OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
+    auto &labeler = engine.searcher.labeler;
+    if(labeler->step % labeler->update_freq == 0 && labeler->buffer->get_size() > labeler->batch_size) 
+    { 
+        int buffer_size = labeler->buffer->get_size(); 
+        vector<int> v(labeler->batch_size);  
+        auto rand_in_range = [=](){
+            return (int(std::rand())) % (int(buffer_size));
+        };
+        generate(v.begin(), v.end(), rand_in_range); 
+        Batch batch = labeler->buffer->get(v); 
+        labeler->update(batch); 
+    } 
+}
+
 int main(int argc, char* argv[])
 {        
 
@@ -34,9 +56,6 @@ int main(int argc, char* argv[])
 
     OneRjSumCjGraph dummy_graph;
     OneRjSumCjNode dummy_node;
-    auto rand_in_range = [](int max_num){
-        return std::rand() % max_num;
-    };
 
     PlainLabeler plainLabeler;
     std::shared_ptr<DDPRLabeler> labeler = 
@@ -49,24 +68,7 @@ int main(int argc, char* argv[])
             // ,"../saved_model/qNet.pt"
             // ,"../saved_model/piNet.pt"
         );
-
-    /* 
-        SOLVE_CALLBACK() is called at each search-branch-prune iteration,
-        we call network update at some steps.
-    */
-    #undef SOLVE_CALLBACK
-    #define SOLVE_CALLBACK() \
-    { \
-        if(labeler->step % labeler->update_freq == 0) \
-        { \
-            int buffer_size = labeler->buffer->get_size(); \
-            vector<int> v(labeler->buffer_size);  \
-            generate(v.begin(), v.end(), rand_in_range(buffer_size)); \
-            Batch batch = labeler->buffer->get(v); \
-            labeler->update(batch); \
-        } \
-    }      
-        
+    
     if (argc != 2)
     {
         if(parse_and_init_oneRjSumCj())
@@ -83,7 +85,7 @@ int main(int argc, char* argv[])
     else
     {
         // read problem
-        #define INSTANCE_NUM 5
+        #define INSTANCE_NUM 20
         srand(0);
         InputHandler inputHandler((string(argv[1])));
         string filepath;
@@ -91,13 +93,13 @@ int main(int argc, char* argv[])
     
         while(instance_idx--)
         {
-            int step_size = rand() % 3;            
-            do
-            {
+            // int step_size = rand() % 3;            
+            // do
+            // {
                 filepath = inputHandler.getNextFileName();  
                 if(filepath.empty())
                     inputHandler.reset();
-            }while(step_size--);
+            // }while(step_size--);
             if(parse_and_init_oneRjSumCj(filepath))
             {
                 string cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
@@ -114,7 +116,7 @@ int main(int argc, char* argv[])
         }         
     }
 
-    labeler->save("../saved_model/qNet.pt", "../saved_model/piNet.pt");
+    // labeler->save("../saved_model/qNet.pt", "../saved_model/piNet.pt");
     
 
     /* For validation */
