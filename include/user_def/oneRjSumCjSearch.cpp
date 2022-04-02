@@ -115,7 +115,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             // Finish the last data prep section
             labeler->buffer->s_next_prep = s;            
             // If the new node is search instead of branching nodes from same parent, reward = -1
-            labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? -1.0 : 0.0;
+            labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? node_reward : 0.0;
             labeler->buffer->done_prep = 0.0;
             labeler->buffer->leave_data_prep_section();
             labeler->buffer->submit();

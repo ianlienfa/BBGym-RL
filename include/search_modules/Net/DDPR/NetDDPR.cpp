@@ -100,7 +100,7 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     norm_lb = node.lb / (float) OneRjSumCjNode::worst_upperbound;
     node_state_encoding.push_back(norm_lb);
 
-    // norm_weighted_completion_time
+    // norm_weighted_completion_timeπ
     norm_weighted_completion_time = node.weighted_completion_time / (float) OneRjSumCjNode::worst_upperbound;
     node_state_encoding.push_back(norm_weighted_completion_time);
 
@@ -111,83 +111,79 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     return node_state_encoding;
 }
 
-// const tuple<vector<vector<float>>, vector<float>, vector<float>, vector<vector<float>>, vector<float>> & sample(vector<int> indecies)
-// {
-//        // cout << "printing s: " << endl;
-//     // for(int i = 0; i < this->idx; i++)
-//     // {
-//     //     cout << "{ ";
-//     //     for(auto it2: this->s[i])
-//     //     {
-//     //         cout << it2 << " ";
-//     //     }
-//     //     cout << "}" << endl;
-//     // }
+tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> ReplayBufferImpl::sample(vector<int> indecies)
+{
+       // cout << "printing s: " << endl;
+    // for(int i = 0; i < this->idx; i++)
+    // {
+    //     cout << "{ ";
+    //     for(auto it2: this->s[i])
+    //     {
+    //         cout << it2 << " ";
+    //     }
+    //     cout << "}" << endl;
+    // }
 
-//     int batch_size = indecies.size();
-//     int state_feature_size = this->s[0].size();
-//     vector<vector<float>> s;
-//     vector<float> a;
-//     vector<float> r;
-//     vector<vector<float>> s_next;
-//     vector<float> done;
-//     for(int i = 0; i < indecies.size(); i++)
-//     {
-//         int idx = indecies[i];
-//         if(idx > this->max_size)
-//             throw std::out_of_range("buffer access index out of bound");
-//         s.push_back(this->s[idx]);
-//         a.push_back(this->a[idx]);
-//         r.push_back(this->r[idx]);
-//         s_next.push_back(this->s_next[idx]);
-//         done.push_back(this->done[idx]);
-//     }
-//     // flatten the state array
-//     vector<float> s_flat;
-//     vector<float> s_next_flat;
-//     for(int i = 0; i < batch_size; i++)
-//     {
-//         s_flat.insert(s_flat.end(), make_move_iterator(s[i].begin()), make_move_iterator(s[i].end()));
-//         s_next_flat.insert(s_next_flat.end(), make_move_iterator(s_next[i].begin()), make_move_iterator(s_next[i].end()));
-//     }
+    int batch_size = indecies.size();
+    int state_feature_size = this->s[0].size();
+    vector<vector<float>> s;
+    vector<float> a;
+    vector<float> r;
+    vector<vector<float>> s_next;
+    vector<float> done;
+    for(int i = 0; i < indecies.size(); i++)
+    {
+        int idx = indecies[i];
+        if(idx > this->max_size)
+            throw std::out_of_range("buffer access index out of bound");
+        s.push_back(this->s[idx]);
+        a.push_back(this->a[idx]);
+        r.push_back(this->r[idx]);
+        s_next.push_back(this->s_next[idx]);
+        done.push_back(this->done[idx]);
+    }
+    // flatten the state array
+    vector<float> s_flat;
+    vector<float> s_next_flat;
+    for(int i = 0; i < batch_size; i++)
+    {
+        s_flat.insert(s_flat.end(), make_move_iterator(s[i].begin()), make_move_iterator(s[i].end()));
+        s_next_flat.insert(s_next_flat.end(), make_move_iterator(s_next[i].begin()), make_move_iterator(s_next[i].end()));
+    }
+    return make_tuple(s_flat, a, r, s_next_flat, done);
+}
 
-//     cout << "The chosen action input is: " << endl;
-//     for(auto it: a)
-//         cout << it << " ";
-//     cout << endl;
+tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> raw_batch)
+{
+    using std::get, std::make_tuple;
+    
+    vector<float> s_flat;
+    vector<float> s_next_flat;
+    vector<float> a;
+    vector<float> r;
+    vector<float> done;
 
-//     return make_tuple(s_flat, a, r, s_next_flat, done);
-// }
+    s_flat = get<0>(raw_batch);
+    a = get<1>(raw_batch);
+    r = get<2>(raw_batch);
+    s_next_flat = get<3>(raw_batch);
+    done = get<4>(raw_batch);
 
-// tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(const RawBatch & raw_batch)
-// {
-//     vector<vector<float>> s;
-//     vector<float> a;
-//     vector<float> r;
-//     vector<vector<float>> s_next;
-//     vector<float> done;
-//     std::tie(s, a, r, s_next, done) = raw_batch;
+    int batch_size = done.size();
+    int state_feature_size = this->s[0].size();
 
-// }
+    // turn arrays to Tensor
+    Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor a_tensor = torch::from_blob(a.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor r_tensor = torch::from_blob(r.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor s_next_tensor = torch::from_blob(s_next_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor done_tensor = torch::from_blob(done.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kBool)).clone();
 
+    #if TORCH_DEBUG >= 1
+    cout << "a_tensor: " << endl << a_tensor << endl;
+    #endif
 
-// should output in tensor form
-tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::get(vector<int> indecies)
-{   
- 
-//     // turn arrays to Tensor
-//     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32));
-//     Tensor a_tensor = torch::from_blob(a.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32));
-//     Tensor r_tensor = torch::from_blob(r.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32));
-//     Tensor s_next_tensor = torch::from_blob(s_next_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32));
-//     Tensor done_tensor = torch::from_blob(done.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kBool));
-
-//     // cout << "state_feature_size: " << state_feature_size << endl;
-//     // cout << "s_tensor: " << s_tensor << endl;
-//     // cout << "s_next_tensor: " << s_next_tensor.sizes() << endl;
-//     cout << "a_tensor: " << a_tensor << endl;
-//     return std::make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor);
-// }
+    return make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor);
 }
 
 

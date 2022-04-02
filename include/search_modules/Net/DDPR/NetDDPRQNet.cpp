@@ -17,17 +17,13 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim)
 
 torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor action)
 {
-    std::cout << "Q(s, a) -- s: " << state.sizes() << " a: " << action.sizes() << std::endl;
     auto input = torch::cat({state, action}, -1);
-    if(input.sizes()[0] > 1)
-        std::cout << "processing batch!" << std::endl;    
-    std::cout << "Q(s, a) -- input: " << input.sizes() << std::endl;
-    #if DEBUG_LEVEL >= 0
+    #if TORCH_DEBUG >= 1
+        if(input.sizes()[0] > 1)
+            std::cout << "processing batch!" << std::endl;    
+        std::cout << "Q(s, a) -- input: " << input.sizes() << std::endl;
         std::cout << "input: " << input << std::endl;
     #endif
-    auto output_raw = net->forward(input);
-    std::cout << "Q(s, a) -- output_raw: " << "size: " << output_raw.sizes() << output_raw << std::endl;
-    auto output = torch::squeeze(output_raw, -1);
-    std::cout << "Q(s, a) output tensor: " << "size: " << output_raw.sizes() << output << std::endl;
+    auto output = net->forward(input);
     return output;
 }

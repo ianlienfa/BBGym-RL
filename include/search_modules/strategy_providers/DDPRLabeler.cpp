@@ -40,6 +40,15 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     auto net_copy_ptr = net->clone();
     net_tar = std::dynamic_pointer_cast<NetDDPRImpl>(net_copy_ptr);
 
+    #if TORCH_DEBUG >= 1
+    cout << "weight of copied net: " << endl;
+    layer_weight_print((*net_copy_ptr));
+    
+    cout << "weight of original net: " << endl;
+    for(auto &param : net->named_parameters())
+        cout << param.key() << ": " << param.value() << endl;
+    #endif
+
     for (auto& p : net_tar->parameters())
         p.detach_();
 
@@ -164,65 +173,88 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     torch::Tensor target_qval;
     {
         torch::NoGradGuard no_grad;
-        target_qval = r + this->gamma * ~(done) * net_tar->q->forward(s_next, net_tar->pi->forward(s_next));        
+        // torch::Tensor raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next))).reshape({batch_size, 1});
+        // cout << "raw_target_q: " << raw_target_q.sizes() << endl;
+        // cout << "~done" << (~(done)).sizes() << (~(done)) << endl;
+        // cout << "r" << r.sizes() << endl;
+        // target_qval = r + (~done) * gamma * raw_target_q;
+        target_qval = r + this->gamma * ~(done) * (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));        
         // Is this the right way to do it?
     }
-    cout << "target_qval: " << target_qval << endl;
-    cout << "a: " << a << endl;
-    torch::Tensor qval = net->q->forward(s, a);
-    cout << "qval: " << qval << endl;    
-    torch::Tensor loss = qval - target_qval; // diff
-    cout << "loss_diff: " << loss << endl;
-    loss = loss.pow(2);
-    cout << "loss_pow2: " << loss << endl;
-    loss = loss.mean();
-    cout << "loss_mean: " << loss << endl;
-    // loss = (net->q->forward(s, a) - target_qval).pow(2).mean();
+    // cout << "target_qval: " << target_qval << endl;
+    // cout << "a: " << a << endl;
+    // torch::Tensor qval = net->q->forward(s, a);
+    // cout << "qval: " << qval << endl;    
+    // torch::Tensor loss = qval - target_qval; // diff
+    // cout << "loss_diff: " << loss << endl;
+    // loss = loss.pow(2);
+    // cout << "loss_pow2: " << loss << endl;
+    // loss = loss.mean();
+    // cout << "loss_mean: " << loss << endl;
+    torch::Tensor loss = (net->q->forward(s, a) - target_qval).pow(2).mean();    
     return loss;
 }
 
 torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
-{
+{    
     const torch::Tensor &s = get<0>(batch_data);
     torch::Tensor loss = -(net->q->forward(s, net->pi->forward(s))).mean();
     return loss;
 }
 
-void DDPRLabeler::update(const Batch &batch_data)
-{   
+void DDPRLabeler::update(const RawBatch &batch_data)
+{       
     using std::cout, std::endl; 
+    #if TORCH_DEBUG >= 1
     cout << "before update" << endl;
     cout << "-------------" << endl;
     layer_weight_print(*(net->q));
     layer_weight_print(*(net->pi));
     cout << "-------------" << endl << endl;
+    #endif
+
+    Batch batch = buffer->getBatchTensor(batch_data);
 
     // update q  
     optimizer_q->zero_grad();
-    torch::Tensor q_loss = compute_q_loss(batch_data);
-    cout << "q_loss: " << q_loss << endl;
+    torch::Tensor q_loss = compute_q_loss(batch);
+    #if TORCH_DEBUG >= 1
+    cout << "action tensor after q update" << endl;
+    cout << get<1>(batch) << endl;
+    cout << "q_loss: " << q_loss << endl;    
+    #endif
+    q_loss_vec.push_back(q_loss.item<float>());
     q_loss.backward();
     optimizer_q->step();
 
+    #if TORCH_DEBUG >= 1
     cout << "updated q" << endl;
     cout << "-------------" << endl;
     layer_weight_print(*(net->q));
     cout << "-------------" << endl << endl;
+    #endif
 
     // stablize the gradient for q-network
     for(auto& p : net->q->parameters())
         p.requires_grad_(false);
 
     // update pi
-    optimizer_pi->zero_grad();        
-    torch::Tensor pi_loss = compute_pi_loss(batch_data);    
+    optimizer_pi->zero_grad();       
+    torch::Tensor pi_loss = compute_pi_loss(batch);
+    pi_loss_vec.push_back(pi_loss.item<float>());
+    #if TORCH_DEBUG >= 1
+    cout << "action tensor after pi update" << endl;
+    cout << get<1>(batch) << endl;
+    #endif
     pi_loss.backward();
     optimizer_pi->step();
 
+    #if TORCH_DEBUG >= 1
     cout << "updated pi" << endl;
     cout << "-------------" << endl;
     layer_weight_print(*(net->pi));
     cout << "-------------" << endl << endl;
+    #endif
 
     // resume gradient computation for q-network
     for(auto& p : net->q->parameters())
@@ -231,19 +263,58 @@ void DDPRLabeler::update(const Batch &batch_data)
     {
         // update target network
         torch::NoGradGuard no_grad;
+        #if TORCH_DEBUG >= 1
         cout << "no grad" << endl;
         cout << "-------------" << endl;
         layer_weight_print(*(net));
         cout << "-------------" << endl << endl;
-        for (auto p = net->parameters().begin(), p_tar = net_tar->parameters().begin(); p != net->parameters().end(); ++p, ++p_tar)
+        #endif    
+
+        // update target network, set recurse=true to update all layers
+        auto param_pi = net->pi->parameters(true);
+        auto param_q = net->q->parameters(true);
+        auto param_pi_tar = net_tar->pi->parameters(true);
+        auto param_q_tar = net_tar->q->parameters(true);
+
+        auto p_iter = param_pi.begin();
+        auto p_tar_iter = param_pi_tar.begin();
+        while (p_iter != param_pi.end())
         {
-            (*p_tar).data().mul_(this->polyak);
-            (*p_tar).data().add_((1 - this->polyak) * (*p).data());
+            #if VALIDATION_LEVEL == validation_level_HIGH
+            if ((*p_iter).sizes() != (*p_tar_iter).sizes())
+            {
+                cout << "p_iter: " << (*p_iter).sizes() << endl;
+                cout << "p_tar_iter: " << (*p_tar_iter).sizes() << endl;
+                throw std::runtime_error("parameter size mismatch");
+            }            
+            #endif
+       
+            (*p_tar_iter).mul_(this->polyak);            
+            (*p_tar_iter).add_((1 - this->polyak) * (*p_iter));
+
+            ++p_iter;
+            ++p_tar_iter;
+        }
+
+        p_iter = param_q.begin();
+        p_tar_iter = param_q_tar.begin();
+        while (p_iter != param_q.end())
+        {
+            #if VALIDATION_LEVEL == validation_level_HIGH
+            if ((*p_iter).sizes() != (*p_tar_iter).sizes())
+            {
+                cout << "p_iter: " << (*p_iter).sizes() << endl;
+                cout << "p_tar_iter: " << (*p_tar_iter).sizes() << endl;
+                throw std::runtime_error("parameter size mismatch");
+            }            
+            #endif
+            (*p_tar_iter).mul_(this->polyak);            
+            (*p_tar_iter).add_((1 - this->polyak) * (*p_iter));
+
+            ++p_iter;
+            ++p_tar_iter;
         }
     }
-
-    // losses memoization
-    loss_epoch.push_back(q_loss.item<float>());
 }
 
 

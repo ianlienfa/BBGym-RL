@@ -101,7 +101,7 @@
 
 /* debugging */
 #define DEBUG_LEVEL 0
-#define TORCH_DEBUG 1
+#define TORCH_DEBUG 0
 
 /* validations (some extra checking is done if validation level is high) */
 #define VALIDATION_LEVEL validation_level_HIGH

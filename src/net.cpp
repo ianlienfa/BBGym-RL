@@ -39,7 +39,7 @@ void solveCallbackImpl(void* engine_ptr)
             return (int(std::rand())) % (int(buffer_size));
         };
         generate(v.begin(), v.end(), rand_in_range); 
-        Batch batch = labeler->buffer->get(v); 
+        RawBatch batch = labeler->buffer->sample(v);         
         labeler->update(batch); 
     } 
 }
@@ -116,6 +116,15 @@ int main(int argc, char* argv[])
         }         
     }
 
+    cout << "q_loss: " << endl << "[ ";
+    for(auto it: labeler->q_loss_vec)
+        cout << it << ", " << endl;
+    cout << " ]" << endl;
+
+    cout << "pi_loss: " << endl << "[ ";
+    for(auto it: labeler->pi_loss_vec)
+        cout << it << ", " << endl;
+    cout << " ]" << endl;
     // labeler->save("../saved_model/qNet.pt", "../saved_model/piNet.pt");
     
 

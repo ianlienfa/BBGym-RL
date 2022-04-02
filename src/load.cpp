@@ -3,15 +3,54 @@
 #include <torch/torch.h>
 
 using std::vector, std::string, std::cout, std::endl;
+
+struct NetTestImpl: torch::nn::Module
+{
+
+    torch::nn::Sequential net{nullptr};
+
+    NetTestImpl(){
+        net = register_module("Seq", torch::nn::Sequential(
+            torch::nn::Linear(1, 2),
+            torch::nn::ReLU(),
+            torch::nn::Linear(2, 1)
+        ));
+    };
+
+    torch::Tensor forward(torch::Tensor x) {
+        return net->forward(x);
+    }
+};
+TORCH_MODULE(NetTest);
+
 int main()
 {
     vector<int> shape = {1, 3, 224, 224};
+    NetTest test;
     torch::Tensor tensor1 = torch::from_blob(shape.data(), {1, 4}, torch::TensorOptions().dtype(torch::kInt32));
     torch::Tensor tensor2 = tensor1.clone();
-    tensor1.mul_(2);
-    tensor2.mul_(3);
-    cout << tensor1 << endl;
-    cout << tensor2 << endl;
+
+    torch::Tensor out = test(torch::rand({1, 1}));
+    cout << out << endl;
+    // cout << "Printing layer weights of " << test->name() << endl;
+    // for (auto& p : test->net->named_parameters(true)) {
+
+    //     torch::NoGradGuard no_grad;
+
+    //     // Access name.
+    //     std::cout << p.key() << std::endl;
+
+    //     // Access weigth and bias.
+    //     std::cout << p.value() << std::endl;
+    // }
+
+    const auto param = test->parameters(true);
+    auto it = param.begin();
+    auto it_end = param.end();
+    while(it != it_end){    
+        (*it).print();
+        it++;
+    }
 }
 
 // #include "util/TorchUtil.h"

@@ -25,6 +25,7 @@ struct OneRjSumCjSearch: SearchMod
 #elif LABELER == labeler_bynet
     std::shared_ptr<DDPRLabeler> labeler;
     OneRjSumCjSearch(std::shared_ptr<DDPRLabeler> labeler): labeler(labeler) {}
+    const float node_reward = -(1e-3);
 #endif
     OneRjSumCjSearch();
     bool get_find_optimal();    

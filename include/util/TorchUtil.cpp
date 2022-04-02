@@ -15,3 +15,4 @@ void layer_weight_print(const torch::nn::Module &net)
         std::cout << p.value() << std::endl;
     }
 };
+

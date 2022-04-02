@@ -4,6 +4,7 @@
 #include <torch/torch.h>
 
 void layer_weight_print(const torch::nn::Module &net);
+
 // void module_info(const torch::nn::Module &net){
 //     for (const auto& p : net.named_parameters()) {
 //     std::cout << "=================" << p.key() << "=================" << "\n" << p.value() << std::endl;
@@ -26,7 +27,6 @@ void layer_weight_print(const torch::nn::Module &net);
 //     std::cout << parameter.name() << '\t';
 //     std::cout << parameter.value().toTensor().sizes() << '\n';
 //     } 
-
 
 //     for (const auto& module : module.get_modules()) {
 //     tabs(level + 1);

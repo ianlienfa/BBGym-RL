@@ -52,9 +52,8 @@ public:
     ReplayBufferImpl(int max_size);    
     const int get_size(){return size;}
     void push(vector<float> s, float a, int r, vector<float> s_, bool done);
-    // const tuple<vector<vector<float>>, vector<float>, vector<float>, vector<vector<float>>, vector<float>> & sample(vector<int> indecies);
-    // tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(const tuple<vector<vector<float>>, vector<float>, vector<float>, vector<vector<float>>, vector<float>> & raw_batch);
-    tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> get(vector<int> indecies);
+    tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> sample(vector<int> indecies);
+    tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> raw_batch);
     void submit();
 };
 typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;
