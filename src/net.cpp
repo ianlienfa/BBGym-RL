@@ -29,6 +29,7 @@ std::string exec(const char* cmd) {
 
 void solveCallbackImpl(void* engine_ptr)
 {     
+    #if INF_MODE == 1
     OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
     auto &labeler = engine.searcher.labeler;
     if(labeler->step % labeler->update_freq == 0 && labeler->buffer->get_size() > labeler->batch_size) 
@@ -42,6 +43,7 @@ void solveCallbackImpl(void* engine_ptr)
         RawBatch batch = labeler->buffer->sample(v);         
         labeler->update(batch); 
     } 
+    #endif
 }
 
 int main(int argc, char* argv[])
@@ -57,6 +59,9 @@ int main(int argc, char* argv[])
     OneRjSumCjGraph dummy_graph;
     OneRjSumCjNode dummy_node;
 
+    string qNetPath = QNetPath;
+    string piNetPath = PiNetPath;
+
     PlainLabeler plainLabeler;
     std::shared_ptr<DDPRLabeler> labeler = 
         std::make_shared<DDPRLabeler>(
@@ -65,8 +70,8 @@ int main(int argc, char* argv[])
             Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
                             note that the -5 and 5 should not be a feasible output, 
                             this is to preserve the extendibility of labeling */
-            // ,"../saved_model/qNet.pt"
-            // ,"../saved_model/piNet.pt"
+            ,qNetPath
+            ,piNetPath
         );
     
     if (argc != 2)
@@ -83,26 +88,29 @@ int main(int argc, char* argv[])
         }
     }
     else
-    {
+    {        
         // read problem
-        #define INSTANCE_NUM 20
+        #define INSTANCE_NUM 50
         srand(0);
         InputHandler inputHandler((string(argv[1])));
         string filepath;
         int instance_idx = INSTANCE_NUM;
+        cout << "instance number: " << instance_idx << endl;
     
         while(instance_idx--)
         {
-            // int step_size = rand() % 3;            
-            // do
-            // {
+            int step_size = rand() % 3;            
+            do
+            {
                 filepath = inputHandler.getNextFileName();  
                 if(filepath.empty())
                     inputHandler.reset();
-            // }while(step_size--);
+            }while(step_size--);
             if(parse_and_init_oneRjSumCj(filepath))
             {
-                string cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
+                string cmd = "echo \"\" >> fileSearched.txt";
+                exec(cmd.c_str());
+                cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
                 exec(cmd.c_str());
                 OneRjSumCjSearch searcher(labeler);
                 OneRjSumCjBranch brancher;
@@ -116,17 +124,20 @@ int main(int argc, char* argv[])
         }         
     }
 
-    cout << "q_loss: " << endl << "[ ";
-    for(auto it: labeler->q_loss_vec)
-        cout << it << ", " << endl;
-    cout << " ]" << endl;
+    // cout << "q_loss: " << endl << "[ ";
+    // for(auto it: labeler->q_loss_vec)
+    //     cout << it << ", " << endl;
+    // cout << " ]" << endl;
 
-    cout << "pi_loss: " << endl << "[ ";
-    for(auto it: labeler->pi_loss_vec)
-        cout << it << ", " << endl;
-    cout << " ]" << endl;
-    // labeler->save("../saved_model/qNet.pt", "../saved_model/piNet.pt");
-    
+    // cout << "pi_loss: " << endl << "[ ";
+    // for(auto it: labeler->pi_loss_vec)
+    //     cout << it << ", " << endl;
+    // cout << " ]" << endl;
+
+    #if INF_MODE == 1
+    torch::save(labeler->net->q, "../saved_model/qNet.pt");
+    torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
+    #endif
 
     /* For validation */
     // int min_obj = INT_MAX;

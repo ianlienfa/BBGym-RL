@@ -4,6 +4,7 @@
 #include <torch/torch.h>
 
 void layer_weight_print(const torch::nn::Module &net);
+void print_modules(const torch::nn::Module& module, size_t level = 0);
 
 // void module_info(const torch::nn::Module &net){
 //     for (const auto& p : net.named_parameters()) {

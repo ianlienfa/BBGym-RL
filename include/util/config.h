@@ -11,6 +11,12 @@
 #define INVALID_INPUT 51
 #define LOGIC_ERROR 52
 
+// restarts modela
+#define QNetPath "../saved_model/qNet.pt"
+#define PiNetPath "../saved_model/piNet.pt"
+#define INF_MODE 1
+
+
 /* Available Search Options Definitions */
 #define searchOneRjSumCj_CBFS 0
 #define searchOneRjSumCj_LU_AND_SAL 1

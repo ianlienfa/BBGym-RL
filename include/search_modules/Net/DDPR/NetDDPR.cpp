@@ -193,15 +193,17 @@ NetDDPRImpl::NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range
     this->action_dim = action_dim;
     this->action_range = action_range;
 
-    NetDDPRQNet q_net(state_dim, action_dim);
-    // module_info(*q_net);
-    NetDDPRActor pi_net(state_dim, action_range);
-    // module_info(*pi_net);
+    NetDDPRQNet q_net(state_dim, action_dim);    
+    NetDDPRActor pi_net(state_dim, action_range);    
 
     if(q_path != "" && pi_path != "")
     {
+        cout << "loading saved model from: " << q_path << " and " << pi_path << endl;
         torch::load(q_net, q_path);
         torch::load(pi_net, pi_path);
+
+        print_modules(*q_net);
+        print_modules(*pi_net);
     }
     
     this->q = register_module("QNet", q_net);
@@ -220,11 +222,5 @@ float NetDDPRImpl::act(torch::Tensor s)
     }
     #endif
     return this->pi->forward(s).item<float>();
-}
-
-void NetDDPRImpl::save(string pi_path, string q_path)
-{
-    torch::save(this->pi, pi_path);
-    torch::save(this->q, q_path);
 }
 

@@ -8,49 +8,65 @@ struct NetTestImpl: torch::nn::Module
 {
 
     torch::nn::Sequential net{nullptr};
+    torch::nn::Sigmoid sig1{nullptr};
+    torch::nn::Sigmoid sig2{nullptr};
 
     NetTestImpl(){
         net = register_module("Seq", torch::nn::Sequential(
             torch::nn::Linear(1, 2),
             torch::nn::ReLU(),
-            torch::nn::Linear(2, 1)
+            torch::nn::Linear(2, 2),
+            torch::nn::Sigmoid()
         ));
     };
 
-    torch::Tensor forward(torch::Tensor x) {
-        return net->forward(x);
+    torch::Tensor forward(torch::Tensor x) {                
+        const int64_t &limit = 5;
+        torch::Tensor output = net->forward(x);
+        cout << "output: " << output << endl;
+        auto action_and_prob = output.unbind(1);
+        output = action_and_prob[0] * limit;
+        torch::Tensor prob = action_and_prob[1];
+        output = output.where(prob > 0.5, output.floor());    
+        cout << "prob: " << prob << endl;
+        cout << "output: " << output << endl;
+        return output;
     }
 };
 TORCH_MODULE(NetTest);
 
 int main()
 {
-    vector<int> shape = {1, 3, 224, 224};
-    NetTest test;
-    torch::Tensor tensor1 = torch::from_blob(shape.data(), {1, 4}, torch::TensorOptions().dtype(torch::kInt32));
-    torch::Tensor tensor2 = tensor1.clone();
+    // vector<int> shape = {1, 3, 224, 224};
+    // NetTest test;
+    // torch::Tensor tensor1 = torch::from_blob(shape.data(), {1, 4}, torch::TensorOptions().dtype(torch::kInt32));
+    // torch::Tensor tensor2 = tensor1.clone();
 
-    torch::Tensor out = test(torch::rand({1, 1}));
-    cout << out << endl;
-    // cout << "Printing layer weights of " << test->name() << endl;
-    // for (auto& p : test->net->named_parameters(true)) {
+    // torch::Tensor out = test(torch::rand({1, 1}));
+    // cout << out << endl;
 
-    //     torch::NoGradGuard no_grad;
+    vector<float> vec = {0.51, 0.45};
+    torch::Tensor x = torch::from_blob(vec.data(), {1, 2}, torch::TensorOptions().dtype(torch::kFloat32));
+    cout << "x: " << x << endl;
+    torch::Tensor output = x;
+    x.requires_grad_(true);
+    cout << "output: " << output << endl;
+    auto action_and_prob = output.unbind(1);
+    output = action_and_prob[0] * 5;
+    torch::Tensor prob = action_and_prob[1];
+    cout << "prob: " << prob << endl;
+    cout << "output: " << output << endl;
+    output.backward();
+    prob.backward();
+    cout << x.grad() << endl;
 
-    //     // Access name.
-    //     std::cout << p.key() << std::endl;
+    torch::Tensor output_where = output.where(prob < 0.5, output.floor()); 
+    cout << "output after where: " << output_where << endl;   
+    cout << output_where << endl;
+    output_where.backward();
+    cout << x.grad() << endl;
+    
 
-    //     // Access weigth and bias.
-    //     std::cout << p.value() << std::endl;
-    // }
-
-    const auto param = test->parameters(true);
-    auto it = param.begin();
-    auto it_end = param.end();
-    while(it != it_end){    
-        (*it).print();
-        it++;
-    }
 }
 
 // #include "util/TorchUtil.h"

@@ -82,25 +82,32 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         // label and push
         StateInput stateInput(current_node, *it, *this->graph);
         vector<float> s = stateInput.get_state_encoding();
-        float label = 0;
-        if(labeler->step < labeler->max_steps)
-        {
-            label = (*labeler)(s, DDPRLabeler::OperatorOptions::RANDOM);  
-            #if TORCH_DEBUG == 1                        
-            if(std::isnan(label))
-                throw std::runtime_error("Labeler returned NaN");
-            #endif
+        bool inference = INF_MODE;
+        float label = 0;   
+        if(!inference)
+        {     
+            if(labeler->step < labeler->max_steps)
+            {
+                label = (*labeler)(s, DDPRLabeler::OperatorOptions::RANDOM);  
+                #if TORCH_DEBUG == 1                        
+                if(std::isnan(label))
+                    throw std::runtime_error("Labeler returned NaN");
+                #endif
 
+            }
+            else
+            {
+                label = (*labeler)(s, DDPRLabeler::OperatorOptions::TRAIN);  
+                #if TORCH_DEBUG == 1                        
+                if(std::isnan(label))
+                    throw std::runtime_error("Labeler returned NaN");
+                #endif
+            }
         }
         else
         {
-            label = (*labeler)(s, DDPRLabeler::OperatorOptions::TRAIN);  
-            #if TORCH_DEBUG == 1                        
-            if(std::isnan(label))
-                throw std::runtime_error("Labeler returned NaN");
-            #endif
-        }
-                
+            label = (*labeler)(s, DDPRLabeler::OperatorOptions::INFERENCE);  
+        }        
         // increase the step count
         labeler->step++;
 
@@ -184,14 +191,17 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     // update the current contour
     this->graph->current_contour_iter = next_iter;
     
-    #if DEBUG_LEVEL >=2
-    cout << "labeler.step: " << labeler->step << endl;
-    cout << "------------------" << endl;
-    for(auto it = this->graph->contours.begin(); it != this->graph->contours.end(); ++it)
+    #if DEBUG_LEVEL >= 1
+    if(labeler->step % 10000)
     {
-        std::cout << " " << it->first << " " << it->second.size() << "\n";
+        cout << "labeler.step: " << labeler->step << endl;
+        cout << "------------------" << endl;
+        for(auto it = this->graph->contours.begin(); it != this->graph->contours.end(); ++it)
+        {
+            std::cout << " " << it->first << " " << it->second.size() << "\n";
+        }
+        cout << "current_iter: " << this->graph->current_contour_iter->first << endl;
     }
-    cout << "current_iter: " << this->graph->current_contour_iter->first << endl;
     #endif
 
     return branched_nodes;

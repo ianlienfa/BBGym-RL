@@ -16,3 +16,23 @@ void layer_weight_print(const torch::nn::Module &net)
     }
 };
 
+void tabs(size_t num) {
+  for (size_t i = 0; i < num; i++) {
+	std::cout << "\t";
+  }
+}
+
+void print_modules(const torch::nn::Module& module, size_t level) {
+  std::cout << module.name() << " (\n";	
+  
+  for (const auto& parameter : module.named_parameters()) {
+	tabs(level + 1);
+	std::cout << parameter.key() << '\t';
+	std::cout << parameter.value().sizes() << '\n';
+  // std::cout << parameter.value() << '\n';
+  } 
+
+  tabs(level);
+  std::cout << ")\n";
+}
+

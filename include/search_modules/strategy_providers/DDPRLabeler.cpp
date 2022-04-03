@@ -6,7 +6,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_pi=1e-3;
     polyak=0.995;
     num_epoch=150;
-    max_steps=10000;
+    max_steps=30000;
     update_start_epoch=10;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
@@ -32,8 +32,8 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     buffer = std::make_shared<ReplayBufferImpl>(buffer_size);
 
     // set up random seeds
-    srand(0);
-    torch::manual_seed(0);
+    srand(time(NULL));
+    torch::manual_seed(time(NULL));
 
     // set up MLP
     net = NetDDPR(state_dim, action_dim, action_range, load_q_path, load_pi_path);
@@ -61,11 +61,6 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     step = 0;
     epoch = 0;
 
-}
-
-void DDPRLabeler::save(string q_path, string pi_path)
-{
-    net->save(q_path, pi_path);
 }
 
 // DDPRLabeler::operator()(const OneRjSumCjNode &node) const
@@ -156,7 +151,7 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
                 label = floor(label);                
             }
         }
-    }
+    }    
     last_action = label;
     return label;
 }
