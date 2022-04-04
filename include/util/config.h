@@ -14,7 +14,7 @@
 // restarts modela
 #define QNetPath "../saved_model/qNet.pt"
 #define PiNetPath "../saved_model/piNet.pt"
-#define INF_MODE 1
+#define INF_MODE 0
 
 
 /* Available Search Options Definitions */
@@ -103,6 +103,11 @@
 #ifndef SOLVE_CALLBACK    
     extern void solveCallbackImpl( void* );
     #define SOLVE_CALLBACK(engine) solveCallbackImpl(engine)
+#endif
+
+#ifndef OPTIMAL_FOUND_CALLBACK    
+    extern void optimalFoundCallbackImpl( void* );
+    #define OPTIMAL_FOUND_CALLBACK(engine) optimalFoundCallbackImpl(engine)
 #endif
 
 /* debugging */

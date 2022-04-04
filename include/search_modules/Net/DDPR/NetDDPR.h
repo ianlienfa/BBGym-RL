@@ -30,9 +30,9 @@ private:
 public:
     vector<vector<float>> s;
     vector<float> a;
-    vector<int> r;
+    vector<float> r;
     vector<vector<float>> s_next;
-    vector<float> done;    
+    vector<bool> done;    
     int max_size;
     int s_feature_size;
     int idx;
@@ -47,13 +47,13 @@ public:
     vector<float> s_next_prep;
     float label_prep;
     float reward_prep;
-    float done_prep;
+    bool done_prep;
 
     ReplayBufferImpl(int max_size);    
-    const int get_size(){return size;}
-    void push(vector<float> s, float a, int r, vector<float> s_, bool done);
-    tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> sample(vector<int> indecies);
-    tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> raw_batch);
+    int get_size(){return size;}
+    void push(vector<float> s, float a, float r, vector<float> s_, bool done);
+    tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> sample(vector<int> indecies);
+    tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> raw_batch);
     void submit();
 };
 typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;
@@ -68,7 +68,6 @@ struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
     NetDDPRQNet q{nullptr};
 
     NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range, string q_path = "", string pi_path = "");
-    void save(string pi_path, string q_path);
     float act(torch::Tensor s);
     void reset() override
     {

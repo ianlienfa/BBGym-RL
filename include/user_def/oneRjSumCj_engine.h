@@ -47,9 +47,7 @@ struct OneRjSumCj_engine
     OneRjSumCj_engine(OneRjSumCjGraph graph, OneRjSumCjSearch searcher, OneRjSumCjBranch brancher, OneRjSumCjPrune pruner, LowerBound lowerbound);
     OneRjSumCjGraph solve(OneRjSumCjNode rootProblem);    
     void update_incumbent(const OneRjSumCjNode &current_node);
-    TIME_TYPE objSolve(const OneRjSumCjNode &current_node);
-    
-    double get_optimal(){};
+    TIME_TYPE objSolve(const OneRjSumCjNode &current_node);    
     double get_jobs_num();
 };
 

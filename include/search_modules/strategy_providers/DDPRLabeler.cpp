@@ -3,10 +3,10 @@
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
     lr_q=1e-3;
-    lr_pi=1e-3;
+    lr_pi=1e-2;
     polyak=0.995;
     num_epoch=150;
-    max_steps=30000;
+    max_steps=20000;
     update_start_epoch=10;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
@@ -164,16 +164,16 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     const torch::Tensor &a = get<1>(batch_data);
     const torch::Tensor &r = get<2>(batch_data);
     const torch::Tensor &s_next = get<3>(batch_data);
-    const torch::Tensor &done = get<4>(batch_data);
+    const torch::Tensor &done = get<4>(batch_data);    
     torch::Tensor target_qval;
     {
         torch::NoGradGuard no_grad;
-        // torch::Tensor raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next))).reshape({batch_size, 1});
-        // cout << "raw_target_q: " << raw_target_q.sizes() << endl;
-        // cout << "~done" << (~(done)).sizes() << (~(done)) << endl;
-        // cout << "r" << r.sizes() << endl;
-        // target_qval = r + (~done) * gamma * raw_target_q;
-        target_qval = r + this->gamma * ~(done) * (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));        
+        torch::Tensor raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));
+        cout << "raw_target_q: " << raw_target_q << endl;
+        cout << "~done" << done << endl;
+        cout << "r" << r << endl;
+        target_qval = r + (~done) * gamma * raw_target_q;
+        // target_qval = r + this->gamma * ~(done) * (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));        
         // Is this the right way to do it?
     }
     // cout << "target_qval: " << target_qval << endl;
@@ -208,6 +208,7 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     cout << "-------------" << endl << endl;
     #endif
 
+    
     Batch batch = buffer->getBatchTensor(batch_data);
 
     // update q  

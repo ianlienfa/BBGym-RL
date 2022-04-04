@@ -45,13 +45,13 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
         this->graph.current_node = searcher.search_next();
 
         #if DEBUG_LEVEL >= 2
-                cout << "==============================New Search==============================" << endl;
-                std::cout << this->graph.current_node << std::endl;
-                cout << "current incumbent value: " << this->graph.min_obj << endl;                
-                cout << "current incumbent :";
-                for(auto it : this->graph.min_seq)
-                    cout << it << " ";
-                cout << endl;
+            cout << "==============================New Search==============================" << endl;
+            std::cout << this->graph.current_node << std::endl;
+            cout << "current incumbent value: " << this->graph.min_obj << endl;                
+            cout << "current incumbent :";
+            for(auto it : this->graph.min_seq)
+                cout << it << " ";
+            cout << endl;
         #endif
         
         // the solver engine knows about the problem, update the current best node if feasible
@@ -71,6 +71,7 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
         searcher.update_graph(this->graph.current_node, branched_nodes);
     }
 
+    OPTIMAL_FOUND_CALLBACK(this);
     POST_SOLVE_PRINT_CONFIG(graph);
     return graph;
 }

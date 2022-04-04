@@ -8,23 +8,27 @@ NetDDPRActorImpl::NetDDPRActorImpl(int64_t state_dim, Pdd action_range)
             nn::Tanh(),
             nn::Linear(64, 32),
             nn::Tanh(),
-            nn::Linear(32, 2),
-            nn::Sigmoid()
+            nn::Linear(32, 2)
         )
     );       
-    
     this->state_dim = state_dim;
     this->action_range = action_range;
 }
 
 torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s)
-{    
-    const int64_t &limit = action_range.second;
-    torch::Tensor output = net->forward(s);
-    auto action_and_prob = output.unbind(1);
-    output = action_and_prob[0] * limit;
-    torch::Tensor prob = action_and_prob[1];
-    output = output.where(prob < 0.2, output.floor());       
-    output = output.unsqueeze(1);    
+{        
+    const float &limit = (float) action_range.second;
+    torch::Tensor linear_output = net->forward(s);
+    auto action_and_prob = linear_output.unbind(1);
+
+    // prob
+    torch::Tensor prob = (action_and_prob[1]).sigmoid();
+
+    // action 
+    torch::Tensor raw_action = action_and_prob[0];
+    torch::Tensor extened_sigmoid_action = 1 / torch::exp(raw_action * (-limit) + 1);
+    torch::Tensor output = extened_sigmoid_action * limit;
+    output = output.where(prob < 0.4, output.floor());       
+    output = output.unsqueeze(1);      
     return output;
 }

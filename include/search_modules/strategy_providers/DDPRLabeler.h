@@ -6,7 +6,7 @@
 #include "search_modules/Net/DDPR/NetDDPR.h"
 
 typedef std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
-typedef std::tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> RawBatch;
+typedef std::tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> RawBatch;
 
 struct DDPRLabelerOptions{
     float gamma;

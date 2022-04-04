@@ -17,6 +17,10 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim)
 
 torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor action)
 {
+    // test if normalization have effect
+    std::cout << "action bf norm: " << action << std::endl;
+    action = (action - 2.5) / 5.0;
+    std::cout << "action norm: " << action << std::endl;
     auto input = torch::cat({state, action}, -1);
     #if TORCH_DEBUG >= 1
         if(input.sizes()[0] > 1)
@@ -25,5 +29,7 @@ torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor action
         std::cout << "input: " << input << std::endl;
     #endif
     auto output = net->forward(input);
+    std::cout << "input: " << input << std::endl;
+    std::cout << "Q(s, a): " << output << std::endl;
     return output;
 }

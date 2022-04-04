@@ -19,6 +19,7 @@ set(CMAKE_OSX_ARCHITECTURES "x86_64") # For m1 mac
 set(CMAKE_CXX_STANDARD 20)
 set(PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(HOME_INC_DIR ${PROJECT_PATH}/include)
+add_compile_options(-Wall)
 
 # Torch related variables
 set(TORCH_PREFIX_PATH "./libtorch")
@@ -29,6 +30,13 @@ if(MACOSX)
   set(PYTHON_NUMPY_INCLUDE_DIR "/opt/homebrew/Caskroom/miniforge/base/envs/ML/lib/python3.9/site-packages/numpy/core/include")
 endif()
 
+# Google Test related variables
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/af29db7ec28d6df1c7f0f745186884091e602e07.zip
+)
+FetchContent_MakeAvailable(googletest)
 ######################  PACKAGE DEPENDENCIES  ########################
 # PACKAGES 
 find_package(Torch REQUIRED)  # Torch
@@ -74,16 +82,16 @@ add_subdirectory(include)
 ###########################################################################
 # executables
 
-add_executable(main src/main.cpp)
-target_link_libraries(
-    main    # target 
-    "${TORCH_LIBRARIES}" # Torch
-    "${Python3_LIBRARIES}" # Python3
-    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
-    oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
-    LowerBound PriorityQueue JobWithReleaseDate # Util
-    NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler# Net
-)
+# add_executable(main src/main.cpp)
+# target_link_libraries(
+#     main    # target 
+#     "${TORCH_LIBRARIES}" # Torch
+#     "${Python3_LIBRARIES}" # Python3
+#     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
+#     oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+#     LowerBound PriorityQueue JobWithReleaseDate # Util
+#     NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler# Net
+# )
 
 add_executable(net src/net.cpp)
 target_link_libraries(
@@ -119,3 +127,19 @@ add_custom_target(cls
     rm -f *.out
     WORKING_DIRECTORY ${PROJECT_PATH}/build
 )
+
+
+enable_testing()
+add_executable(Gtest src/Gtest.cpp)
+target_link_libraries(
+    Gtest    # target 
+    "${TORCH_LIBRARIES}" TorchUtil # Torch 
+    "${Python3_LIBRARIES}" # Python3
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
+    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
+    oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    LowerBound PriorityQueue JobWithReleaseDate # Util
+    gtest_main # Google Test
+)
+include(GoogleTest)
+gtest_discover_tests(Gtest)
