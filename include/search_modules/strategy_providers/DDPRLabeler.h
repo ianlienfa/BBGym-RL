@@ -21,6 +21,7 @@ struct DDPRLabelerOptions{
     float epsilon ;
     int64_t batch_size;
     int64_t update_freq;
+    int64_t tail_updates;
     int operator_option;
     DDPRLabelerOptions();
 };
@@ -44,19 +45,26 @@ struct DDPRLabeler: Labeler
     int64_t batch_size;
     int64_t update_freq;
     int64_t operator_options;
+    int64_t tail_updates;
+    
     
     NetDDPR net{nullptr};
     NetDDPR net_tar{nullptr};    
     ReplayBuffer buffer{nullptr};
     std::shared_ptr<torch::optim::Adam> optimizer_q{nullptr}, optimizer_pi{nullptr};    
 
+    // Random contour map
+    vector<int> contour_candidates;
+
     // Trackers
     float last_action;
-    vector<float> test_loss_vec;
-    vector<float> loss_epoch_vec;
+    vector<float> test_loss_vec;    
     vector<float> q_loss_vec;
     vector<float> pi_loss_vec;
+    vector<float> q_mean_loss;
+    vector<float> pi_mean_loss;    
     int64_t step;
+    int64_t update_count;
     int64_t epoch;
 
     // Operator choices

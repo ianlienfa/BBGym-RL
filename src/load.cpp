@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <torch/torch.h>
+#include "search_modules/Net/DDPR/NetDDPRActor.h"
 
 using std::vector, std::string, std::cout, std::endl;
 
@@ -13,23 +14,16 @@ struct NetTestImpl: torch::nn::Module
 
     NetTestImpl(){
         net = register_module("Seq", torch::nn::Sequential(
-            torch::nn::Linear(1, 2),
+            torch::nn::Linear(4, 16),
             torch::nn::ReLU(),
-            torch::nn::Linear(2, 2),
-            torch::nn::Sigmoid()
+            torch::nn::Linear(16, 16),
+            torch::nn::ReLU(),
+            torch::nn::Linear(16, 1)
         ));
     };
 
     torch::Tensor forward(torch::Tensor x) {                
-        const int64_t &limit = 5;
         torch::Tensor output = net->forward(x);
-        cout << "output: " << output << endl;
-        auto action_and_prob = output.unbind(1);
-        output = action_and_prob[0] * limit;
-        torch::Tensor prob = action_and_prob[1];
-        output = output.where(prob > 0.5, output.floor());    
-        cout << "prob: " << prob << endl;
-        cout << "output: " << output << endl;
         return output;
     }
 };
@@ -37,36 +31,25 @@ TORCH_MODULE(NetTest);
 
 int main()
 {
-    // vector<int> shape = {1, 3, 224, 224};
-    // NetTest test;
-    // torch::Tensor tensor1 = torch::from_blob(shape.data(), {1, 4}, torch::TensorOptions().dtype(torch::kInt32));
-    // torch::Tensor tensor2 = tensor1.clone();
+    vector<float> s1 = {1, 0.3, 4, 3, 5, 6, 1, 2};
+    vector<float> s2 = 
+    {
+        0.2222,  0.2397,  0.0104,  0.2879,  0.2222,  0.2397,  0.0104,  0.2879,
+        0.1111,  0.2673,  0.0088,  0.3638,  0.1111,  0.2673,  0.0088,  0.3638
+    };
 
-    // torch::Tensor out = test(torch::rand({1, 1}));
-    // cout << out << endl;
+    torch::Tensor in1 = torch::from_blob(s1.data(), {1, 8});
+    torch::Tensor in2 = torch::from_blob(s2.data(), {2, 8});
 
-    vector<float> vec = {0.51, 0.45};
-    torch::Tensor x = torch::from_blob(vec.data(), {1, 2}, torch::TensorOptions().dtype(torch::kFloat32));
-    cout << "x: " << x << endl;
-    torch::Tensor output = x;
-    x.requires_grad_(true);
-    cout << "output: " << output << endl;
-    auto action_and_prob = output.unbind(1);
-    output = action_and_prob[0] * 5;
-    torch::Tensor prob = action_and_prob[1];
-    cout << "prob: " << prob << endl;
-    cout << "output: " << output << endl;
-    output.backward();
-    prob.backward();
-    cout << x.grad() << endl;
-
-    torch::Tensor output_where = output.where(prob < 0.5, output.floor()); 
-    cout << "output after where: " << output_where << endl;   
-    cout << output_where << endl;
-    output_where.backward();
-    cout << x.grad() << endl;
+    NetDDPRActor net{nullptr};
+    net = NetDDPRActor(8, std::make_pair(-5, 5));
+    torch::Tensor out1 = net->forward(in1);
+    torch::Tensor out2 = net->forward(in2);
+    cout << "out1: " << endl << out1 << endl;
+    cout << "out2: " << endl << out2 << endl;
     
-
+    float out1_data = out1.item<float>();
+    cout << out1_data << endl;
 }
 
 // #include "util/TorchUtil.h"

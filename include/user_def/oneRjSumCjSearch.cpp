@@ -180,7 +180,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             // create a dummy stateInput only to call the labeler for a terminal state representation return            
             StateInput dummy(current_node, current_node, *this->graph);
             labeler->buffer->s_next_prep = dummy.get_state_encoding(true);            
-            labeler->buffer->reward_prep = 1.0;
+            labeler->buffer->reward_prep = 1000.0;
             labeler->buffer->done_prep = 1.0;
             labeler->buffer->leave_data_prep_section();
             labeler->buffer->submit();
@@ -192,7 +192,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     this->graph->current_contour_iter = next_iter;
     
     #if DEBUG_LEVEL >= 0
-    if(labeler->step % 1000 == 0)
+    if(labeler->step % 100 == 0)
     {
         cout << "labeler.step: " << labeler->step << endl;
         cout << "------------------" << endl;

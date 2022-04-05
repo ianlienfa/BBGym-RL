@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <memory>
+#include <fstream>
 
 
 #include "user_def/oneRjSumCj_engine.h"
@@ -40,7 +41,8 @@ void solveCallbackImpl(void* engine_ptr)
             return (int(std::rand())) % (int(buffer_size));
         };
         generate(v.begin(), v.end(), rand_in_range); 
-        RawBatch batch = labeler->buffer->sample(v);         
+        RawBatch batch = labeler->buffer->sample(v);  
+        layer_weight_print((*labeler->net->pi));
         labeler->update(batch); 
     } 
     #endif
@@ -54,23 +56,34 @@ void optimalFoundCallbackImpl(void* engine_ptr)
     auto &labeler = engine.searcher.labeler;
     if(engine.graph.optimal_found != true)
         throw std::runtime_error("Optimal not found but optimal Found callback called!");
+
+    // ensure the last done operation is updated
     int buffer_size = labeler->buffer->get_size(); 
+    int batch_size = (buffer_size < labeler->batch_size) ? buffer_size : labeler->batch_size;
+    cout << "buffer_size: " << buffer_size << " batch_size: " << batch_size << endl;
     if(buffer_size) 
     { 
-        int batch_size = (buffer_size < labeler->batch_size) ? buffer_size : labeler->batch_size;
         vector<int> v(batch_size);  
         for(int i = buffer_size - batch_size; i < buffer_size; i++)
             v[i - (buffer_size - batch_size)] = i;        
         RawBatch batch = labeler->buffer->sample(v);         
-        // For testing
-        bool has_done = false;
-        for(auto it : get<4>(batch))
-            if(it == 0)
-                has_done = true;
-        if(!has_done)
-            throw std::runtime_error("Optimal found but optimal batch has no done!");
         labeler->update(batch); 
     } 
+    
+    cout << "--------Doing Tail updates-------" << endl;
+    int tail_updates = labeler->tail_updates;
+    while(tail_updates--)
+    {
+        vector<int> v(batch_size);  
+        auto rand_in_range = [=](){
+            return (int(std::rand())) % (int(buffer_size));
+        };
+        generate(v.begin(), v.end(), rand_in_range); 
+        RawBatch batch = labeler->buffer->sample(v);         
+        labeler->update(batch); 
+    }
+    cout << "--------Tail updates done-------" << endl;
+    // do some more randome updates
     #endif
 }
 
@@ -84,8 +97,13 @@ int main(int argc, char* argv[])
         pruneIncumbentCmpr
     };
 
+    // Check if the model file exists
     string qNetPath = QNetPath;
     string piNetPath = PiNetPath;
+    if(!std::filesystem::exists(qNetPath))
+        qNetPath = "";
+    if(!std::filesystem::exists(piNetPath))
+        piNetPath = "";
 
     std::shared_ptr<DDPRLabeler> labeler = 
         std::make_shared<DDPRLabeler>(
@@ -94,8 +112,8 @@ int main(int argc, char* argv[])
             Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
                             note that the -5 and 5 should not be a feasible output, 
                             this is to preserve the extendibility of labeling */
-            // ,qNetPath
-            // ,piNetPath
+            ,qNetPath
+            ,piNetPath
         );
     
     if (argc != 2)
@@ -108,13 +126,47 @@ int main(int argc, char* argv[])
             LowerBound lowerbound;
             OneRjSumCjGraph graph;
             OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
-            graph = solver.solve(OneRjSumCjNode());    
+            graph = solver.solve(OneRjSumCjNode());  
+
+            #if INF_MODE != 1
+            torch::save(labeler->net->q, "../saved_model/qNet.pt");
+            torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
+            torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
+            torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+            #endif
+
+            // Create file if not exist 
+            if(!std::filesystem::exists("../saved_model/q_loss.txt"))
+            {
+                std::ofstream outfile("../saved_model/q_loss.txt");
+                outfile.close();
+            }
+            if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
+            {
+                std::ofstream outfile("../saved_model/pi_loss.txt");
+                outfile.close();
+            }
+
+            std::ofstream outfile;
+            outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
+            for(auto it: labeler->q_mean_loss)
+                outfile << it << ", ";
+            outfile.close();
+
+            outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
+            for(auto it: labeler->pi_mean_loss)
+                outfile << it << ", ";    
+            outfile.close();
+
+            // clean up loss_vec
+            labeler->q_mean_loss.clear();
+            labeler->pi_mean_loss.clear();  
         }
     }
     else
     {        
         // read problem
-        #define INSTANCE_NUM 10
+        #define INSTANCE_NUM 42
         srand(0);
         InputHandler inputHandler((string(argv[1])));
         string filepath;
@@ -143,25 +195,47 @@ int main(int argc, char* argv[])
                 OneRjSumCjGraph graph;
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());  
+
+                #if INF_MODE != 1
+                torch::save(labeler->net->q, "../saved_model/qNet.pt");
+                torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
+                torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
+                torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+                #endif
+
+                // Create file if not exist 
+                if(!std::filesystem::exists("../saved_model/q_loss.txt"))
+                {
+                    std::ofstream outfile("../saved_model/q_loss.txt");
+                    outfile.close();
+                }
+                if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
+                {
+                    std::ofstream outfile("../saved_model/pi_loss.txt");
+                    outfile.close();
+                }
+
+                std::ofstream outfile;
+                outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
+                for(auto it: labeler->q_loss_vec)
+                    outfile << it << ", ";
+                outfile.close();
+
+                outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
+                for(auto it: labeler->pi_loss_vec)
+                    outfile << it << ", ";    
+                outfile.close();
+
+                // clean up loss_vec
+                labeler->q_loss_vec.clear();
+                labeler->pi_loss_vec.clear();
             }                                          
             labeler->epoch++;                    
         }         
     }
 
-    // cout << "q_loss: " << endl << "[ ";
-    // for(auto it: labeler->q_loss_vec)
-    //     cout << it << ", " << endl;
-    // cout << " ]" << endl;
 
-    // cout << "pi_loss: " << endl << "[ ";
-    // for(auto it: labeler->pi_loss_vec)
-    //     cout << it << ", " << endl;
-    // cout << " ]" << endl;
 
-    #if INF_MODE != 1
-    torch::save(labeler->net->q, "../saved_model/qNet.pt");
-    torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
-    #endif
 
     /* For validation */
     // int min_obj = INT_MAX;

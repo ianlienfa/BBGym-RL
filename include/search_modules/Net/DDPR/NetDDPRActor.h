@@ -12,6 +12,7 @@ struct NetDDPRActorImpl: nn::Module
 {   
     Pdd action_range;
     int64_t state_dim;
+    int64_t split_map[3];
     nn::Sequential net{nullptr};
     
     NetDDPRActorImpl(int64_t state_dim, Pdd action_range);    

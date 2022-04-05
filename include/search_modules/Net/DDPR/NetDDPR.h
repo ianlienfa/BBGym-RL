@@ -72,7 +72,7 @@ struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
     void reset() override
     {
         pi = register_module("PolicyNet", NetDDPRActor(state_dim, action_range));
-        q = register_module("QNet", NetDDPRQNet(state_dim, action_dim));    
+        q = register_module("QNet", NetDDPRQNet(state_dim, action_dim, action_range));    
     }
 };
 TORCH_MODULE(NetDDPR);

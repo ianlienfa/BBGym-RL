@@ -2,8 +2,8 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-3;
-    lr_pi=1e-2;
+    lr_q=1e-5;
+    lr_pi=1e-5;
     polyak=0.995;
     num_epoch=150;
     max_steps=20000;
@@ -13,6 +13,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     epsilon = 0.5;
     batch_size=100;
     update_freq=50;
+    tail_updates=50;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
@@ -60,6 +61,12 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     last_action = 0.0;
     step = 0;
     epoch = 0;
+    update_count = 0;
+
+    // set up contour candidate vector
+    for(int64_t i = 1; i <= action_range.second - 1; i++){
+        contour_candidates.push_back(i);
+    }
 
 }
 
@@ -91,6 +98,7 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
     batch_size = options.batch_size;
     update_freq = options.update_freq;
     epsilon = options.epsilon;
+    tail_updates = options.tail_updates;
 }
 
 
@@ -133,24 +141,24 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
     }
     else if(operator_option == OperatorOptions::TRAIN)
     {       
-        float random_num = (rand() % 10) / 10.0; 
-        if(random_num < epsilon)
+        /* ======================== Exploration design ============================ /
+            | 0 <= rd < 0.1 | 0.1 < rd <= 0.4 | 0.4 < rd <= 0.6 | 0.6 <= rd <= 1 | 
+                add noise       last action       add int noise     do nothing
+        /  ======================================================================== */
+        float random_num = (rand() % 10) / 10.0;         
+        if(random_num < 0.1)
         {
-            // do last action
-            if(random_num < epsilon / 2)
-            {
-                label = last_action;
-            }
-            // floor to nearest contour
-            else
-            {
-                /* 
-                    The rounding should be floor() instead of round()
-                    to preserve the extendibility of the action space.
-                */
-                label = floor(label);                
-            }
+            label += ((rand() % 10) - 5) / 100.0;
         }
+        else if(random_num < 0.4)
+        {
+            label = last_action;
+        }
+        else if(random_num < 0.6)
+        {
+            label = contour_candidates[rand() % contour_candidates.size()];
+        }
+        
     }    
     last_action = label;
     return label;
@@ -169,9 +177,11 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     {
         torch::NoGradGuard no_grad;
         torch::Tensor raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));
+        #if TORCH_DEBUG >= 1
         cout << "raw_target_q: " << raw_target_q << endl;
-        cout << "~done" << done << endl;
+        cout << "~done" << (~done) << endl;
         cout << "r" << r << endl;
+        #endif
         target_qval = r + (~done) * gamma * raw_target_q;
         // target_qval = r + this->gamma * ~(done) * (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));        
         // Is this the right way to do it?
@@ -251,6 +261,20 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     layer_weight_print(*(net->pi));
     cout << "-------------" << endl << endl;
     #endif
+
+    // update history tracking
+    update_count++;
+    const int mean_size = 100;
+    if(update_count % mean_size == 0)
+    {
+        float mean_q = std::accumulate(q_loss_vec.begin(), q_loss_vec.end(), 0.0) / mean_size;
+        float mean_pi = std::accumulate(pi_loss_vec.begin(), pi_loss_vec.end(), 0.0) / mean_size;
+        q_loss_vec.clear();
+        pi_loss_vec.clear();
+        q_mean_loss.push_back(mean_q);
+        pi_mean_loss.push_back(mean_pi);
+    }
+
 
     // resume gradient computation for q-network
     for(auto& p : net->q->parameters())

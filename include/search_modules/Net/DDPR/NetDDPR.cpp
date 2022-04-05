@@ -190,7 +190,7 @@ NetDDPRImpl::NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range
     this->action_dim = action_dim;
     this->action_range = action_range;
 
-    NetDDPRQNet q_net(state_dim, action_dim);    
+    NetDDPRQNet q_net(state_dim, action_dim, action_range);    
     NetDDPRActor pi_net(state_dim, action_range);    
 
     if(q_path != "" && pi_path != "")
