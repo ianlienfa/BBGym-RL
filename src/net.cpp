@@ -42,7 +42,6 @@ void solveCallbackImpl(void* engine_ptr)
         };
         generate(v.begin(), v.end(), rand_in_range); 
         RawBatch batch = labeler->buffer->sample(v);  
-        layer_weight_print((*labeler->net->pi));
         labeler->update(batch); 
     } 
     #endif
@@ -100,10 +99,16 @@ int main(int argc, char* argv[])
     // Check if the model file exists
     string qNetPath = QNetPath;
     string piNetPath = PiNetPath;
+    string qOptimPath = QOptimPath;
+    string piOptimPath = PiOptimPath;
     if(!std::filesystem::exists(qNetPath))
         qNetPath = "";
     if(!std::filesystem::exists(piNetPath))
         piNetPath = "";
+    if(!std::filesystem::exists(qOptimPath))
+        qOptimPath = "";
+    if(!std::filesystem::exists(piOptimPath))
+        piOptimPath = "";
 
     std::shared_ptr<DDPRLabeler> labeler = 
         std::make_shared<DDPRLabeler>(
@@ -114,60 +119,81 @@ int main(int argc, char* argv[])
                             this is to preserve the extendibility of labeling */
             ,qNetPath
             ,piNetPath
+            ,qOptimPath
+            ,piOptimPath
         );
     
-    if (argc != 2)
-    {
-        if(parse_and_init_oneRjSumCj())
-        {
-            OneRjSumCjSearch searcher(labeler);
-            OneRjSumCjBranch brancher;
-            OneRjSumCjPrune pruner;
-            LowerBound lowerbound;
-            OneRjSumCjGraph graph;
-            OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
-            graph = solver.solve(OneRjSumCjNode());  
+    if (argc >= 3 && !(strcmp(argv[1], "-f")))
+    {                        
+        string filename(argv[2]);  
+        for(int epoch = 1; epoch <= labeler->num_epoch; epoch++)              
+        {                
+            cerr << "epoch: " << epoch << endl;
+            labeler->epoch++;                    
+            if(parse_and_init_oneRjSumCj(filename))
+            {
+                OneRjSumCjSearch searcher(labeler);
+                OneRjSumCjBranch brancher;
+                OneRjSumCjPrune pruner;
+                LowerBound lowerbound;
+                OneRjSumCjGraph graph;
+                OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
+                graph = solver.solve(OneRjSumCjNode());  
 
-            #if INF_MODE != 1
-            torch::save(labeler->net->q, "../saved_model/qNet.pt");
-            torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
-            torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
-            torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+                #if INF_MODE != 1
+                torch::save(labeler->net->q, "../saved_model/qNet.pt");
+                torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
+                torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
+                torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+                #endif
+
+                // Create file if not exist 
+                if(!std::filesystem::exists("../saved_model/q_loss.txt"))
+                {
+                    std::ofstream outfile("../saved_model/q_loss.txt");
+                    outfile.close();
+                }
+                if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
+                {
+                    std::ofstream outfile("../saved_model/pi_loss.txt");
+                    outfile.close();
+                }
+
+                std::ofstream outfile;
+                outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
+                for(auto it: labeler->q_mean_loss)
+                    outfile << it << ", ";
+                outfile.close();
+
+                outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
+                for(auto it: labeler->pi_mean_loss)
+                    outfile << it << ", ";    
+                outfile.close();
+
+                // clean up loss_vec
+                labeler->q_mean_loss.clear();
+                labeler->pi_mean_loss.clear();  
+
+                // stage save
+                if(labeler->num_epoch > 5 && epoch % (int(labeler->num_epoch / 5)) == 0)
+                {
+                    string cmd = "cp ../saved_model/q_loss.txt ../saved_model/qNet" + std::to_string(epoch) + ".pt";
+                    exec(cmd.c_str());
+                    cmd = "cp ../saved_model/pi_loss.txt ../saved_model/piNet" + std::to_string(epoch) + ".pt";
+                    exec(cmd.c_str());
+                }
+            }
+
+            #if INF_MODE == 1
+            epoch = labeler->num_epoch;
             #endif
-
-            // Create file if not exist 
-            if(!std::filesystem::exists("../saved_model/q_loss.txt"))
-            {
-                std::ofstream outfile("../saved_model/q_loss.txt");
-                outfile.close();
-            }
-            if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
-            {
-                std::ofstream outfile("../saved_model/pi_loss.txt");
-                outfile.close();
-            }
-
-            std::ofstream outfile;
-            outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
-            for(auto it: labeler->q_mean_loss)
-                outfile << it << ", ";
-            outfile.close();
-
-            outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
-            for(auto it: labeler->pi_mean_loss)
-                outfile << it << ", ";    
-            outfile.close();
-
-            // clean up loss_vec
-            labeler->q_mean_loss.clear();
-            labeler->pi_mean_loss.clear();  
         }
     }
-    else
+    if(argc == 2)
     {        
         // read problem
         #define INSTANCE_NUM 42
-        srand(0);
+        srand(time(NULL));
         InputHandler inputHandler((string(argv[1])));
         string filepath;
         int instance_idx = INSTANCE_NUM;

@@ -10,11 +10,16 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim, Pdd acti
         nn::ReLU(),
         nn::Linear(32, 64),
         nn::ReLU(),
+        nn::Linear(64, 256),
+        nn::ReLU(),
+        nn::Linear(256, 64),
+        nn::ReLU(),
         nn::Linear(64, 32),
         nn::ReLU(),
         nn::Linear(32, 1)
     ));
 }
+
 
 torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor action)
 {

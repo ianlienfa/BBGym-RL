@@ -14,6 +14,8 @@
 // restarts modela
 #define QNetPath "../saved_model/qNet.pt"
 #define PiNetPath "../saved_model/piNet.pt"
+#define PiOptimPath "../saved_model/optimizer_pi.pt"
+#define QOptimPath "../saved_model/optimizer_q.pt"
 #define INF_MODE 0
 
 
@@ -112,7 +114,7 @@
 
 /* debugging */
 #define DEBUG_LEVEL 0
-#define TORCH_DEBUG 0
+#define TORCH_DEBUG -1
 
 /* validations (some extra checking is done if validation level is high) */
 #define VALIDATION_LEVEL validation_level_HIGH

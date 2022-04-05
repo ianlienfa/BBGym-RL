@@ -74,7 +74,7 @@ struct DDPRLabeler: Labeler
         static constexpr int INFERENCE = 2;
     };
 
-    DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path = "", string load_pi_path = "", DDPRLabelerOptions options = DDPRLabelerOptions());    
+    DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path = "", string load_pi_path = "", string q_optim_path = "", string pi_optim_path = "", DDPRLabelerOptions options = DDPRLabelerOptions());    
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, int operator_option);

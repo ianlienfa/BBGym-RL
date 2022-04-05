@@ -86,7 +86,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         float label = 0;   
         if(!inference)
         {     
-            if(labeler->step < labeler->max_steps)
+            if(labeler->epoch < labeler->update_start_epoch)
             {
                 label = (*labeler)(s, DDPRLabeler::OperatorOptions::RANDOM);  
                 #if TORCH_DEBUG == 1                        
@@ -191,7 +191,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     // update the current contour
     this->graph->current_contour_iter = next_iter;
     
-    #if DEBUG_LEVEL >= 0
+    #if DEBUG_LEVEL >= 1
     if(labeler->step % 100 == 0)
     {
         cout << "labeler.step: " << labeler->step << endl;

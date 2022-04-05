@@ -5,9 +5,9 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-5;
     lr_pi=1e-5;
     polyak=0.995;
-    num_epoch=150;
+    num_epoch=10000;
     max_steps=20000;
-    update_start_epoch=10;
+    update_start_epoch=4000;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -17,7 +17,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
-DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, DDPRLabelerOptions options)
+DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, string q_optim_path, string pi_optim_path, DDPRLabelerOptions options)
 : state_dim(state_dim), action_dim(action_dim), action_range(action_range)
 {       
 
@@ -53,9 +53,14 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     for (auto& p : net_tar->parameters())
         p.detach_();
 
-    // set up optimizer
+    // set up optimizer    
     optimizer_q = std::make_shared<torch::optim::Adam>(net->q->parameters(), lr_q);
     optimizer_pi = std::make_shared<torch::optim::Adam>(net->pi->parameters(), lr_pi);    
+    
+    if(load_q_path != "" && load_pi_path != "" && q_optim_path != "" && pi_optim_path != ""){
+        torch::load(*optimizer_q, q_optim_path);
+        torch::load(*optimizer_pi, pi_optim_path);
+    }
 
     // set up tracking param
     last_action = 0.0;
@@ -142,7 +147,7 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
     else if(operator_option == OperatorOptions::TRAIN)
     {       
         /* ======================== Exploration design ============================ /
-            | 0 <= rd < 0.1 | 0.1 < rd <= 0.4 | 0.4 < rd <= 0.6 | 0.6 <= rd <= 1 | 
+            | 0 <= rd < 0.1 | 0.1 < rd <= 0.2 | 0.2 < rd <= 0.5 | 0.5 <= rd <= 1 | 
                 add noise       last action       add int noise     do nothing
         /  ======================================================================== */
         float random_num = (rand() % 10) / 10.0;         
@@ -150,11 +155,11 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
         {
             label += ((rand() % 10) - 5) / 100.0;
         }
-        else if(random_num < 0.4)
+        else if(random_num < 0.2)
         {
             label = last_action;
         }
-        else if(random_num < 0.6)
+        else if(random_num < 0.5)
         {
             label = contour_candidates[rand() % contour_candidates.size()];
         }
