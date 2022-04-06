@@ -73,7 +73,7 @@ vector<float> StateInput::get_state_encoding(bool get_terminal)
     }
 
     vector<float> current_node_state = flatten_and_norm(this->node);
-    vector<float> parent_node_state = flatten_and_norm(this->node);
+    vector<float> parent_node_state = flatten_and_norm(this->node_parent);
     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
     state_encoding.insert(state_encoding.end(), make_move_iterator(parent_node_state.begin()), make_move_iterator(parent_node_state.end()));
 

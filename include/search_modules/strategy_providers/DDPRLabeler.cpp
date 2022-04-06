@@ -5,9 +5,9 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-4 ;
     lr_pi=1e-4 ;
     polyak=0.995;
-    num_epoch=5;
+    num_epoch=3;
     max_steps=20000;
-    update_start_epoch=3;
+    update_start_epoch=1;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
