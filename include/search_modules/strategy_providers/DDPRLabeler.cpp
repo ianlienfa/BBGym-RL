@@ -2,17 +2,17 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-5;
-    lr_pi=1e-5;
+    lr_q=1e-4 ;
+    lr_pi=1e-4 ;
     polyak=0.995;
-    num_epoch=10000;
+    num_epoch=5;
     max_steps=20000;
-    update_start_epoch=4000;
+    update_start_epoch=3;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
     batch_size=100;
-    update_freq=50;
+    update_freq=10;
     tail_updates=50;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }

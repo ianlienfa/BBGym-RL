@@ -40,10 +40,11 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s)
     torch::Tensor prob = (tensor_bf_split[0]).sigmoid();
 
     // label_in_num
-    torch::Tensor raw_action = (tensor_bf_split[1]);
-    torch::Tensor extend_sigmoid_action = torch::exp(raw_action * (-limit)) + 1;    
-    extend_sigmoid_action = extend_sigmoid_action.reciprocal();
-    torch::Tensor label_in_num = extend_sigmoid_action * limit;
+    // torch::Tensor raw_action = (tensor_bf_split[1]);
+    // torch::Tensor extend_sigmoid_action = torch::exp(raw_action * (-limit)) + 1;    
+    // extend_sigmoid_action = extend_sigmoid_action.reciprocal();
+    // torch::Tensor label_in_num = extend_sigmoid_action * limit;
+    torch::Tensor label_in_num = (tensor_bf_split[1]).tanh();
 
     // label_softmax
     torch::Tensor label_softmax = (tensor_bf_split[2]);
@@ -55,10 +56,13 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s)
 
     #if TORCH_DEBUG >= 0
     cout << "prob: " << endl << prob << endl;
-    cout << "label_in_num: " << endl << label_in_num << endl;
-    cout << "softmax output: " << endl << output << endl; 
+    cout << "softmax output: " << endl << output << endl;     
+    cout << "label in num: " << endl << tensor_bf_split[1] << endl;
+    cout << "label_in_num sigmoid" << endl << label_in_num << endl;
     #endif
-    output = torch::where(prob > 0.5, output, label_in_num);
+    output = output + 1.0; // add 1 to avoid 0
+    torch::Tensor strong_label = label_in_num + output; // label in num has the power to tweak the output a little bit
+    output = torch::where(prob > 0.5, output, strong_label);
     #if TORCH_DEBUG >= 0
     cout << "label output: " << endl << output << endl; 
     #endif

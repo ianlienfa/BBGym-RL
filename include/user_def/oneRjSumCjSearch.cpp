@@ -87,12 +87,12 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         if(!inference)
         {     
             if(labeler->epoch < labeler->update_start_epoch)
-            {
+            {                
                 label = (*labeler)(s, DDPRLabeler::OperatorOptions::RANDOM);  
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
-                #endif
+                #endif                
 
             }
             else
@@ -191,14 +191,14 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     // update the current contour
     this->graph->current_contour_iter = next_iter;
     
-    #if DEBUG_LEVEL >= 1
-    if(labeler->step % 100 == 0)
+    #if DEBUG_LEVEL >= 0
+    if(labeler->step % 1000 == 0)
     {
         cout << "labeler.step: " << labeler->step << endl;
         cout << "------------------" << endl;
         for(auto it = this->graph->contours.begin(); it != this->graph->contours.end(); ++it)
         {
-            std::cout << " " << it->first << " " << it->second.size() << "\n";
+            std::cout << std::setprecision(6) << " " << it->first << " " << it->second.size() << "\n";
         }
         cout << "current_iter: " << this->graph->current_contour_iter->first << endl;
     }

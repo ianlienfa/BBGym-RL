@@ -9,7 +9,6 @@
 #include "problem_parser/problemParser.h"
 #include "search_modules/Net/DDPR/NetDDPR.h"
 
-
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
@@ -177,9 +176,9 @@ int main(int argc, char* argv[])
                 // stage save
                 if(labeler->num_epoch > 5 && epoch % (int(labeler->num_epoch / 5)) == 0)
                 {
-                    string cmd = "cp ../saved_model/q_loss.txt ../saved_model/qNet" + std::to_string(epoch) + ".pt";
+                    string cmd = "cp ../saved_model/qNet.pt ../saved_model/qNet" + std::to_string(epoch) + ".pt";
                     exec(cmd.c_str());
-                    cmd = "cp ../saved_model/pi_loss.txt ../saved_model/piNet" + std::to_string(epoch) + ".pt";
+                    cmd = "cp ../saved_model/piNet.pt ../saved_model/piNet" + std::to_string(epoch) + ".pt";
                     exec(cmd.c_str());
                 }
             }
