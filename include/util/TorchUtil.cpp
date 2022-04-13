@@ -13,6 +13,21 @@ void layer_weight_print(const torch::nn::Module &net)
 
         // Access weigth and bias.
         std::cout << p.value() << std::endl;
+
+        // print requires_grad
+        std::cout << p.value().requires_grad() << std::endl;
+
+        // print grad_fn
+        if(p.value().grad_fn())
+          std::cout << p.value().grad_fn()->name() << std::endl;
+        else  
+          std::cout << "Leaf, No grad_fn" << std::endl;
+
+        // print grad
+        std::cout << p.value().grad() << std::endl;
+        
+        // only print one layer
+        break;
     }
 };
 

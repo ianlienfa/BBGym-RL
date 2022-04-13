@@ -2,12 +2,12 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-4 ;
-    lr_pi=1e-4 ;
+    lr_q=1e-4;
+    lr_pi=1e-4 * 0.6;
     polyak=0.995;
     num_epoch=3;
     max_steps=20000;
-    update_start_epoch=1;
+    update_start_epoch=2;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -150,19 +150,21 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
             | 0 <= rd < 0.1 | 0.1 < rd <= 0.2 | 0.2 < rd <= 0.5 | 0.5 <= rd <= 1 | 
                 add noise       last action       add int noise     do nothing
         /  ======================================================================== */
-        float random_num = (rand() % 10) / 10.0;         
-        if(random_num < 0.1)
-        {
-            label += ((rand() % 10) - 5) / 100.0;
-        }
-        else if(random_num < 0.2)
-        {
-            label = last_action;
-        }
-        else if(random_num < 0.5)
-        {
-            label = contour_candidates[rand() % contour_candidates.size()];
-        }
+        // float random_num = (rand() % 10) / 10.0;         
+        // if(random_num < 0.1)
+        // {
+        //     label += ((rand() % 10) - 5) / 100.0;
+        //     cout << "randomed label: " << label << endl;
+        // }
+        // else if(random_num < 0.2)
+        // {
+        //     label = last_action;
+        // }
+        // else if(random_num < 0.4)
+        // {
+        //     label = contour_candidates[rand() % contour_candidates.size()];
+        //     cout << "randomed int label: " << label << endl;
+        // }
         
     }    
     last_action = label;
