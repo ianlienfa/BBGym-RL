@@ -84,24 +84,54 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         vector<float> s = stateInput.get_state_encoding();
         bool inference = INF_MODE;
         float label = 0;   
+        float prob, noise, floor;
+        tuple<float, float, float> out;
         if(!inference)
         {     
             if(labeler->epoch < labeler->update_start_epoch)
             {                
-                label = (*labeler)(s, DDPRLabeler::OperatorOptions::RANDOM);  
+                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::RANDOM);  
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
                 #endif                
-
             }
             else
             {
-                label = (*labeler)(s, DDPRLabeler::OperatorOptions::TRAIN);  
+                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::TRAIN);  
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
                 #endif
+            }
+            label = (*labeler).label_decision(out);
+            std::tie(prob, noise, floor) = out;
+            vector<float> action_prep = {prob, noise, floor};
+
+            if(!labeler->buffer->isin_prep()) 
+            {     
+                labeler->buffer->enter_data_prep_section();
+                labeler->buffer->s_prep = s;
+                labeler->buffer->a_prep = action_prep;
+            }
+            else
+            {
+                // Finish the last data prep section
+                labeler->buffer->s_next_prep = s;            
+                // If the new node is search instead of branching nodes from same parent, reward = -1
+                labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? node_reward : 0.0;
+                labeler->buffer->done_prep = 0.0;
+                labeler->buffer->leave_data_prep_section();
+                labeler->buffer->submit();
+
+                // track reward
+                this->graph->accu_reward += labeler->buffer->reward_prep;
+                // cout << "current reward: " << labeler->buffer->reward_prep << endl;
+                
+                // start the new data prep section
+                labeler->buffer->enter_data_prep_section();
+                labeler->buffer->s_prep = s;
+                labeler->buffer->a_prep = action_prep;
             }
         }
         else
@@ -109,29 +139,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             label = (*labeler)(s, DDPRLabeler::OperatorOptions::INFERENCE);  
         }        
         // increase the step count
-        labeler->step++;
-
-        if(!labeler->buffer->isin_prep()) 
-        {     
-            labeler->buffer->enter_data_prep_section();
-            labeler->buffer->s_prep = s;
-            labeler->buffer->label_prep = label;
-        }
-        else
-        {
-            // Finish the last data prep section
-            labeler->buffer->s_next_prep = s;            
-            // If the new node is search instead of branching nodes from same parent, reward = -1
-            labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? node_reward : 0.0;
-            labeler->buffer->done_prep = 0.0;
-            labeler->buffer->leave_data_prep_section();
-            labeler->buffer->submit();
-            
-            // start the new data prep section
-            labeler->buffer->enter_data_prep_section();
-            labeler->buffer->s_prep = s;
-            labeler->buffer->label_prep = label;
-        }
+        labeler->step++;        
 
         // Push the label(action) into contour : step()
         map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = this->graph->contours.find(label);
@@ -180,10 +188,14 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             // create a dummy stateInput only to call the labeler for a terminal state representation return            
             StateInput dummy(current_node, current_node, *this->graph);
             labeler->buffer->s_next_prep = dummy.get_state_encoding(true);            
-            labeler->buffer->reward_prep = 1000.0;
+            labeler->buffer->reward_prep = 1.0;
             labeler->buffer->done_prep = 1.0;
             labeler->buffer->leave_data_prep_section();
             labeler->buffer->submit();
+
+            // track reward            
+            this->graph->accu_reward += labeler->buffer->reward_prep;
+            // cout << "current reward: " << labeler->buffer->reward_prep << endl;
         }
         this->graph->contours.erase(current_iter);
     }

@@ -10,10 +10,10 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim, Pdd acti
         nn::ReLU(),
         nn::Linear(32, 64),
         nn::ReLU(),
-        nn::Linear(64, 256),
-        nn::ReLU(),
-        nn::Linear(256, 64),
-        nn::ReLU(),
+        // nn::Linear(64, 256),
+        // nn::ReLU(),
+        // nn::Linear(256, 64),
+        // nn::ReLU(),
         nn::Linear(64, 32),
         nn::ReLU(),
         nn::Linear(32, 1)
@@ -24,7 +24,7 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim, Pdd acti
 torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor action)
 {
     // test if normalization have effect    
-    action = (action - (action_range.second/2)) / action_range.second;
+    // action = (action - (action_range.second/2)) / action_range.second; 
     auto input = torch::cat({state, action}, -1);
     #if TORCH_DEBUG >= 1
         std::cout << "action norm: " << action << std::endl;
@@ -37,6 +37,7 @@ torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor action
     #if TORCH_DEBUG >= 1
     std::cout << "input: " << input << std::endl;
     std::cout << "Q(s, a): " << output << std::endl;
+    std::cout << "output q value: " << output << std::endl;
     #endif
     return output;
 }

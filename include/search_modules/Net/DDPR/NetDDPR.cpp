@@ -5,6 +5,7 @@ ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     this->idx = 0;
     this->size = 0;
     this->s_feature_size = 0;
+    this->a_feature_size = 0;
     this->enter_data_prep_sec = false;
     s.resize(max_size);
     a.resize(max_size);
@@ -13,13 +14,8 @@ ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     done.resize(max_size);
 }
 
-void ReplayBufferImpl::push(vector<float> s, float a, float r, vector<float> s_, bool done)
+void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done)
 {    
-    #if TORCH_DEBUG == 1                        
-    if(std::isnan(a))
-        throw std::runtime_error("Labeler returned NaN");
-    #endif
-
     if(idx >= max_size)
     {
         cout << "replay buffer index out of bound" << endl;
@@ -27,6 +23,8 @@ void ReplayBufferImpl::push(vector<float> s, float a, float r, vector<float> s_,
     }    
     if(!s_feature_size)
         s_feature_size = int(s.size());
+    if(!a_feature_size)
+        a_feature_size = int(a.size());
     // s and s_next have no strict relation on the sequence 
     this->s[this->idx] = s;
     this->a[this->idx] = a;
@@ -50,7 +48,7 @@ void ReplayBufferImpl::submit()
 
     if(safe_to_submit())
     {        
-        this->push(this->s_prep, this->label_prep, this->reward_prep, this->s_next_prep, this->done_prep);
+        this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep);
     }
     else
     {
@@ -93,19 +91,19 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     vector<float> node_state_encoding;
 
     // state_processed_rate
-    state_processed_rate = node.seq.size() / (float) OneRjSumCjNode::jobs_num;
+    state_processed_rate = ((float)(node.seq.size())+1e-6) / (float) OneRjSumCjNode::jobs_num;
     node_state_encoding.push_back(state_processed_rate);
 
-    // norm_lb
-    norm_lb = node.lb / (float) OneRjSumCjNode::worst_upperbound;
+    // norm_lb    
+    norm_lb = (node.lb + 1e-6) / (float) OneRjSumCjNode::worst_upperbound;    
     node_state_encoding.push_back(norm_lb);
 
     // norm_weighted_completion_timeπ
-    norm_weighted_completion_time = node.weighted_completion_time / (float) OneRjSumCjNode::worst_upperbound;
+    norm_weighted_completion_time = (node.weighted_completion_time+1e-6)  / (float) OneRjSumCjNode::worst_upperbound;
     node_state_encoding.push_back(norm_weighted_completion_time);
 
     // norm_feasible_solution
-    norm_current_feasible_solution = graph.min_obj / (float) OneRjSumCjNode::worst_upperbound;
+    norm_current_feasible_solution = (graph.min_obj+1e-6)  / (float) OneRjSumCjNode::worst_upperbound;
     node_state_encoding.push_back(norm_current_feasible_solution);
 
     return node_state_encoding;
@@ -126,7 +124,7 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
 
     int batch_size = indecies.size();
     vector<vector<float>> s;
-    vector<float> a;
+    vector<vector<float>> a;
     vector<float> r;
     vector<vector<float>> s_next;
     vector<bool> done;
@@ -149,7 +147,12 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
         s_flat.insert(s_flat.end(), make_move_iterator(s[i].begin()), make_move_iterator(s[i].end()));
         s_next_flat.insert(s_next_flat.end(), make_move_iterator(s_next[i].begin()), make_move_iterator(s_next[i].end()));
     }
-    return make_tuple(s_flat, a, r, s_next_flat, done);
+    vector<float> action_flat;
+    for(int i = 0; i < batch_size; i++)
+    {
+        action_flat.insert(action_flat.end(), make_move_iterator(a[i].begin()), make_move_iterator(a[i].end()));
+    }
+    return make_tuple(s_flat, action_flat, r, s_next_flat, done);
 }
 
 tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> raw_batch)
@@ -170,10 +173,11 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 
     int batch_size = done.size();
     int state_feature_size = this->s[0].size();
+    int action_feature_size = this->a[0].size();
 
     // turn arrays to Tensor
     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    Tensor a_tensor = torch::from_blob(a.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor a_tensor = torch::from_blob(a.data(), {batch_size, action_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor r_tensor = torch::from_blob(r.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor s_next_tensor = torch::from_blob(s_next_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     bool cArr_done[batch_size];
@@ -218,6 +222,6 @@ float NetDDPRImpl::act(torch::Tensor s)
         cout << p.requires_grad() << endl;
     }
     #endif
-    return this->pi->forward(s).item<float>();
+    return this->pi->forward(s)[2].item<float>();
 }
 

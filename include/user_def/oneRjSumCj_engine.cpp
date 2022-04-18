@@ -159,6 +159,7 @@ void post_print_config(const OneRjSumCjGraph &graph)
     for(auto it = graph.min_seq.begin(); it != graph.min_seq.end(); it++)
         cout << *it << " ";
     cout << endl;
+    cout << "accu_reward: " << graph.accu_reward << endl;
     cout << "=============== Search Ended ===============" << endl;
     cout << endl << endl;
 }

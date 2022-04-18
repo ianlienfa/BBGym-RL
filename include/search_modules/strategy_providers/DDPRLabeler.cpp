@@ -3,9 +3,9 @@
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
     lr_q=1e-4;
-    lr_pi=1e-4 * 0.6;
+    lr_pi=1e-3;
     polyak=0.995;
-    num_epoch=3;
+    num_epoch=5;
     max_steps=20000;
     update_start_epoch=2;
     buffer_size=int64_t(1e6);
@@ -36,7 +36,7 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     srand(time(NULL));
     torch::manual_seed(time(NULL));
 
-    // set up MLP
+    // set up MLP    
     net = NetDDPR(state_dim, action_dim, action_range, load_q_path, load_pi_path);
     auto net_copy_ptr = net->clone();
     net_tar = std::dynamic_pointer_cast<NetDDPRImpl>(net_copy_ptr);
@@ -120,8 +120,8 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 //     return label;
 // }
 
-
-float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
+// tuple (prob, noise, floor_label)
+std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int operator_option)
 {
     #if DEBUG_LEVEL >= 2
     cout << "flattened array: ";
@@ -131,18 +131,32 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
     #endif
     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
     float label;
+    float prob;
+    float noise;
+    float floor_label;
+
     // forward and get label
     {
         InferenceMode guard(true);
-        label = net->pi->forward(tensor_in).item<float>();  
+        torch::Tensor out = net->pi->forward(tensor_in);
+        prob = out.index({0, 0}).item<float>();
+        noise = out.index({0, 1}).item<float>();
+        floor_label = out.index({0, 2}).item<float>();
+        #if TORCH_DEBUG >= 0
+        cout << "prob: " << prob << " noise: " << noise << " floor_label: " << floor_label << endl;
+        #endif
         // Clipping and extending is done in forward function
     }
     // add exploration noise if training
     if(operator_option == OperatorOptions::RANDOM)
     {
-        float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  // 0.0 ~ 1.0
-        label = r * action_range.second; // 0.0 ~ action_range.second
-        label = ((rand() % 10) / 10.0 < epsilon) ? floor(label) : last_action;  // add some prob to go to same contour
+        floor_label = (rand() % (int)(action_range.second)) + 1;
+        noise = (rand() % 100) / 100.0;
+        noise = (rand() % 2) == 0 ? noise : -noise;
+        prob = (rand() % 10 > 2) ? ((rand() % 50) / 100.0 + 0.5): ((rand() % 50) / 100.0 + 0.5);
+        #if TORCH_DEBUG >= 0
+        cout << "RANDOM: " << "floor_label: " << floor_label << " noise: " << noise << " prob: " << prob << endl;
+        #endif
     }
     else if(operator_option == OperatorOptions::TRAIN)
     {       
@@ -166,8 +180,37 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
         //     cout << "randomed int label: " << label << endl;
         // }
         
-    }    
-    last_action = label;
+    }     
+    return std::make_tuple(prob, noise, floor_label);
+}
+
+float DDPRLabeler::label_decision(std::tuple<float, float, float> in)
+{
+    float floor, noise, prob;
+    std::tie(prob, noise, floor) = in;
+    return (prob > 0.5) ? floor : noise + floor;
+}
+
+float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
+{
+    torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
+    float label;
+    float prob;
+    float noise;
+    float floor_label;
+
+    // forward and get label
+    {
+        InferenceMode guard(true);
+        torch::Tensor out = net->pi->forward(tensor_in);
+        prob = out[0].item<float>();
+        noise = out[1].item<float>();
+        floor_label = out[2].item<float>();  
+        // Clipping and extending is done in forward function
+    }
+
+    label = label_decision(std::make_tuple(prob, noise, floor_label));
+
     return label;
 }
 
@@ -343,46 +386,3 @@ void DDPRLabeler::update(const RawBatch &batch_data)
         }
     }
 }
-
-
-// do actual training here
-// int DDPRLabeler::ddpg_train(Batch &batch_data)
-// {   
-
-//     // update q  
-//     optimizer_q->zero_grad();
-//     torch::Tensor q_loss = compute_q_loss(batch_data);
-//     q_loss.backward();
-//     optimizer_q->step();
-
-//     // stablize the gradient for q-network
-//     for(auto& p : net->q->parameters())
-//         p.requires_grad_(false);
-
-//     // update pi
-//     optimizer_pi->zero_grad();        
-//     torch::Tensor pi_loss = compute_pi_loss(batch_data);    
-//     pi_loss.backward();
-//     optimizer_pi->step();
-
-//     // resume gradient computation for q-network
-//     for(auto& p : net->q->parameters())
-//         p.requires_grad_(true);
-
-//     {
-//         // update target network
-//         torch::NoGradGuard no_grad;
-//         for (auto& p = net->parameters().begin(), p_tar = net_tar->parameters().begin(); p != net->parameters().end(); ++p, ++p_tar)
-//         {
-//             (*p_tar).data().mul_(this->polyak);
-//             (*p_tar).data().add_((1 - this->polyak) * (*p_tar));
-//         }
-//     }
-
-//     // set up result meomization
-//     throw NotImplemented;
-//     this->step++;
-//     vector<float> test_loss;
-//     vector<float> test_epoch;    
-
-// }

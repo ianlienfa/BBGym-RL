@@ -29,12 +29,13 @@ private:
     bool enter_data_prep_sec;      
 public:
     vector<vector<float>> s;
-    vector<float> a;
+    vector<vector<float>> a;
     vector<float> r;
     vector<vector<float>> s_next;
     vector<bool> done;    
     int max_size;
     int s_feature_size;
+    int a_feature_size;
     int idx;
     int size;
 
@@ -45,13 +46,13 @@ public:
     bool isin_prep(){return enter_data_prep_sec;};        
     vector<float> s_prep;
     vector<float> s_next_prep;
-    float label_prep;
+    vector<float> a_prep;
     float reward_prep;
     bool done_prep;
 
     ReplayBufferImpl(int max_size);    
     int get_size(){return size;}
-    void push(vector<float> s, float a, float r, vector<float> s_, bool done);
+    void push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done);
     tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> sample(vector<int> indecies);
     tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> raw_batch);
     void submit();
