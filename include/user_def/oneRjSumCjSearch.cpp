@@ -96,7 +96,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                     throw std::runtime_error("Labeler returned NaN");
                 #endif                
             }
-            else
+            else if(labeler->epoch < labeler->num_epoch)
             {
                 out = (*labeler).train(s, DDPRLabeler::OperatorOptions::TRAIN);  
                 #if TORCH_DEBUG == 1                        
@@ -104,7 +104,15 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                     throw std::runtime_error("Labeler returned NaN");
                 #endif
             }
-            label = (*labeler).label_decision(out);
+            else
+            {
+                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::TESTING);                  
+                #if TORCH_DEBUG == 1                        
+                if(std::isnan(label))
+                    throw std::runtime_error("Labeler returned NaN");
+                #endif
+            }
+            label = (*labeler).label_decision(out, this->graph->contours, labeler->max_num_contour);
             std::tie(prob, noise, floor) = out;
             vector<float> action_prep = {prob, noise, floor};
 
@@ -113,11 +121,13 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 labeler->buffer->enter_data_prep_section();
                 labeler->buffer->s_prep = s;
                 labeler->buffer->a_prep = action_prep;
+                labeler->buffer->contour_snapshot_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);
             }
             else
             {
                 // Finish the last data prep section
-                labeler->buffer->s_next_prep = s;            
+                labeler->buffer->s_next_prep = s;     
+                labeler->buffer->contour_snapshot_next_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);
                 // If the new node is search instead of branching nodes from same parent, reward = -1
                 labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? node_reward : 0.0;
                 labeler->buffer->done_prep = 0.0;
@@ -130,8 +140,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 
                 // start the new data prep section
                 labeler->buffer->enter_data_prep_section();
-                labeler->buffer->s_prep = s;
+                labeler->buffer->s_prep = s;                
                 labeler->buffer->a_prep = action_prep;
+                labeler->buffer->contour_snapshot_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);
             }
         }
         else
@@ -141,7 +152,10 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         // increase the step count
         labeler->step++;        
 
-        // Push the label(action) into contour : step()
+        // Push the label(action) into contour : step() 
+        // Adjust for contour snapshot: 
+        //  if the number of contour is larger than max_num_contour, 
+        //  
         map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = this->graph->contours.find(label);
         if(target_contour_iter == this->graph->contours.end())
         {
@@ -187,8 +201,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             /* complete the incomplete data prep section */
             // create a dummy stateInput only to call the labeler for a terminal state representation return            
             StateInput dummy(current_node, current_node, *this->graph);
-            labeler->buffer->s_next_prep = dummy.get_state_encoding(true);            
-            labeler->buffer->reward_prep = 1.0;
+            labeler->buffer->s_next_prep = dummy.get_state_encoding(true);    
+            labeler->buffer->contour_snapshot_next_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);        
+            labeler->buffer->reward_prep = 0.0;
             labeler->buffer->done_prep = 1.0;
             labeler->buffer->leave_data_prep_section();
             labeler->buffer->submit();

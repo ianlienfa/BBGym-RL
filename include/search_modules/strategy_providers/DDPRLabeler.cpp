@@ -2,18 +2,19 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-4;
-    lr_pi=1e-3;
+    lr_q=1e-1; //1e-4
+    lr_pi=1e-1; //1e-3
     polyak=0.995;
     num_epoch=10;
     max_steps=20000;
-    update_start_epoch=4;
+    update_start_epoch=6;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
     batch_size=100;
     update_freq=10;
     tail_updates=50;
+    max_num_contour=10000;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
@@ -153,7 +154,7 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
         floor_label = (rand() % (int)(action_range.second)) + 1;
         noise = (rand() % 100) / 100.0;
         noise = (rand() % 2) == 0 ? noise : -noise;
-        prob = (rand() % 10 > 2) ? ((rand() % 50) / 100.0 + 0.5): ((rand() % 50) / 100.0 + 0.5);
+        prob = (rand() % 10 > 2) ? ((rand() % 50) / 100.0 + 0.5): ((rand() % 50) / 100.0);
         #if TORCH_DEBUG >= 0
         cout << "RANDOM: " << "floor_label: " << floor_label << " noise: " << noise << " prob: " << prob << endl;
         #endif
@@ -161,34 +162,45 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
     else if(operator_option == OperatorOptions::TRAIN)
     {       
         /* ======================== Exploration design ============================ /
-            | 0 <= rd < 0.1 | 0.1 < rd <= 0.2 | 0.2 < rd <= 0.5 | 0.5 <= rd <= 1 | 
-                add noise       last action       add int noise     do nothing
+             0 <= rd < 0.4 
+                add noise   
         /  ======================================================================== */
-        // float random_num = (rand() % 10) / 10.0;         
-        // if(random_num < 0.1)
-        // {
-        //     label += ((rand() % 10) - 5) / 100.0;
-        //     cout << "randomed label: " << label << endl;
-        // }
-        // else if(random_num < 0.2)
-        // {
-        //     label = last_action;
-        // }
-        // else if(random_num < 0.4)
-        // {
-        //     label = contour_candidates[rand() % contour_candidates.size()];
-        //     cout << "randomed int label: " << label << endl;
-        // }
-        
+        float random_num = (rand() % 10) / 10.0;         
+        if(random_num < 0.4)
+            prob = (rand() % 50) / 100.0 + 0.5;        
     }     
+    else if (operator_option == OperatorOptions::TESTING)
+    {
+        // do nothing        
+    }
+    else
+    {
+        cout << "operator_option error" << endl;
+        exit(1);
+    }
     return std::make_tuple(prob, noise, floor_label);
 }
 
-float DDPRLabeler::label_decision(std::tuple<float, float, float> in)
+float DDPRLabeler::label_decision(std::tuple<float, float, float> in, const map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &m, int num_max_contour)
 {
-    float floor, noise, prob;
-    std::tie(prob, noise, floor) = in;
-    return (prob > 0.5) ? floor : noise + floor;
+    float base, noise, prob;
+    std::tie(prob, noise, base) = in;
+    int floor = int(base);
+    float label = (prob > 0.5) ? floor : noise + floor;
+    // avoid contour overflow, do clipping
+    if(m.size() >= max_num_contour)
+    {
+        auto label_lb = m.lower_bound(label);
+        if(label_lb != m.end())
+        {
+            return label_lb->first;
+        }
+        else
+        {
+            return (--label_lb)->first;
+        }
+    }
+    return label;
 }
 
 float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
@@ -203,9 +215,9 @@ float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
     {
         InferenceMode guard(true);
         torch::Tensor out = net->pi->forward(tensor_in);
-        prob = out[0].item<float>();
-        noise = out[1].item<float>();
-        floor_label = out[2].item<float>();  
+        prob = out.index({0, 0}).item<float>();
+        noise = out.index({0, 1}).item<float>();
+        floor_label = out.index({0, 2}).item<float>();
         // Clipping and extending is done in forward function
     }
 
@@ -222,7 +234,9 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     const torch::Tensor &a = get<1>(batch_data);
     const torch::Tensor &r = get<2>(batch_data);
     const torch::Tensor &s_next = get<3>(batch_data);
-    const torch::Tensor &done = get<4>(batch_data);    
+    const torch::Tensor &done = get<4>(batch_data);   
+    const torch::Tensor &contour_snapshot = get<5>(batch_data); 
+    const torch::Tensor &contour_snapshot_next = get<6>(batch_data); 
     torch::Tensor target_qval;
     {
         torch::NoGradGuard no_grad;
@@ -252,21 +266,24 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
 
 torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 {    
-    const torch::Tensor &s = get<0>(batch_data);
-    torch::Tensor loss = -(net->q->forward(s, net->pi->forward(s))).mean();
+    const torch::Tensor &s = get<0>(batch_data);    
+    torch::Tensor loss = -((net->q->forward(s, net->pi->forward(s))).mean());    
     return loss;
 }
 
 void DDPRLabeler::update(const RawBatch &batch_data)
 {       
     using std::cout, std::endl; 
-    #if TORCH_DEBUG >= 1
-    cout << "before update" << endl;
-    cout << "-------------" << endl;
-    layer_weight_print(*(net->q));
-    layer_weight_print(*(net->pi));
-    cout << "-------------" << endl << endl;
-    #endif
+    // #if TORCH_DEBUG >= 1
+    if(this->epoch >= num_epoch-1)
+    {
+        cout << "before update" << endl;
+        cout << "-------------" << endl;
+        layer_weight_print(*(net->q));
+        layer_weight_print(*(net->pi));
+        cout << "-------------" << endl << endl;
+    }
+    // #endif
 
     
     Batch batch = buffer->getBatchTensor(batch_data);
@@ -298,6 +315,7 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     optimizer_pi->zero_grad();       
     torch::Tensor pi_loss = compute_pi_loss(batch);
     pi_loss_vec.push_back(pi_loss.item<float>());
+    cout << "pi_loss: " << pi_loss << endl;
     #if TORCH_DEBUG >= 1
     cout << "action tensor after pi update" << endl;
     cout << get<1>(batch) << endl;

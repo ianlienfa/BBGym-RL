@@ -1,10 +1,10 @@
 #include "search_modules/Net/DDPR/NetDDPRActor.h"
 
-NetDDPRActorImpl::NetDDPRActorImpl(int64_t state_dim, Pdd action_range)
+NetDDPRActorImpl::NetDDPRActorImpl(int64_t state_dim, Pdd action_range, int rnn_hidden_size)
 {
     net = register_module("Sequential", 
         nn::Sequential(
-            nn::Linear(state_dim, 64),
+            nn::Linear(rnn_hidden_size, 64),
             nn::ReLU(),
             // nn::Linear(64, 256),
             // nn::ReLU(),
@@ -15,6 +15,10 @@ NetDDPRActorImpl::NetDDPRActorImpl(int64_t state_dim, Pdd action_range)
             nn::Linear(32, (action_range.second - 1) + 2)
         )
     );       
+    rnn = register_module("RNN", 
+        torch::nn::RNN(nn::RNNOptions(state_dim, rnn_hidden_size).num_layers(3).dropout(0.5))
+    );
+    
     this->state_dim = state_dim;
     this->action_range = action_range;
     this->split_map[0] = 1;
@@ -34,6 +38,9 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s)
     cout << s << endl;
     #endif
     const float &limit = (float) action_range.second;
+
+    // torch::Tensor rnn_out;
+    // std::tie(rnn_out, this->hidden_state) = rnn->forward(s, this->hidden_state);
     torch::Tensor linear_output = net->forward(s);
 
 
@@ -66,7 +73,7 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s)
     cout << "label_softmax after mul" << endl << label_softmax << endl;
     #endif
 
-    label_softmax = label_softmax.sum(-1).unsqueeze(-1).floor().add(1.0);
+    label_softmax = label_softmax.sum(-1).unsqueeze(-1).add(1.0);
     #if TORCH_DEBUG >= 0
     cout << "label_softmax after sum" << endl << label_softmax << endl;
     #endif
@@ -77,4 +84,9 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s)
     #endif
 
     return output;
+}
+
+void NetDDPRActorImpl::rnn_reset()
+{
+    this->hidden_state = torch::zeros({1, rnn_hidden_size}, torch::TensorOptions().dtype(torch::kFloat32));
 }

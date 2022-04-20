@@ -23,6 +23,7 @@ struct DDPRLabelerOptions{
     int64_t update_freq;
     int64_t tail_updates;
     int operator_option;
+    int64_t max_num_contour;
     DDPRLabelerOptions();
 };
 
@@ -46,6 +47,7 @@ struct DDPRLabeler: Labeler
     int64_t update_freq;
     int64_t operator_options;
     int64_t tail_updates;
+    int64_t max_num_contour;
     
     
     NetDDPR net{nullptr};
@@ -72,6 +74,7 @@ struct DDPRLabeler: Labeler
         static constexpr int RANDOM = 0;
         static constexpr int TRAIN = 1;
         static constexpr int INFERENCE = 2;
+        static constexpr int TESTING = 3;
     };
 
     DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path = "", string load_pi_path = "", string q_optim_path = "", string pi_optim_path = "", DDPRLabelerOptions options = DDPRLabelerOptions());    
@@ -79,7 +82,7 @@ struct DDPRLabeler: Labeler
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, int operator_option);
     std::tuple<float, float, float> train(vector<float> flatten, int operator_option);
-    float label_decision(std::tuple<float, float, float>);
+    float label_decision(std::tuple<float, float, float>, const map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &m, int num_max_contour);
     torch::Tensor compute_q_loss(const Batch &batch_data);
     torch::Tensor compute_pi_loss(const Batch &batch_data);
     void update(const RawBatch &batch_data);

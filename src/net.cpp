@@ -123,7 +123,9 @@ int main(int argc, char* argv[])
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
-    {                        
+    {               
+        srand(time(NULL));
+        torch::manual_seed(time(NULL));
         string filename(argv[2]);  
         for(int epoch = 1; epoch <= labeler->num_epoch; epoch++)              
         {                

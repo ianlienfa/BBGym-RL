@@ -16,8 +16,14 @@ struct NetDDPRActorImpl: nn::Module
     nn::Sequential net{nullptr};
     vector<float> arg_softmax_map_arr;
     torch::Tensor arg_softmax_map;
-    
-    NetDDPRActorImpl(int64_t state_dim, Pdd action_range);    
+
+    // rnn 
+    int64_t rnn_hidden_size;
+    nn::RNN rnn{nullptr};
+    torch::Tensor hidden_state;
+    void rnn_reset();
+        
+    NetDDPRActorImpl(int64_t state_dim, Pdd action_range, int64_t rnn_hidden_size = 1);    
     torch::Tensor forward(torch::Tensor s);
 };
 TORCH_MODULE(NetDDPRActor);
