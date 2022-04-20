@@ -19,12 +19,12 @@ struct NetDDPRActorImpl: nn::Module
 
     // rnn 
     int64_t rnn_hidden_size;
+    int64_t rnn_num_layers;
     nn::RNN rnn{nullptr};
     torch::Tensor hidden_state;
-    void rnn_reset();
         
-    NetDDPRActorImpl(int64_t state_dim, Pdd action_range, int64_t rnn_hidden_size = 1);    
-    torch::Tensor forward(torch::Tensor s);
+    NetDDPRActorImpl(int64_t state_dim, Pdd action_range, int64_t num_max_contour, int64_t rnn_hidden_size = 1, int rnn_num_layers=1);    
+    torch::Tensor forward(torch::Tensor s, torch::Tensor contour_snapshot);
 };
 TORCH_MODULE(NetDDPRActor);
 #endif
