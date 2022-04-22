@@ -100,6 +100,8 @@ int main(int argc, char* argv[])
     string piNetPath = PiNetPath;
     string qOptimPath = QOptimPath;
     string piOptimPath = PiOptimPath;
+    // string qSchedulerPath = QSchedulerPath;
+    // string piSchedulerPath = PiSchedulerPath;
     if(!std::filesystem::exists(qNetPath))
         qNetPath = "";
     if(!std::filesystem::exists(piNetPath))
@@ -108,7 +110,10 @@ int main(int argc, char* argv[])
         qOptimPath = "";
     if(!std::filesystem::exists(piOptimPath))
         piOptimPath = "";
-
+    // if(!std::filesystem::exists(qSchedulerPath))
+    //     qSchedulerPath = "";
+    // if(!std::filesystem::exists(piSchedulerPath))
+    //     piSchedulerPath = "";
     std::shared_ptr<DDPRLabeler> labeler = 
         std::make_shared<DDPRLabeler>(
             int64_t(StateInput(OneRjSumCjNode(), OneRjSumCjNode(), OneRjSumCjGraph()).get_state_encoding().size()), 
@@ -120,6 +125,8 @@ int main(int argc, char* argv[])
             ,piNetPath
             ,qOptimPath
             ,piOptimPath
+            // ,qSchedulerPath
+            // ,piSchedulerPath
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
@@ -144,6 +151,8 @@ int main(int argc, char* argv[])
                 torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
                 torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
                 torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+                // torch::save((*labeler->scheduler_q), "../saved_model/scheduler_q.pt");
+                // torch::save((*labeler->scheduler_pi), "../saved_model/scheduler_pi.pt");
                 #endif
 
                 // Create file if not exist 
@@ -226,6 +235,8 @@ int main(int argc, char* argv[])
                 torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
                 torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
                 torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+                // torch::save((*labeler->scheduler_q), "../saved_model/scheduler_q.pt");
+                // torch::save((*labeler->scheduler_pi), "../saved_model/scheduler_pi.pt");
                 #endif
 
                 // Create file if not exist 

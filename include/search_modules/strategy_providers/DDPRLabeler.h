@@ -52,6 +52,7 @@ struct DDPRLabeler: Labeler
     NetDDPR net_tar{nullptr};    
     ReplayBuffer buffer{nullptr};
     std::shared_ptr<torch::optim::Adam> optimizer_q{nullptr}, optimizer_pi{nullptr};    
+    std::shared_ptr<torch::optim::StepLR> scheduler_q{nullptr}, scheduler_pi{nullptr};
 
     // Random contour map
     vector<int> contour_candidates;
@@ -66,7 +67,8 @@ struct DDPRLabeler: Labeler
     int64_t step;
     int64_t update_count;
     int64_t epoch;
-
+    bool retrain;
+    
     // Operator choices
     struct OperatorOptions{
         static constexpr int RANDOM = 0;
@@ -74,12 +76,12 @@ struct DDPRLabeler: Labeler
         static constexpr int INFERENCE = 2;
     };
 
-    DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path = "", string load_pi_path = "", string q_optim_path = "", string pi_optim_path = "", DDPRLabelerOptions options = DDPRLabelerOptions());    
+    DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path = "", string load_pi_path = "", string q_optim_path = "", string pi_optim_path = "", string q_scheduler_path = "", string pi_scheduler_path = "", DDPRLabelerOptions options = DDPRLabelerOptions());    
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, int operator_option);
     std::tuple<float, float, float> train(vector<float> flatten, int operator_option);
-    float label_decision(std::tuple<float, float, float>);
+    float label_decision(std::tuple<float, float, float>, bool exploration=false);
     torch::Tensor compute_q_loss(const Batch &batch_data);
     torch::Tensor compute_pi_loss(const Batch &batch_data);
     void update(const RawBatch &batch_data);

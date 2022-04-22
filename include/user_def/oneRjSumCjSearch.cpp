@@ -88,7 +88,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         tuple<float, float, float> out;
         if(!inference)
         {     
-            if(labeler->epoch < labeler->update_start_epoch)
+            if(labeler->epoch < labeler->update_start_epoch && labeler->retrain == false)
             {                
                 out = (*labeler).train(s, DDPRLabeler::OperatorOptions::RANDOM);  
                 #if TORCH_DEBUG == 1                        

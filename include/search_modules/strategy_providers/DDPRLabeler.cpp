@@ -2,8 +2,8 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-4;
-    lr_pi=1e-3;
+    lr_q=1e-5;
+    lr_pi=1e-6;
     polyak=0.995;
     num_epoch=10;
     max_steps=20000;
@@ -17,7 +17,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
-DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, string q_optim_path, string pi_optim_path, DDPRLabelerOptions options)
+DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, string q_optim_path, string pi_optim_path, string q_scheduler_path, string pi_scheduler_path, DDPRLabelerOptions options)
 : state_dim(state_dim), action_dim(action_dim), action_range(action_range)
 {       
 
@@ -36,7 +36,14 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     srand(time(NULL));
     torch::manual_seed(time(NULL));
 
-    // set up MLP    
+    // set up MLP   
+    if((!load_q_path.empty()) && (!load_pi_path.empty())){
+        retrain = true;
+    }
+    else
+    {
+        retrain = false;
+    }
     net = NetDDPR(state_dim, action_dim, action_range, load_q_path, load_pi_path);
     auto net_copy_ptr = net->clone();
     net_tar = std::dynamic_pointer_cast<NetDDPRImpl>(net_copy_ptr);
@@ -56,11 +63,25 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     // set up optimizer    
     optimizer_q = std::make_shared<torch::optim::Adam>(net->q->parameters(), lr_q);
     optimizer_pi = std::make_shared<torch::optim::Adam>(net->pi->parameters(), lr_pi);    
+
+    // set up scheduler 
+    const int64_t q_step_sz = 3000;
+    const int64_t pi_step_sz = 6000;
+    const float q_lr_decay = 0.6;
+    const float pi_lr_decay = 0.6;
+    scheduler_q = std::make_shared<torch::optim::StepLR>(*optimizer_q, q_step_sz, q_lr_decay);
+    scheduler_pi = std::make_shared<torch::optim::StepLR>(*optimizer_pi, pi_step_sz, pi_lr_decay);
     
     if(load_q_path != "" && load_pi_path != "" && q_optim_path != "" && pi_optim_path != ""){
         torch::load(*optimizer_q, q_optim_path);
         torch::load(*optimizer_pi, pi_optim_path);
+        // if(q_scheduler_path != "" && pi_scheduler_path != "")
+        // {
+        //     torch::load(*scheduler_q, q_scheduler_path);
+        //     torch::load(*scheduler_pi, pi_scheduler_path);
+        // }
     }
+
 
     // set up tracking param
     last_action = 0.0;
@@ -184,10 +205,14 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
     return std::make_tuple(prob, noise, floor_label);
 }
 
-float DDPRLabeler::label_decision(std::tuple<float, float, float> in)
+float DDPRLabeler::label_decision(std::tuple<float, float, float> in, bool exploration)
 {
     float floor, noise, prob;
     std::tie(prob, noise, floor) = in;
+    if(exploration)
+    {
+
+    }
     return (prob > 0.5) ? floor : noise + floor;
 }
 
@@ -268,7 +293,6 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     cout << "-------------" << endl << endl;
     #endif
 
-    
     Batch batch = buffer->getBatchTensor(batch_data);
 
     // update q  
@@ -325,10 +349,18 @@ void DDPRLabeler::update(const RawBatch &batch_data)
         pi_mean_loss.push_back(mean_pi);
     }
 
-
     // resume gradient computation for q-network
     for(auto& p : net->q->parameters())
         p.requires_grad_(true);
+
+    
+    // scheduler step
+    if(update_count % 1000 == 0)
+    {  
+        scheduler_q->step();
+        scheduler_pi->step();         
+    }
+
     
     {
         // update target network

@@ -16,6 +16,8 @@
 #define PiNetPath "../saved_model/piNet.pt"
 #define PiOptimPath "../saved_model/optimizer_pi.pt"
 #define QOptimPath "../saved_model/optimizer_q.pt"
+#define QSchedulerPath "../saved_model/scheduler_q.pt"
+#define PiSchedulerPath "../saved_model/scheduler_pi.pt"
 #define INF_MODE 0
 
 
