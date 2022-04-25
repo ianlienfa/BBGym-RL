@@ -107,8 +107,11 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 #endif
             }
             std::tie(prob, noise, floor) = out; // copy for buffer use
-            vector<float> action_prep = {prob, noise, floor};
+            assertm("prob not in range", 0.0 <= prob && prob <= 1.0);
+            assertm("noise not in range", -1.0 <= noise && noise <= 1.0);
+            assertm("floor_label not in range", 0 < floor && floor < (*labeler).action_range.second);
 
+            vector<float> action_prep = {prob, noise, floor};
             if(!labeler->buffer->isin_prep()) 
             {     
                 labeler->buffer->enter_data_prep_section();
@@ -188,7 +191,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             /* complete the incomplete data prep section */
             // create a dummy stateInput only to call the labeler for a terminal state representation return            
             StateInput dummy(current_node, current_node, *this->graph);
-            labeler->buffer->s_next_prep = dummy.get_state_encoding(true);            
+            labeler->buffer->s_next_prep = dummy.get_state_encoding();            
             labeler->buffer->reward_prep = pos_zero_reward;
             labeler->buffer->done_prep = 1.0;
             labeler->buffer->leave_data_prep_section();
@@ -205,7 +208,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     this->graph->current_contour_iter = next_iter;
     
     #if DEBUG_LEVEL >= 0
-    if(labeler->step % 1000 == 0)
+    if(labeler->step % 1 == 0)
     {
         cout << "labeler.step: " << labeler->step << endl;
         cout << "------------------" << endl;

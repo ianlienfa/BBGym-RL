@@ -27,14 +27,10 @@ bool ReplayBufferImpl::safe_to_submit()
         assertm("state variable should not be zero", it != 0);
         assertm("state variable having too small value", it > 1e-20);
     }
-    for(auto it: this->a_prep)
-    {
-        assertm("action variable should not be zero", it != 0);
-    }
     assertm("done variable should be 0 or 1", (this->done_prep == 0.0 || this->done_prep == 1.0));
-    assertm("state_vector should be empty", this->s_prep.empty());
-    assertm("state_next_vector should be empty", this->s_next_prep.empty());
-    assertm("action_vector should be empty", this->a_prep.empty());
+    // assertm("state_vector should not be empty", (!this->s_prep.empty()));
+    // assertm("state_next_vector should not be empty", (!this->s_next_prep.empty()));
+    // assertm("action_vector should not be empty", (!this->a_prep.empty()));
     return !enter_data_prep_sec;   
 }        
 
@@ -141,8 +137,6 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
     vector<float> r;
     vector<vector<float>> s_next;
     vector<bool> done;
-    cout << "size: " << size << endl;
-    cout << "idx: ";
     for(int i = 0; i < indecies.size(); i++)
     {
         int idx = indecies[i];
@@ -153,22 +147,10 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
         r.push_back(this->r[idx]);
         s_next.push_back(this->s_next[idx]);
         done.push_back(this->done[idx]);
-        cout << idx << " ";
     }
 
     assertm("batch size should be identical", (s.size() == a.size() && s.size() == r.size() && s.size() == s_next.size() && s.size() == done.size() && s.size() == batch_size));
-    cout << "s raw batch" << endl;
-    for(auto it: s)
-    {
-        cout << it << " ";
-    }
-    cout << endl;
-    cout << "s_next raw batch" << endl;
-    for(auto it: s_next)
-    {
-        cout << it << " ";
-    }
-    cout << endl;
+
     // flatten the state array
     vector<float> s_flat;
     vector<float> s_next_flat;
@@ -179,14 +161,6 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
     }
 
     int state_dim = this->s[0].size();
-    cout << "s_flat" << endl;
-    for(auto it: s_flat)
-        cout << it << " ";
-        cout << endl;
-    cout << "s_next_flat" << endl;
-    for(auto it: s_next_flat)
-        cout << it << " ";
-    cout << endl;
     assertm("state size should be identical", (s_flat.size() == s_next_flat.size() && s_flat.size() == state_dim * batch_size));
 
     vector<float> action_flat;
@@ -219,12 +193,10 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
         assertm("state variable should not be zero", it != 0);
         assertm("state variable having too small value", it > 1e-20);
     }
-    cout << "s_next_flat: " << endl;
     for(auto it: s_next_flat)
     {
         assertm("state variable should not be zero", it != 0);
         assertm("state variable having too small value", it > 1e-20);
-        cout << it << endl;
     }
     for(auto it: done)
     {
@@ -235,11 +207,6 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
     int state_feature_size = this->s[0].size();
     int action_feature_size = this->a[0].size();
     assertm("state feature size should be same", this->s[0].size() == this->s_next[0].size());
-    cout << "s_next_flat.size(): " << s_next_flat.size() << "batch * state_feature: " << batch_size * state_feature_size << endl;
-    cout << "s_flat.size(): " << s_flat.size() << "batch * state_feature: " << batch_size * state_feature_size << endl;
-    cout << "a.size(): " << a.size() << "batch * action_feature_size: " << batch_size * action_feature_size << endl;
-    cout << "done.size(): " << done.size() << "batch * 1: " << batch_size << endl;
-
     // turn arrays to Tensor
     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor a_tensor = torch::from_blob(a.data(), {batch_size, action_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();

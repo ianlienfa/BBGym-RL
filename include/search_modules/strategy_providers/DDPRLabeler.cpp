@@ -5,9 +5,9 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-5;
     lr_pi=1e-6;
     polyak=0.995;
-    num_epoch=5;
+    num_epoch=20;
     max_steps=20000;
-    update_start_epoch=3;
+    update_start_epoch=10;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -150,7 +150,7 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
     // add exploration noise if training
     if(operator_option == OperatorOptions::RANDOM)
     {
-        floor_label = (rand() % (int)(action_range.second)) + 1;
+        floor_label = (rand() % (int)(action_range.second - 1)) + 1;
         noise = (rand() % 100) / 100.0;
         noise = (rand() % 2) == 0 ? noise : -noise;
         prob = (rand() % 10 > 2) ? ((rand() % 50) / 100.0 + 0.5): ((rand() % 50) / 100.0 + 0.5);
@@ -196,9 +196,9 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
 {
     if(explore != true)
         throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
-    float &floor = std::get<0>(in);
+    float &prob = std::get<0>(in);
     float &noise = std::get<1>(in);
-    float &prob = std::get<2>(in);
+    float &floor = std::get<2>(in);
     float label = (prob > 0.5) ? floor : noise + floor;
     
     // implement epsilon greedy
@@ -207,7 +207,7 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
     else
     {
         // exlpore
-        floor = (rand() % (int)(action_range.second)) + 1;
+        floor = (rand() % (int)(action_range.second - 1)) + 1;
         assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
         noise = (rand() % 100) / 100.0;
         prob = (rand() % 100) / 100.0;
@@ -276,7 +276,7 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     // cout << "loss_mean: " << loss << endl;
     torch::Tensor loss = (net->q->forward(s, a) - target_qval).pow(2).mean();
     
-    if(loss.item<float>() > 1e10 || loss.item<float>() != std::numeric_limits<float>::infinity())
+    if(loss.item<float>() > 1e10 || loss.item<float>() == std::numeric_limits<float>::infinity())
     {
         cout << "s_next: " << s_next << endl;
         cout << "s: " << s << endl;
