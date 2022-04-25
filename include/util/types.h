@@ -5,6 +5,7 @@
 #include <iostream>
 #include <bitset>
 #include "util/config.h"
+#include <cassert>
 using std::vector;
 using std::bitset;
 
@@ -20,6 +21,8 @@ typedef std::pair<double, double> Pdd;
 #define BASIC_MIN(a,b) ((a)<(b)?(a):(b))
 #define BASIC_ABS(a) ((a)>0?(a):-(a))
 #define BASIC_SWAP(a,b) {a^=b;b^=a;a^=b;}
+#define assertm(msg, exp) assert(((void)msg, exp))
+
 
 // exception class
 class NotImplemented : public std::logic_error

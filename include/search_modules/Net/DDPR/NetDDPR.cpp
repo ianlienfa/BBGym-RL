@@ -14,6 +14,30 @@ ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     done.resize(max_size);
 }
 
+bool ReplayBufferImpl::safe_to_submit()
+{
+    // do checking
+    for(auto it: this->s_prep)
+    {
+        assertm("state variable should not be zero", it != 0);
+        assertm("state variable having too small value", it > 1e-20);
+    }
+    for(auto it: this->s_next_prep)
+    {
+        assertm("state variable should not be zero", it != 0);
+        assertm("state variable having too small value", it > 1e-20);
+    }
+    for(auto it: this->a_prep)
+    {
+        assertm("action variable should not be zero", it != 0);
+    }
+    assertm("done variable should be 0 or 1", (this->done_prep == 0.0 || this->done_prep == 1.0));
+    assertm("state_vector should be empty", this->s_prep.empty());
+    assertm("state_next_vector should be empty", this->s_next_prep.empty());
+    assertm("action_vector should be empty", this->a_prep.empty());
+    return !enter_data_prep_sec;   
+}        
+
 void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done)
 {    
     if(idx >= max_size)
@@ -111,34 +135,40 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
 
 tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> ReplayBufferImpl::sample(vector<int> indecies)
 {
-       // cout << "printing s: " << endl;
-    // for(int i = 0; i < this->idx; i++)
-    // {
-    //     cout << "{ ";
-    //     for(auto it2: this->s[i])
-    //     {
-    //         cout << it2 << " ";
-    //     }
-    //     cout << "}" << endl;
-    // }
-
     int batch_size = indecies.size();
     vector<vector<float>> s;
     vector<vector<float>> a;
     vector<float> r;
     vector<vector<float>> s_next;
     vector<bool> done;
+    cout << "size: " << size << endl;
+    cout << "idx: ";
     for(int i = 0; i < indecies.size(); i++)
     {
         int idx = indecies[i];
-        if(idx > this->max_size)
+        if(idx >= this->size)
             throw std::out_of_range("buffer access index out of bound");
         s.push_back(this->s[idx]);
         a.push_back(this->a[idx]);
         r.push_back(this->r[idx]);
         s_next.push_back(this->s_next[idx]);
         done.push_back(this->done[idx]);
+        cout << idx << " ";
     }
+
+    assertm("batch size should be identical", (s.size() == a.size() && s.size() == r.size() && s.size() == s_next.size() && s.size() == done.size() && s.size() == batch_size));
+    cout << "s raw batch" << endl;
+    for(auto it: s)
+    {
+        cout << it << " ";
+    }
+    cout << endl;
+    cout << "s_next raw batch" << endl;
+    for(auto it: s_next)
+    {
+        cout << it << " ";
+    }
+    cout << endl;
     // flatten the state array
     vector<float> s_flat;
     vector<float> s_next_flat;
@@ -147,6 +177,18 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
         s_flat.insert(s_flat.end(), make_move_iterator(s[i].begin()), make_move_iterator(s[i].end()));
         s_next_flat.insert(s_next_flat.end(), make_move_iterator(s_next[i].begin()), make_move_iterator(s_next[i].end()));
     }
+
+    int state_dim = this->s[0].size();
+    cout << "s_flat" << endl;
+    for(auto it: s_flat)
+        cout << it << " ";
+        cout << endl;
+    cout << "s_next_flat" << endl;
+    for(auto it: s_next_flat)
+        cout << it << " ";
+    cout << endl;
+    assertm("state size should be identical", (s_flat.size() == s_next_flat.size() && s_flat.size() == state_dim * batch_size));
+
     vector<float> action_flat;
     for(int i = 0; i < batch_size; i++)
     {
@@ -170,10 +212,33 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
     r = get<2>(raw_batch);
     s_next_flat = get<3>(raw_batch);
     done = get<4>(raw_batch);
+    
+    // do checking
+    for(auto it: s_flat)
+    {
+        assertm("state variable should not be zero", it != 0);
+        assertm("state variable having too small value", it > 1e-20);
+    }
+    cout << "s_next_flat: " << endl;
+    for(auto it: s_next_flat)
+    {
+        assertm("state variable should not be zero", it != 0);
+        assertm("state variable having too small value", it > 1e-20);
+        cout << it << endl;
+    }
+    for(auto it: done)
+    {
+        assertm("done variable should be 0 or 1", (it == 0.0 || it == 1.0));
+    }
 
     int batch_size = done.size();
     int state_feature_size = this->s[0].size();
     int action_feature_size = this->a[0].size();
+    assertm("state feature size should be same", this->s[0].size() == this->s_next[0].size());
+    cout << "s_next_flat.size(): " << s_next_flat.size() << "batch * state_feature: " << batch_size * state_feature_size << endl;
+    cout << "s_flat.size(): " << s_flat.size() << "batch * state_feature: " << batch_size * state_feature_size << endl;
+    cout << "a.size(): " << a.size() << "batch * action_feature_size: " << batch_size * action_feature_size << endl;
+    cout << "done.size(): " << done.size() << "batch * 1: " << batch_size << endl;
 
     // turn arrays to Tensor
     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();

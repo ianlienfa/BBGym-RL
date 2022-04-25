@@ -19,7 +19,7 @@ set(CMAKE_OSX_ARCHITECTURES "x86_64") # For m1 mac
 set(CMAKE_CXX_STANDARD 20)
 set(PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(HOME_INC_DIR ${PROJECT_PATH}/include)
-add_compile_options(-Wall)
+add_compile_options(-Wall -g)
 
 # Torch related variables
 set(TORCH_PREFIX_PATH "./libtorch")

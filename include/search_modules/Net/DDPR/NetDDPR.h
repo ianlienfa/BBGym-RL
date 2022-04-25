@@ -42,7 +42,7 @@ public:
     // data section for preparation
     void enter_data_prep_section(){enter_data_prep_sec = true;};    
     void leave_data_prep_section(){enter_data_prep_sec = false;};    
-    bool safe_to_submit(){return !enter_data_prep_sec;};        
+    bool safe_to_submit();
     bool isin_prep(){return enter_data_prep_sec;};        
     vector<float> s_prep;
     vector<float> s_next_prep;

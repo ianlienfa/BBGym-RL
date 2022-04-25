@@ -2,12 +2,12 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-4;
-    lr_pi=1e-3;
+    lr_q=1e-5;
+    lr_pi=1e-6;
     polyak=0.995;
-    num_epoch=10;
+    num_epoch=5;
     max_steps=20000;
-    update_start_epoch=4;
+    update_start_epoch=3;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -33,8 +33,8 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     buffer = std::make_shared<ReplayBufferImpl>(buffer_size);
 
     // set up random seeds
-    srand(time(NULL));
-    torch::manual_seed(time(NULL));
+    srand(2);
+    torch::manual_seed(2);
 
     // set up MLP    
     net = NetDDPR(state_dim, action_dim, action_range, load_q_path, load_pi_path);
@@ -208,7 +208,7 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
     {
         // exlpore
         floor = (rand() % (int)(action_range.second)) + 1;
-        assert(("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second)));
+        assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
         noise = (rand() % 100) / 100.0;
         prob = (rand() % 100) / 100.0;
         label = (prob > 0.5) ? floor : noise + floor;
@@ -250,17 +250,19 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     const torch::Tensor &s_next = get<3>(batch_data);
     const torch::Tensor &done = get<4>(batch_data);    
     torch::Tensor target_qval;
+    torch::Tensor raw_target_q;
+    torch::Tensor tar_pi;
     {
         torch::NoGradGuard no_grad;
-        torch::Tensor raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));
+        tar_pi = net_tar->pi->forward(s_next);
+        raw_target_q = net_tar->q->forward(s_next, tar_pi);
+        // raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));
         #if TORCH_DEBUG >= 1
         cout << "raw_target_q: " << raw_target_q << endl;
         cout << "~done" << (~done) << endl;
         cout << "r" << r << endl;
         #endif
         target_qval = r + (~done) * gamma * raw_target_q;
-        // target_qval = r + this->gamma * ~(done) * (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));        
-        // Is this the right way to do it?
     }
     // cout << "target_qval: " << target_qval << endl;
     // cout << "a: " << a << endl;
@@ -272,7 +274,21 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     // cout << "loss_pow2: " << loss << endl;
     // loss = loss.mean();
     // cout << "loss_mean: " << loss << endl;
-    torch::Tensor loss = (net->q->forward(s, a) - target_qval).pow(2).mean();    
+    torch::Tensor loss = (net->q->forward(s, a) - target_qval).pow(2).mean();
+    
+    if(loss.item<float>() > 1e10 || loss.item<float>() != std::numeric_limits<float>::infinity())
+    {
+        cout << "s_next: " << s_next << endl;
+        cout << "s: " << s << endl;
+        cout << "a: " << a << endl;
+        cout << "tar_pi: " << tar_pi << endl;
+        cout << "loss: " << loss.item<float>() << endl;
+        cout << "raw_target_q: " << raw_target_q << endl;
+        cout << "target_qval: " << target_qval << endl;
+        cout << "qval: " << net->q->forward(s, a) << endl;
+        cout << "done: " << done << endl;   
+        throw("the loss is too large"); 
+    }
     return loss;
 }
 
@@ -293,7 +309,6 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     layer_weight_print(*(net->pi));
     cout << "-------------" << endl << endl;
     #endif
-
     
     Batch batch = buffer->getBatchTensor(batch_data);
 
@@ -340,7 +355,7 @@ void DDPRLabeler::update(const RawBatch &batch_data)
 
     // update history tracking
     update_count++;
-    const int mean_size = 100;
+    const int mean_size = 1;
     if(update_count % mean_size == 0)
     {
         float mean_q = std::accumulate(q_loss_vec.begin(), q_loss_vec.end(), 0.0) / mean_size;

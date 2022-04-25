@@ -120,7 +120,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 // Finish the last data prep section
                 labeler->buffer->s_next_prep = s;            
                 // If the new node is search instead of branching nodes from same parent, reward = -1
-                labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? node_reward : 0.0;
+                labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? node_reward : neg_zero_reward;
                 labeler->buffer->done_prep = 0.0;
                 labeler->buffer->leave_data_prep_section();
                 labeler->buffer->submit();
@@ -189,7 +189,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             // create a dummy stateInput only to call the labeler for a terminal state representation return            
             StateInput dummy(current_node, current_node, *this->graph);
             labeler->buffer->s_next_prep = dummy.get_state_encoding(true);            
-            labeler->buffer->reward_prep = 1.0;
+            labeler->buffer->reward_prep = pos_zero_reward;
             labeler->buffer->done_prep = 1.0;
             labeler->buffer->leave_data_prep_section();
             labeler->buffer->submit();

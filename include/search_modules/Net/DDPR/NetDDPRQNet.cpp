@@ -34,6 +34,12 @@ torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor action
         std::cout << "input: " << input << std::endl;
     #endif
     auto output = net->forward(input);
+    if(output.index({0}).item<float>() > 1e10)
+    {
+        std::cout << "state: " << state << std::endl;
+        std::cout << "action: " << action << std::endl;
+        throw("Q(s, a) is too large!");
+    }
     #if TORCH_DEBUG >= 1
     std::cout << "input: " << input << std::endl;
     std::cout << "Q(s, a): " << output << std::endl;
