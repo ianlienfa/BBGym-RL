@@ -7,6 +7,7 @@
 
 typedef std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
 typedef std::tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> RawBatch;
+typedef std::tuple<float, float, float> ActorOut;
 
 struct DDPRLabelerOptions{
     float gamma;
@@ -78,8 +79,9 @@ struct DDPRLabeler: Labeler
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, int operator_option);
-    std::tuple<float, float, float> train(vector<float> flatten, int operator_option);
-    float label_decision(std::tuple<float, float, float>);
+    ActorOut train(vector<float> flatten, int operator_option);
+    float label_decision(const ActorOut &in);
+    float label_decision(ActorOut &in, bool explore, float epsilon=0.5);
     torch::Tensor compute_q_loss(const Batch &batch_data);
     torch::Tensor compute_pi_loss(const Batch &batch_data);
     void update(const RawBatch &batch_data);

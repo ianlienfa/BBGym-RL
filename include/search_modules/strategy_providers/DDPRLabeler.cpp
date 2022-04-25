@@ -184,12 +184,38 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
     return std::make_tuple(prob, noise, floor_label);
 }
 
-float DDPRLabeler::label_decision(std::tuple<float, float, float> in)
+float DDPRLabeler::label_decision(const ActorOut &in)
 {
-    float floor, noise, prob;
-    std::tie(prob, noise, floor) = in;
+    const float &floor = std::get<0>(in);
+    const float &noise = std::get<1>(in);
+    const float &prob = std::get<2>(in);
     return (prob > 0.5) ? floor : noise + floor;
 }
+
+float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
+{
+    if(explore != true)
+        throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
+    float &floor = std::get<0>(in);
+    float &noise = std::get<1>(in);
+    float &prob = std::get<2>(in);
+    float label = (prob > 0.5) ? floor : noise + floor;
+    
+    // implement epsilon greedy
+    if((rand() % 100) / 100.0 < epsilon)
+        return label;
+    else
+    {
+        // exlpore
+        floor = (rand() % (int)(action_range.second)) + 1;
+        assert(("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second)));
+        noise = (rand() % 100) / 100.0;
+        prob = (rand() % 100) / 100.0;
+        label = (prob > 0.5) ? floor : noise + floor;
+        return label;
+    }    
+}
+
 
 float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
 {

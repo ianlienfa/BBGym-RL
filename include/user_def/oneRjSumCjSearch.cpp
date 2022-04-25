@@ -90,7 +90,8 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         {     
             if(labeler->epoch < labeler->update_start_epoch)
             {                
-                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::RANDOM);  
+                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::RANDOM);
+                label = (*labeler).label_decision(out); // plain interpretation  
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
@@ -98,14 +99,14 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             }
             else
             {
-                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::TRAIN);  
+                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::TRAIN);
+                label = (*labeler).label_decision(out, true);  // exploration interpretation
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
                 #endif
             }
-            label = (*labeler).label_decision(out);
-            std::tie(prob, noise, floor) = out;
+            std::tie(prob, noise, floor) = out; // copy for buffer use
             vector<float> action_prep = {prob, noise, floor};
 
             if(!labeler->buffer->isin_prep()) 
