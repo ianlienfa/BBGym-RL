@@ -59,19 +59,20 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s)
     cout << "arg_softmax_map" << endl << this->arg_softmax_map << endl;
     #endif    
 
-    label_softmax = label_softmax.mul(arg_softmax_map);
-    #if TORCH_DEBUG >= 0    
-    if(label_softmax.grad_fn() != NULL)
-        cout << "label_softmax grad_fn: " << label_softmax.grad_fn()->name() << endl;
-    cout << "label_softmax after mul" << endl << label_softmax << endl;
-    #endif
+    // label_softmax = label_softmax.mul(arg_softmax_map);
+    // #if TORCH_DEBUG >= 0    
+    // if(label_softmax.grad_fn() != NULL)
+    //     cout << "label_softmax grad_fn: " << label_softmax.grad_fn()->name() << endl;
+    // cout << "label_softmax after mul" << endl << label_softmax << endl;
+    // #endif
 
-    label_softmax = label_softmax.sum(-1).unsqueeze(-1).floor().add(1.0);
-    #if TORCH_DEBUG >= 0
-    cout << "label_softmax after sum" << endl << label_softmax << endl;
-    #endif
+    // label_softmax = label_softmax.sum(-1).unsqueeze(-1).floor().add(1.0);
+    // #if TORCH_DEBUG >= 0
+    // cout << "label_softmax after sum" << endl << label_softmax << endl;
+    // #endif
 
     torch::Tensor output = torch::hstack({prob, label_in_num, label_softmax});
+
     #if TORCH_DEBUG >= 0
     cout << "output" << endl << output << endl;
     #endif

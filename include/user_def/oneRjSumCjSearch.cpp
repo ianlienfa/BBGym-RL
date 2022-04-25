@@ -84,8 +84,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         vector<float> s = stateInput.get_state_encoding();
         bool inference = INF_MODE;
         float label = 0;   
-        float prob, noise, floor;
-        tuple<float, float, float> out;
+        float prob, noise;
+        vector<float> softmax_prob;
+        tuple<float, float, vector<float>> out;
         if(!inference)
         {     
             if(labeler->epoch < labeler->update_start_epoch && labeler->retrain == false)
@@ -104,9 +105,10 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                     throw std::runtime_error("Labeler returned NaN");
                 #endif
             }
-            label = (*labeler).label_decision(out);
-            std::tie(prob, noise, floor) = out;
-            vector<float> action_prep = {prob, noise, floor};
+            label = (*labeler).label_decision(out); // decide action 
+            std::tie(prob, noise, softmax_prob) = out;
+            vector<float> action_prep = {prob, noise};
+            action_prep.insert(action_prep.end(), softmax_prob.begin(), softmax_prob.end());
 
             if(!labeler->buffer->isin_prep()) 
             {     

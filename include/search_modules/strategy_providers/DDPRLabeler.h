@@ -80,8 +80,8 @@ struct DDPRLabeler: Labeler
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, int operator_option);
-    std::tuple<float, float, float> train(vector<float> flatten, int operator_option);
-    float label_decision(std::tuple<float, float, float>, bool exploration=false);
+    std::tuple<float, float, vector<float>> train(vector<float> flatten, int operator_option);
+    float label_decision(std::tuple<float, float, vector<float>>, bool exploration=false);
     torch::Tensor compute_q_loss(const Batch &batch_data);
     torch::Tensor compute_pi_loss(const Batch &batch_data);
     void update(const RawBatch &batch_data);

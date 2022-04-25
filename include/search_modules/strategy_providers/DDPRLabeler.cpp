@@ -5,9 +5,9 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-5;
     lr_pi=1e-6;
     polyak=0.995;
-    num_epoch=10;
+    num_epoch=5;
     max_steps=20000;
-    update_start_epoch=4;
+    update_start_epoch=3;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -142,7 +142,7 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 // }
 
 // tuple (prob, noise, floor_label)
-std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int operator_option)
+std::tuple<float, float, vector<float>> DDPRLabeler::train(vector<float> flatten, int operator_option)
 {
     #if DEBUG_LEVEL >= 2
     cout << "flattened array: ";
@@ -154,7 +154,7 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
     float label;
     float prob;
     float noise;
-    float floor_label;
+    vector<float> softmax_out;
 
     // forward and get label
     {
@@ -162,7 +162,12 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
         torch::Tensor out = net->pi->forward(tensor_in);
         prob = out.index({0, 0}).item<float>();
         noise = out.index({0, 1}).item<float>();
-        floor_label = out.index({0, 2}).item<float>();
+        cerr << "out: " << out << endl;
+        for(int i = 2; i < 2 + action_range.second - 1; i++)   
+        {     
+            cerr << "softmax " << i << ": " << out.index({0, i}).item<float>() << endl;
+            softmax_out.push_back(out.index({0, i}).item<float>());
+        }
         #if TORCH_DEBUG >= 0
         cout << "prob: " << prob << " noise: " << noise << " floor_label: " << floor_label << endl;
         #endif
@@ -171,7 +176,13 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
     // add exploration noise if training
     if(operator_option == OperatorOptions::RANDOM)
     {
-        floor_label = (rand() % (int)(action_range.second)) + 1;
+        torch::Tensor noise_tensor = torch::nn::functional::softmax(torch::randn({1, int64_t(action_range.second - 1)}, torch::requires_grad(false)), torch::nn::functional::SoftmaxFuncOptions(1));
+        cerr << "noise_tensor: " << noise_tensor << endl;
+        for(int i = 0; i < action_range.second - 1; i++)
+        {
+            softmax_out[i] = noise_tensor.index({0, i}).item<float>();
+            cerr << "noisy softmax " << i << " : " << softmax_out[i] << endl;
+        }
         noise = (rand() % 100) / 100.0;
         noise = (rand() % 2) == 0 ? noise : -noise;
         prob = (rand() % 10 > 2) ? ((rand() % 50) / 100.0 + 0.5): ((rand() % 50) / 100.0 + 0.5);
@@ -202,41 +213,48 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
         // }
         
     }     
-    return std::make_tuple(prob, noise, floor_label);
+    return std::make_tuple(prob, noise, softmax_out);
 }
 
-float DDPRLabeler::label_decision(std::tuple<float, float, float> in, bool exploration)
+float DDPRLabeler::label_decision(std::tuple<float, float, vector<float>> in, bool exploration)
 {
-    float floor, noise, prob;
-    std::tie(prob, noise, floor) = in;
+    auto max_index = [](vector<float> v){ for(int i = 0; i < v.size(); i++) if(v[i] == *max_element(v.begin(), v.end())) return (i+1); throw "max element not found"; };
+    float noise, prob;
+    vector<float> softmax_out;
+    std::tie(prob, noise, softmax_out) = in;
+    bool add_noise = (prob > 0.5) ? true : false;    
+    float label = max_index(softmax_out);
     if(exploration)
     {
-
+        // label be sampled from the softmax distribution
+        
     }
-    return (prob > 0.5) ? floor : noise + floor;
+    return add_noise ? label : noise + label;
 }
 
 float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
 {
-    torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
-    float label;
-    float prob;
-    float noise;
-    float floor_label;
+    // torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
+    // float label;
+    // float prob;
+    // float noise;
+    // float floor_label;
 
-    // forward and get label
-    {
-        InferenceMode guard(true);
-        torch::Tensor out = net->pi->forward(tensor_in);
-        prob = out[0].item<float>();
-        noise = out[1].item<float>();
-        floor_label = out[2].item<float>();  
-        // Clipping and extending is done in forward function
-    }
+    // // forward and get label
+    // {
+    //     InferenceMode guard(true);
+    //     torch::Tensor out = net->pi->forward(tensor_in);
+    //     prob = out[0].item<float>();
+    //     noise = out[1].item<float>();
+    //     floor_label = out[2].item<float>();  
+    //     // Clipping and extending is done in forward function
+    // }
 
-    label = label_decision(std::make_tuple(prob, noise, floor_label));
+    // label = label_decision(std::make_tuple(prob, noise, floor_label));
 
-    return label;
+    // return label;
+    throw("Not implemented");
+    return 0.0;
 }
 
 
@@ -355,11 +373,11 @@ void DDPRLabeler::update(const RawBatch &batch_data)
 
     
     // scheduler step
-    if(update_count % 1000 == 0)
-    {  
-        scheduler_q->step();
-        scheduler_pi->step();         
-    }
+    // if(update_count % 1000 == 0)
+    // {  
+    //     scheduler_q->step();
+    //     scheduler_pi->step();         
+    // }
 
     
     {
