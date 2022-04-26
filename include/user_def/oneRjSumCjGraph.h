@@ -66,6 +66,19 @@ struct OneRjSumCjGraph: SearchGraph
         min_seq = Vi();
         min_obj = numeric_limits<double>::max();        
     }
+#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+    vector<float> get_contour_snapshot(int max_num_contour)
+    {
+        vector<float> contour_snapshot;
+        contour_snapshot.assign(max_num_contour, 0);      
+        int i = 0;  
+        for(auto iter = contours.begin(); iter != contours.end(); iter++, i++){
+            contour_snapshot[i] = iter->second.size() * iter->first;
+        }        
+        return contour_snapshot;
+    }
+#endif
+
 };
 
 #endif

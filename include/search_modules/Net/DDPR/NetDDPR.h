@@ -33,6 +33,9 @@ public:
     vector<float> r;
     vector<vector<float>> s_next;
     vector<bool> done;    
+    vector<vector<float>> contour_snapshot;
+    vector<vector<float>> contour_snapshot_next;
+
     int max_size;
     int s_feature_size;
     int a_feature_size;
@@ -47,14 +50,17 @@ public:
     vector<float> s_prep;
     vector<float> s_next_prep;
     vector<float> a_prep;
+    vector<float> contour_snapshot_prep;   
+    vector<float> contour_snapshot_next_prep;    
+
     float reward_prep;
     bool done_prep;
 
     ReplayBufferImpl(int max_size);    
     int get_size(){return size;}
-    void push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done);
-    tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> sample(vector<int> indecies);
-    tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> raw_batch);
+    void push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done, vector<float> contour_snapshot, vector<float> contour_snapshot_next);
+    tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> sample(vector<int> indecies);
+    tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> raw_batch);
     void submit();
 };
 typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;

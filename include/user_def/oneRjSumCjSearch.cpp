@@ -97,7 +97,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                     throw std::runtime_error("Labeler returned NaN");
                 #endif                
             }
-            else
+            else if(labeler->epoch < labeler->num_epoch)
             {
                 out = (*labeler).train(s, DDPRLabeler::OperatorOptions::TRAIN);
                 label = (*labeler).label_decision(out, true);  // exploration interpretation
@@ -105,6 +105,13 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
                 #endif
+            }
+            else
+            {
+                // last epoch do one inference
+                cout << "INFERENCING ... " << endl;
+                out = (*labeler).train(s, DDPRLabeler::OperatorOptions::INFERENCE);
+                label = (*labeler).label_decision(out);
             }
             std::tie(prob, noise, floor) = out; // copy for buffer use
             assertm("prob not in range", 0.0 <= prob && prob <= 1.0);
@@ -117,11 +124,13 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 labeler->buffer->enter_data_prep_section();
                 labeler->buffer->s_prep = s;
                 labeler->buffer->a_prep = action_prep;
+                labeler->buffer->contour_snapshot_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);
             }
             else
             {
                 // Finish the last data prep section
-                labeler->buffer->s_next_prep = s;            
+                labeler->buffer->s_next_prep = s;   
+                labeler->buffer->contour_snapshot_next_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);         
                 // If the new node is search instead of branching nodes from same parent, reward = -1
                 labeler->buffer->reward_prep = (it == branched_nodes.begin()) ? node_reward : neg_zero_reward;
                 labeler->buffer->done_prep = 0.0;
@@ -136,6 +145,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 labeler->buffer->enter_data_prep_section();
                 labeler->buffer->s_prep = s;
                 labeler->buffer->a_prep = action_prep;
+                labeler->buffer->contour_snapshot_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);
             }
         }
         else
@@ -192,6 +202,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             // create a dummy stateInput only to call the labeler for a terminal state representation return            
             StateInput dummy(current_node, current_node, *this->graph);
             labeler->buffer->s_next_prep = dummy.get_state_encoding();            
+            labeler->buffer->contour_snapshot_next_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);        
             labeler->buffer->reward_prep = pos_zero_reward;
             labeler->buffer->done_prep = 1.0;
             labeler->buffer->leave_data_prep_section();

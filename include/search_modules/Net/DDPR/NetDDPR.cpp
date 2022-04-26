@@ -12,6 +12,9 @@ ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     r.resize(max_size);
     s_next.resize(max_size);
     done.resize(max_size);
+    contour_snapshot.resize(max_size);
+    contour_snapshot_next.resize(max_size);
+
 }
 
 bool ReplayBufferImpl::safe_to_submit()
@@ -28,13 +31,15 @@ bool ReplayBufferImpl::safe_to_submit()
         assertm("state variable having too small value", it > 1e-20);
     }
     assertm("done variable should be 0 or 1", (this->done_prep == 0.0 || this->done_prep == 1.0));
-    // assertm("state_vector should not be empty", (!this->s_prep.empty()));
-    // assertm("state_next_vector should not be empty", (!this->s_next_prep.empty()));
-    // assertm("action_vector should not be empty", (!this->a_prep.empty()));
+    assertm("state_vector should not be empty", (!this->s_prep.empty()));
+    assertm("state_next_vector should not be empty", (!this->s_next_prep.empty()));
+    assertm("action_vector should not be empty", (!this->a_prep.empty()));
+    assertm("contour_snapshot_vector should not be empty", (!this->contour_snapshot_prep.empty()));
+    assertm("contour_snapshot_next_vector should not be empty", (!this->contour_snapshot_next_prep.empty()));
     return !enter_data_prep_sec;   
 }        
 
-void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done)
+void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done, vector<float> contour_snapshot, vector<float> contour_snapshot_next)
 {    
     if(idx >= max_size)
     {
@@ -51,6 +56,9 @@ void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<fl
     this->r[this->idx] = r;
     this->s_next[this->idx] = s_;
     this->done[this->idx] = done;
+    this->contour_snapshot[this->idx] = contour_snapshot;
+    this->contour_snapshot_next[this->idx] = contour_snapshot_next;
+
     this->idx = (this->idx + 1) % max_size;
     this->size = std::min(this->size + 1, max_size);
 }
@@ -68,7 +76,7 @@ void ReplayBufferImpl::submit()
 
     if(safe_to_submit())
     {        
-        this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep);
+        this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep, this->contour_snapshot_prep);
     }
     else
     {
@@ -129,7 +137,7 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     return node_state_encoding;
 }
 
-tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> ReplayBufferImpl::sample(vector<int> indecies)
+tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> ReplayBufferImpl::sample(vector<int> indecies)
 {
     int batch_size = indecies.size();
     vector<vector<float>> s;
@@ -137,6 +145,9 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
     vector<float> r;
     vector<vector<float>> s_next;
     vector<bool> done;
+    vector<vector<float>> contour_snapshot;
+    vector<vector<float>> contour_snapshot_next;
+
     for(int i = 0; i < indecies.size(); i++)
     {
         int idx = indecies[i];
@@ -147,6 +158,8 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
         r.push_back(this->r[idx]);
         s_next.push_back(this->s_next[idx]);
         done.push_back(this->done[idx]);
+        contour_snapshot.push_back(this->contour_snapshot[idx]);
+        contour_snapshot_next.push_back(this->contour_snapshot_next[idx]);
     }
 
     assertm("batch size should be identical", (s.size() == a.size() && s.size() == r.size() && s.size() == s_next.size() && s.size() == done.size() && s.size() == batch_size));
@@ -168,10 +181,21 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> 
     {
         action_flat.insert(action_flat.end(), make_move_iterator(a[i].begin()), make_move_iterator(a[i].end()));
     }
-    return make_tuple(s_flat, action_flat, r, s_next_flat, done);
+    vector<float> contour_snapflat;
+    vector<float> contour_snapflat_next; 
+    for(int i = 0; i < batch_size; i++)
+    {
+        contour_snapflat.insert(contour_snapflat.end(), make_move_iterator(contour_snapshot[i].begin()), make_move_iterator(contour_snapshot[i].end()));
+    }
+    for(int i = 0; i < batch_size; i++)
+    {
+        contour_snapflat_next.insert(contour_snapflat.end(), make_move_iterator(contour_snapshot_next[i].begin()), make_move_iterator(contour_snapshot_next[i].end()));
+    }
+
+    return make_tuple(s_flat, action_flat, r, s_next_flat, done, contour_snapflat, contour_snapflat_next);
 }
 
-tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> raw_batch)
+tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>> raw_batch)
 {
     using std::get, std::make_tuple;
     
@@ -180,12 +204,18 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
     vector<float> a;
     vector<float> r;
     vector<bool> done;
+    vector<float> contour_snapflat;
+    vector<float> contour_snapflat_next;
+
 
     s_flat = get<0>(raw_batch);
     a = get<1>(raw_batch);
     r = get<2>(raw_batch);
     s_next_flat = get<3>(raw_batch);
     done = get<4>(raw_batch);
+    contour_snapflat = get<5>(raw_batch);
+    contour_snapflat_next = get<6>(raw_batch);
+
     
     // do checking
     for(auto it: s_flat)
@@ -206,7 +236,10 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
     int batch_size = done.size();
     int state_feature_size = this->s[0].size();
     int action_feature_size = this->a[0].size();
+    int contour_snapshot_feature_size = this->contour_snapshot[0].size();
     assertm("state feature size should be same", this->s[0].size() == this->s_next[0].size());
+    assertm("contour feature size should be same", this->contour_snapshot[0].size() == this->contour_snapshot_next[0].size());
+
     // turn arrays to Tensor
     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor a_tensor = torch::from_blob(a.data(), {batch_size, action_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
@@ -216,7 +249,9 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
     for(int i = 0; i < batch_size; i++)
         cArr_done[i] = done[i];    
     Tensor done_tensor = torch::from_blob(cArr_done, {batch_size, 1}, torch::TensorOptions().dtype(torch::kBool)).clone();
-    return make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor);
+    Tensor contour_snapshot_tensor = torch::from_blob(contour_snapflat.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor contour_snapshot_next_tensor = torch::from_blob(contour_snapflat_next.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    return make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor, contour_snapshot_tensor, contour_snapshot_next_tensor);
 }
 
 

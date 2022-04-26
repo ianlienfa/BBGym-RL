@@ -5,8 +5,8 @@
 #include "search_modules/strategy_providers/Labeler.h"
 #include "search_modules/Net/DDPR/NetDDPR.h"
 
-typedef std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
-typedef std::tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>> RawBatch;
+typedef std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
+typedef std::tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> RawBatch;
 typedef std::tuple<float, float, float> ActorOut;
 
 struct DDPRLabelerOptions{
@@ -24,6 +24,7 @@ struct DDPRLabelerOptions{
     int64_t update_freq;
     int64_t tail_updates;
     int operator_option;
+    int64_t max_num_contour;
     DDPRLabelerOptions();
 };
 
@@ -47,6 +48,7 @@ struct DDPRLabeler: Labeler
     int64_t update_freq;
     int64_t operator_options;
     int64_t tail_updates;
+    int64_t max_num_contour;
     
     
     NetDDPR net{nullptr};
@@ -73,6 +75,7 @@ struct DDPRLabeler: Labeler
         static constexpr int RANDOM = 0;
         static constexpr int TRAIN = 1;
         static constexpr int INFERENCE = 2;
+        static constexpr int TESTING = 3;
     };
 
     DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path = "", string load_pi_path = "", string q_optim_path = "", string pi_optim_path = "", DDPRLabelerOptions options = DDPRLabelerOptions());    

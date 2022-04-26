@@ -5,15 +5,16 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-5;
     lr_pi=1e-6;
     polyak=0.995;
-    num_epoch=100;
+    num_epoch=50;
     max_steps=20000;
-    update_start_epoch=20;
+    update_start_epoch=10;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
     batch_size=100;
     update_freq=10;
     tail_updates=50;
+    max_num_contour=10000;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
@@ -249,13 +250,16 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     const torch::Tensor &r = get<2>(batch_data);
     const torch::Tensor &s_next = get<3>(batch_data);
     const torch::Tensor &done = get<4>(batch_data);    
+    const torch::Tensor &contour_snapshot = get<5>(batch_data); 
+    const torch::Tensor &contour_snapshot_next = get<6>(batch_data); 
+
     torch::Tensor target_qval;
     torch::Tensor raw_target_q;
     torch::Tensor tar_pi;
     {
         torch::NoGradGuard no_grad;
-        tar_pi = net_tar->pi->forward(s_next);
-        raw_target_q = net_tar->q->forward(s_next, tar_pi);
+        tar_pi = net_tar->pi->forward(s_next, contour_snapshot_next);
+        raw_target_q = net_tar->q->forward(s_next, contour_snapshot_next, tar_pi);
         // raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));
         #if TORCH_DEBUG >= 1
         cout << "raw_target_q: " << raw_target_q << endl;
@@ -274,7 +278,7 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     // cout << "loss_pow2: " << loss << endl;
     // loss = loss.mean();
     // cout << "loss_mean: " << loss << endl;
-    torch::Tensor loss = (net->q->forward(s, a) - target_qval).pow(2).mean();
+    torch::Tensor loss = (net->q->forward(s, contour_snapshot, a) - target_qval).pow(2).mean();
     
     if(loss.item<float>() > 1e10 || loss.item<float>() == std::numeric_limits<float>::infinity())
     {
@@ -295,7 +299,8 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
 torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 {    
     const torch::Tensor &s = get<0>(batch_data);
-    torch::Tensor loss = -(net->q->forward(s, net->pi->forward(s))).mean();
+    const torch::Tensor &contour_snapshot = get<5>(batch_data);
+    torch::Tensor loss = -(net->q->forward(s, contour_snapshot, net->pi->forward(s, contour_snapshot))).mean();
     return loss;
 }
 
