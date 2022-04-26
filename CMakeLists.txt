@@ -125,6 +125,8 @@ add_custom_target(run
 
 add_custom_target(cls
     rm -f *.out
+    rm -f ../saved_model/*.pt
+    rm -f ../saved_model/*.txt
     WORKING_DIRECTORY ${PROJECT_PATH}/build
 )
 
