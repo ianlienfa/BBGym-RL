@@ -19,9 +19,10 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim, Pdd acti
         nn::Linear(32, 1)
     ));
     this->rnn_hidden_size = rnn_hidden_size;
-    this->rnn_num_layers = rnn_num_layers;    
+    this->rnn_num_layers = rnn_num_layers; 
+    // input_size would be 1, and the sequence length would be num_max_contour   
     rnn = register_module("RNN", 
-        torch::nn::RNN(nn::RNNOptions(num_max_contour, rnn_hidden_size).num_layers(rnn_num_layers).dropout(0.5).batch_first(true))
+        torch::nn::RNN(nn::RNNOptions(1, rnn_hidden_size).num_layers(rnn_num_layers).batch_first(true))
     );
 }
 
@@ -31,7 +32,7 @@ torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor contou
     // hidden state init
     torch::Tensor rnn_out;
     int64_t batch_size = state.size(0);
-    this->hidden_state = torch::zeros({batch_size, rnn_num_layers, rnn_hidden_size});
+    this->hidden_state = torch::zeros({rnn_num_layers, batch_size, rnn_hidden_size});
 
     // do rnn encoding on contour snapshot
     std::cout << "contour_snapshot" << std::endl << contour_snapshot << std::endl;
@@ -39,6 +40,7 @@ torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor contou
 
     std::cout << "s.size" << std::endl << state.sizes() << std::endl;
     std::cout << "rnn_out.size" << std::endl << rnn_out.sizes() << std::endl;
+    rnn_out = rnn_out.slice(1, rnn_out.size(1)-1, rnn_out.size(1)).reshape({batch_size, rnn_hidden_size});
     state = torch::cat({state, rnn_out}, 1);
     std::cout << "s.size after concat" << std::endl << state.sizes() << std::endl;
     auto input = torch::cat({state, action}, -1);

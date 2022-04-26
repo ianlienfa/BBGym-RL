@@ -59,27 +59,36 @@ public:
     ReplayBufferImpl(int max_size);    
     int get_size(){return size;}
     void push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done, vector<float> contour_snapshot, vector<float> contour_snapshot_next);
-    tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<float>, vector<float>> sample(vector<int> indecies);
+    tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> sample(vector<int> indecies);    
     tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> raw_batch);
     void submit();
 };
 typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;
 
-struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
-{
+struct NetDDPROptions{
     int64_t state_dim;
     int64_t action_dim;
     Pdd action_range;
+    string q_path = "";
+    string pi_path = "";
+    int64_t max_num_contour = 10000;
+    int64_t rnn_hidden_size = 16;
+    int64_t rnn_num_layers = 1;
+};
 
+struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
+{
+    NetDDPROptions opt;
+    
     NetDDPRActor pi{nullptr};
     NetDDPRQNet q{nullptr};
 
-    NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range, string q_path = "", string pi_path = "");
+    NetDDPRImpl(NetDDPROptions options);
     float act(torch::Tensor s);
     void reset() override
     {
-        pi = register_module("PolicyNet", NetDDPRActor(state_dim, action_range));
-        q = register_module("QNet", NetDDPRQNet(state_dim, action_dim, action_range));    
+        pi = register_module("PolicyNet", NetDDPRActor(opt.state_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers));    
+        q = register_module("QNet", NetDDPRQNet(opt.state_dim, opt.action_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers));
     }
 };
 TORCH_MODULE(NetDDPR);

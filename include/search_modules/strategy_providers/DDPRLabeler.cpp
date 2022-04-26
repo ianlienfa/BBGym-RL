@@ -5,16 +5,18 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-5;
     lr_pi=1e-6;
     polyak=0.995;
-    num_epoch=50;
+    num_epoch=10;
     max_steps=20000;
-    update_start_epoch=10;
+    update_start_epoch=3;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
     batch_size=100;
     update_freq=10;
     tail_updates=50;
-    max_num_contour=10000;
+    max_num_contour=100;
+    rnn_hidden_size = 16;
+    rnn_num_layers = 1;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
@@ -38,7 +40,16 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     torch::manual_seed(2);
 
     // set up MLP    
-    net = NetDDPR(state_dim, action_dim, action_range, load_q_path, load_pi_path);
+    net = std::make_shared<NetDDPRImpl>(NetDDPROptions({
+        .state_dim = state_dim,
+        .action_dim = action_dim,
+        .action_range = action_range,
+        .q_path = load_q_path,
+        .pi_path = load_pi_path,
+        .max_num_contour = options.max_num_contour,
+        .rnn_hidden_size = options.rnn_hidden_size,
+        .rnn_num_layers = options.rnn_num_layers
+    }));
     auto net_copy_ptr = net->clone();
     net_tar = std::dynamic_pointer_cast<NetDDPRImpl>(net_copy_ptr);
 
@@ -105,6 +116,9 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
     update_freq = options.update_freq;
     epsilon = options.epsilon;
     tail_updates = options.tail_updates;
+    max_num_contour = options.max_num_contour;
+    rnn_hidden_size = options.rnn_hidden_size;
+    rnn_num_layers = options.rnn_num_layers;
 }
 
 
@@ -122,16 +136,17 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 // }
 
 // tuple (prob, noise, floor_label)
-std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int operator_option)
+std::tuple<float, float, float> DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option)
 {
     #if DEBUG_LEVEL >= 2
-    cout << "flattened array: ";
-    for(auto it: flatten)
+    cout << "state_flated array: ";
+    for(auto it: state_flat)
         cout<<it<<" ";
     cout<<endl;
     #endif
-    torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
-    float label;
+    torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();    
+    // (N: 1, L: max_num_contour, H_{in}: 1)    
+    torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size()), 1}).clone();  
     float prob;
     float noise;
     float floor_label;
@@ -139,7 +154,7 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> flatten, int op
     // forward and get label
     {
         InferenceMode guard(true);
-        torch::Tensor out = net->pi->forward(tensor_in);
+        torch::Tensor out = net->pi->forward(tensor_s, tensor_contour);
         prob = out.index({0, 0}).item<float>();
         noise = out.index({0, 1}).item<float>();
         floor_label = out.index({0, 2}).item<float>();
@@ -220,25 +235,25 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
 
 float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
 {
-    torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
-    float label;
-    float prob;
-    float noise;
-    float floor_label;
+    // torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
+    // float label;
+    // float prob;
+    // float noise;
+    // float floor_label;
 
-    // forward and get label
-    {
-        InferenceMode guard(true);
-        torch::Tensor out = net->pi->forward(tensor_in);
-        prob = out[0].item<float>();
-        noise = out[1].item<float>();
-        floor_label = out[2].item<float>();  
-        // Clipping and extending is done in forward function
-    }
+    // // forward and get label
+    // {
+    //     InferenceMode guard(true);
+    //     torch::Tensor out = net->pi->forward(tensor_in);
+    //     prob = out[0].item<float>();
+    //     noise = out[1].item<float>();
+    //     floor_label = out[2].item<float>();  
+    //     // Clipping and extending is done in forward function
+    // }
 
-    label = label_decision(std::make_tuple(prob, noise, floor_label));
+    // label = label_decision(std::make_tuple(prob, noise, floor_label));
 
-    return label;
+    // return label;
 }
 
 
@@ -289,7 +304,7 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
         cout << "loss: " << loss.item<float>() << endl;
         cout << "raw_target_q: " << raw_target_q << endl;
         cout << "target_qval: " << target_qval << endl;
-        cout << "qval: " << net->q->forward(s, a) << endl;
+        cout << "qval: " << net->q->forward(s, contour_snapshot, a) << endl;
         cout << "done: " << done << endl;   
         throw("the loss is too large"); 
     }

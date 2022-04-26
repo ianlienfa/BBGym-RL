@@ -25,6 +25,8 @@ struct DDPRLabelerOptions{
     int64_t tail_updates;
     int operator_option;
     int64_t max_num_contour;
+    int64_t rnn_hidden_size;
+    int64_t rnn_num_layers;
     DDPRLabelerOptions();
 };
 
@@ -49,6 +51,8 @@ struct DDPRLabeler: Labeler
     int64_t operator_options;
     int64_t tail_updates;
     int64_t max_num_contour;
+    int64_t rnn_hidden_size;
+    int64_t rnn_num_layers;
     
     
     NetDDPR net{nullptr};
@@ -82,7 +86,7 @@ struct DDPRLabeler: Labeler
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, int operator_option);
-    ActorOut train(vector<float> flatten, int operator_option);
+    ActorOut train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option);
     float label_decision(const ActorOut &in);
     float label_decision(ActorOut &in, bool explore, float epsilon=0.5);
     torch::Tensor compute_q_loss(const Batch &batch_data);

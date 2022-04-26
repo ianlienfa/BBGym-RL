@@ -14,7 +14,6 @@ ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     done.resize(max_size);
     contour_snapshot.resize(max_size);
     contour_snapshot_next.resize(max_size);
-
 }
 
 bool ReplayBufferImpl::safe_to_submit()
@@ -76,7 +75,7 @@ void ReplayBufferImpl::submit()
 
     if(safe_to_submit())
     {        
-        this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep, this->contour_snapshot_prep);
+        this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep, this->contour_snapshot_prep, this->contour_snapshot_next_prep);
     }
     else
     {
@@ -181,21 +180,33 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
     {
         action_flat.insert(action_flat.end(), make_move_iterator(a[i].begin()), make_move_iterator(a[i].end()));
     }
+    #ifndef NDEBUG
+    for(int i = 0; i < batch_size - 1; i++)
+    {
+        assertm("contour size should be identical", contour_snapshot[i].size() == contour_snapshot[i+1].size());
+    }
+    for(int i = 0; i < batch_size - 1; i++)
+    {
+        assertm("contour size should be identical", contour_snapshot_next[i].size() == contour_snapshot_next[i+1].size());
+    }
+    #endif
     vector<float> contour_snapflat;
     vector<float> contour_snapflat_next; 
     for(int i = 0; i < batch_size; i++)
     {
         contour_snapflat.insert(contour_snapflat.end(), make_move_iterator(contour_snapshot[i].begin()), make_move_iterator(contour_snapshot[i].end()));
     }
+    cout << "printing contour_snapshot: " << contour_snapshot.size() << endl;    
     for(int i = 0; i < batch_size; i++)
     {
-        contour_snapflat_next.insert(contour_snapflat.end(), make_move_iterator(contour_snapshot_next[i].begin()), make_move_iterator(contour_snapshot_next[i].end()));
+        cout << contour_snapshot[i] << endl;
+        contour_snapflat_next.insert(contour_snapflat_next.end(), make_move_iterator(contour_snapshot_next[i].begin()), make_move_iterator(contour_snapshot_next[i].end()));
     }
-
+    assertm("In batch, contour and next contour size should be identical", contour_snapflat.size() == contour_snapflat_next.size());
     return make_tuple(s_flat, action_flat, r, s_next_flat, done, contour_snapflat, contour_snapflat_next);
 }
 
-tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>> raw_batch)
+tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> raw_batch)
 {
     using std::get, std::make_tuple;
     
@@ -238,7 +249,7 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor,
     int action_feature_size = this->a[0].size();
     int contour_snapshot_feature_size = this->contour_snapshot[0].size();
     assertm("state feature size should be same", this->s[0].size() == this->s_next[0].size());
-    assertm("contour feature size should be same", this->contour_snapshot[0].size() == this->contour_snapshot_next[0].size());
+    assertm("contour feature size should be same", this->contour_snapshot[0].size() == this->contour_snapshot_next[0].size());    
 
     // turn arrays to Tensor
     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
@@ -249,26 +260,28 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor,
     for(int i = 0; i < batch_size; i++)
         cArr_done[i] = done[i];    
     Tensor done_tensor = torch::from_blob(cArr_done, {batch_size, 1}, torch::TensorOptions().dtype(torch::kBool)).clone();
-    Tensor contour_snapshot_tensor = torch::from_blob(contour_snapflat.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    Tensor contour_snapshot_next_tensor = torch::from_blob(contour_snapflat_next.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor contour_snapshot_tensor = torch::from_blob(contour_snapflat.data(), {batch_size, contour_snapshot_feature_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor contour_snapshot_next_tensor = torch::from_blob(contour_snapflat_next.data(), {batch_size, contour_snapshot_feature_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     return make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor, contour_snapshot_tensor, contour_snapshot_next_tensor);
 }
 
 
-NetDDPRImpl::NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range, string q_path, string pi_path)
+NetDDPRImpl::NetDDPRImpl(NetDDPROptions opt)
 {
-    this->state_dim = state_dim;
-    this->action_dim = action_dim;
-    this->action_range = action_range;
+    this->opt = opt;        
+    assertm("state_dim should be greater than 0", opt.state_dim > 0);
+    assertm("action_dim should be greater than 0", opt.action_dim > 0);
+    assertm("max_num_contour should be greater than 0", opt.max_num_contour > 0);
+    assertm("rnn_hidden_size should be greater than 0", opt.rnn_hidden_size > 0);
+    assertm("rnn_num_layers should be greater than 0", opt.rnn_num_layers > 0);
+    NetDDPRQNet q_net(opt.state_dim, opt.action_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers);
+    NetDDPRActor pi_net(opt.state_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers);    
 
-    NetDDPRQNet q_net(state_dim, action_dim, action_range);    
-    NetDDPRActor pi_net(state_dim, action_range);    
-
-    if(q_path != "" && pi_path != "")
+    if(opt.q_path != "" && opt.pi_path != "")
     {
-        cout << "loading saved model from: " << q_path << " and " << pi_path << endl;
-        torch::load(q_net, q_path);
-        torch::load(pi_net, pi_path);
+        cout << "loading saved model from: " << opt.q_path << " and " << opt.pi_path << endl;
+        torch::load(q_net, opt.q_path);
+        torch::load(pi_net, opt.pi_path);
 
         print_modules(*q_net);
         print_modules(*pi_net);
@@ -282,13 +295,13 @@ NetDDPRImpl::NetDDPRImpl(int64_t state_dim, int64_t action_dim, Pdd action_range
 
 float NetDDPRImpl::act(torch::Tensor s)
 {
-    torch::NoGradGuard no_grad;
-    #if DEBUG_LEVEL >= 2
-    for(const auto &p: this->q->parameters())
-    {
-        cout << p.requires_grad() << endl;
-    }
-    #endif
-    return this->pi->forward(s)[2].item<float>();
+    // torch::NoGradGuard no_grad;
+    // #if DEBUG_LEVEL >= 2
+    // for(const auto &p: this->q->parameters())
+    // {
+    //     cout << p.requires_grad() << endl;
+    // }
+    // #endif
+    // return this->pi->forward(s)[2].item<float>();
 }
 

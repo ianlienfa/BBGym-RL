@@ -77,6 +77,44 @@ struct OneRjSumCjGraph: SearchGraph
         }        
         return contour_snapshot;
     }
+    // clip inserting for rnn, with max_num_contour
+    void clip_insert(int max_num_contour, map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &contour, OneRjSumCjNode &node, int label)
+    {
+        if(contour.size() < max_num_contour)
+        {
+            map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = contour.find(label);
+            if(target_contour_iter == contours.end())
+            {
+                PriorityQueue<OneRjSumCjNode> pq_insert(OneRjSumCjNode::cmpr);
+                pq_insert.push(node);
+                #if DEBUG_LEVEL >=2
+                    cout << "inserting node to contour " << label << ": " << *it  << endl;
+                #endif
+                contours.insert(make_pair(label, pq_insert));
+            }
+            else
+            {
+                target_contour_iter->second.push(node);
+                #if DEBUG_LEVEL >=2
+                    cout << "inserting node to contour " << label << ": " << *it  << endl;
+                #endif
+            }      
+        }  
+        else if(contour.size() == max_num_contour)
+        {
+            // put into the closest contour
+            map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = contour.lower_bound(label);
+            if(target_contour_iter == contours.end())
+            {
+                target_contour_iter--;
+            }
+            target_contour_iter->second.push(node);
+        }
+        else
+        {
+            assertm("Error: contour.size() > max_num_contour", false);
+        }
+    }
 #endif
 
 };
