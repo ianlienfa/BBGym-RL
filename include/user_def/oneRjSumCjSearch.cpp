@@ -83,7 +83,6 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         StateInput stateInput(current_node, *it, *this->graph);
         vector<float> s = stateInput.get_state_encoding();  
         vector<float> contour_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);      
-        cout << "contour_snap: " << contour_snap << endl;
         bool inference = INF_MODE;
         float label = 0;   
         float prob, noise, floor;
@@ -116,6 +115,8 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 // last epoch do one inference
                 cout << "INFERENCING ... " << endl;
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::INFERENCE);
+                auto & [ x, y, z ] = out;
+                cout << "prob: " << x << " noise: " << y << " floor: " << z << endl;
                 label = (*labeler).label_decision(out);
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
             }
@@ -172,7 +173,6 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
 
         // Push the label(action) into contour : step()
         assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
-        cout << "label: " << label << endl;
         this->graph->clip_insert(labeler->max_num_contour, this->graph->contours, *it, label);
     }
 

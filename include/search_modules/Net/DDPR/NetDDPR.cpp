@@ -147,14 +147,14 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
     vector<vector<float>> contour_snapshot;
     vector<vector<float>> contour_snapshot_next;
 
-    cout << "contour_snapshot: " << contour_snapshot.size() << endl;
-    for(auto it: contour_snapshot){
-        cout << it << endl;
-    }
-    cout << "contour_snapshot_next: " << contour_snapshot_next.size() << endl;
-    for(auto it: contour_snapshot_next){
-        cout << it << endl;
-    }    
+    // cout << "contour_snapshot: " << contour_snapshot.size() << endl;
+    // for(auto it: contour_snapshot){
+    //     cout << it << endl;
+    // }
+    // cout << "contour_snapshot_next: " << contour_snapshot_next.size() << endl;
+    // for(auto it: contour_snapshot_next){
+    //     cout << it << endl;
+    // }    
 
     for(int i = 0; i < indecies.size(); i++)
     {
@@ -205,10 +205,8 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
     {
         contour_snapflat.insert(contour_snapflat.end(), make_move_iterator(contour_snapshot[i].begin()), make_move_iterator(contour_snapshot[i].end()));
     }
-    cout << "printing contour_snapshot: " << contour_snapshot.size() << endl;    
     for(int i = 0; i < batch_size; i++)
     {
-        cout << contour_snapshot[i] << endl;
         contour_snapflat_next.insert(contour_snapflat_next.end(), make_move_iterator(contour_snapshot_next[i].begin()), make_move_iterator(contour_snapshot_next[i].end()));
     }
     assertm("In batch, contour and next contour size should be identical", contour_snapflat.size() == contour_snapflat_next.size());

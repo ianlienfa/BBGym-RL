@@ -35,14 +35,10 @@ torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor contou
     this->hidden_state = torch::zeros({rnn_num_layers, batch_size, rnn_hidden_size});
 
     // do rnn encoding on contour snapshot
-    std::cout << "contour_snapshot" << std::endl << contour_snapshot << std::endl;
     std::tie(rnn_out, this->hidden_state) = rnn->forward(contour_snapshot, this->hidden_state);
 
-    std::cout << "s.size" << std::endl << state.sizes() << std::endl;
-    std::cout << "rnn_out.size" << std::endl << rnn_out.sizes() << std::endl;
     rnn_out = rnn_out.slice(1, rnn_out.size(1)-1, rnn_out.size(1)).reshape({batch_size, rnn_hidden_size});
     state = torch::cat({state, rnn_out}, 1);
-    std::cout << "s.size after concat" << std::endl << state.sizes() << std::endl;
     auto input = torch::cat({state, action}, -1);
     #if TORCH_DEBUG >= 1
         std::cout << "action norm: " << action << std::endl;

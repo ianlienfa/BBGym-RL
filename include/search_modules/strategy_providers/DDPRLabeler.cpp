@@ -2,12 +2,12 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-4;
-    lr_pi=1e-5 * 0.3;
+    lr_q=1e-4 * 0.5;
+    lr_pi=1e-5 * 0.5;
     polyak=0.995;
-    num_epoch=10;
+    num_epoch=20;
     max_steps=20000;
-    update_start_epoch=3;
+    update_start_epoch=10;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -202,10 +202,10 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> state_flat, vec
 
 float DDPRLabeler::label_decision(const ActorOut &in)
 {
-    const float &floor = std::get<0>(in);
+    const float &prob = std::get<0>(in);
     const float &noise = std::get<1>(in);
-    const float &prob = std::get<2>(in);
-    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
+    const float &floor = std::get<2>(in);
+    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));    
     return (prob > 0.5) ? floor : noise + floor;
 }
 
@@ -216,12 +216,16 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
     float &prob = std::get<0>(in);
     float &noise = std::get<1>(in);
     float &floor = std::get<2>(in);
-    float label = (prob > 0.5) ? floor : noise + floor;
+    float label = (prob > 0.5) ? floor : noise + floor;    
     assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
     
     // implement epsilon greedy
     if((rand() % 100) / 100.0 < epsilon)
+    {
+        cout << "by model... " << endl;
+        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
         return label;
+    }
     else
     {
         // exlpore
@@ -230,6 +234,8 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
         noise = (rand() % 100) / 100.0;
         prob = (rand() % 100) / 100.0;
         label = (prob > 0.5) ? floor : noise + floor;
+        cout << "epsilon greedy ..." << endl;
+        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
         return label;
     }    
 }
@@ -319,15 +325,7 @@ torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 {    
     const torch::Tensor &s = get<0>(batch_data);
     const torch::Tensor &contour_snapshot = get<5>(batch_data);
-
-    torch::Tensor pi_action = net->pi->forward(s, contour_snapshot);
-    cout << "pi_action: " << pi_action << endl;
-    torch::Tensor q_val = net->q->forward(s, contour_snapshot, pi_action);
-    cout << "q_val: " << q_val << endl;
-    torch::Tensor loss = -q_val.mean();
-    cout << "loss: " << loss << endl;
-
-    // torch::Tensor loss = -(net->q->forward(s, contour_snapshot, net->pi->forward(s, contour_snapshot))).mean();
+    torch::Tensor loss = -(net->q->forward(s, contour_snapshot, net->pi->forward(s, contour_snapshot))).mean();
     return loss;
 }
 

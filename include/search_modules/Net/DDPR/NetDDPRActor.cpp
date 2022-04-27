@@ -51,7 +51,6 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     this->hidden_state = torch::zeros({rnn_num_layers, batch_size, rnn_hidden_size});
 
     // do rnn encoding on contour snapshot
-    cout << "contour snapshot tensor input: " << endl << contour_snapshot << endl;
     // assert the type of tensor, should be float32
     assertm("contour snapshot tensor type error!", contour_snapshot.dtype() == torch::kFloat32);
     std::tie(rnn_out, this->hidden_state) = rnn->forward(contour_snapshot, this->hidden_state);
@@ -59,9 +58,7 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     // concat state and rnn_out    
     // only takes the last rnn_out
     rnn_out = rnn_out.slice(1, rnn_out.size(1)-1, rnn_out.size(1)).reshape({batch_size, rnn_hidden_size});
-    cout << "rnn_out af slicing: " << rnn_out.sizes() << endl << rnn_out << endl;
     s = torch::cat({s, rnn_out}, 1);
-    cout << "s.size after concat" << endl << s.sizes() << endl;
 
     torch::Tensor linear_output = net->forward(s);
 
