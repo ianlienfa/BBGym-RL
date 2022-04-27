@@ -7,7 +7,7 @@
 
 typedef std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> Batch;
 typedef std::tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> RawBatch;
-typedef std::tuple<float, float, float> ActorOut;
+typedef std::tuple<float, float, vector<float>> ActorOut;
 
 struct DDPRLabelerOptions{
     float gamma;
@@ -93,6 +93,9 @@ struct DDPRLabeler: Labeler
     torch::Tensor compute_pi_loss(const Batch &batch_data);
     void update(const RawBatch &batch_data);
     float get_action(const StateInput &input);
+
+    // vec_argmax is 1-based index, for contour_candidates
+    float vec_argmax(const vector<float> &v){return std::distance(v.begin(), std::max_element(v.begin(), v.end())) + 1;}
 };
 
 

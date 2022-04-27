@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<DDPRLabeler> labeler = 
         std::make_shared<DDPRLabeler>(
             int64_t(StateInput(OneRjSumCjNode(), OneRjSumCjNode(), OneRjSumCjGraph()).get_state_encoding().size()), 
-            3, // prob, noise, floor
+            6, // prob, noise, softmax(4)
             Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
                             note that the -5 and 5 should not be a feasible output, 
                             this is to preserve the extendibility of labeling */

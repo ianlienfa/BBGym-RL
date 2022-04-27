@@ -85,8 +85,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         vector<float> contour_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);      
         bool inference = INF_MODE;
         float label = 0;   
-        float prob, noise, floor;
-        tuple<float, float, float> out;
+        float prob, noise;
+        vector<float> softmax;
+        ActorOut out;
         if(!inference)
         {     
             if(labeler->epoch < labeler->update_start_epoch)
@@ -115,18 +116,22 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 // last epoch do one inference
                 cout << "INFERENCING ... " << endl;
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::INFERENCE);
-                auto & [ x, y, z ] = out;
-                cout << "prob: " << x << " noise: " << y << " floor: " << z << endl;
                 label = (*labeler).label_decision(out);
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
             }
             
-            std::tie(prob, noise, floor) = out; // copy for buffer use
+            std::tie(prob, noise, softmax) = out; // copy for buffer use
             assertm("prob not in range", 0.0 <= prob && prob <= 1.0);
             assertm("noise not in range", -1.0 <= noise && noise <= 1.0);
-            assertm("floor_label not in range", 0 < floor && floor < (*labeler).action_range.second);
+            #ifndef NDEBUG
+            for(auto & p : softmax)
+                assertm("softmax not in range", 0.0 <= p && p <= 1.0);
+            #endif
             
-            vector<float> action_prep = {prob, noise, floor};
+            vector<float> action_prep = {prob, noise};
+            action_prep.insert(action_prep.end(), softmax.begin(), softmax.end());
+            cout << "action_prep: " << endl << action_prep << endl;
+
             if(!labeler->buffer->isin_prep()) 
             {     
                 labeler->buffer->enter_data_prep_section();

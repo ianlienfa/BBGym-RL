@@ -70,7 +70,7 @@ struct OneRjSumCjGraph: SearchGraph
     vector<float> get_contour_snapshot(int max_num_contour)
     {
         vector<float> contour_snapshot;
-        contour_snapshot.assign(max_num_contour, 0);      
+        contour_snapshot.assign(max_num_contour, -1);      
         int i = 0;  
         for(auto iter = contours.begin(); iter != contours.end(); iter++, i++){
             contour_snapshot[i] = ((float)(iter->second.size())) * iter->first;

@@ -53,11 +53,15 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     // do rnn encoding on contour snapshot
     // assert the type of tensor, should be float32
     assertm("contour snapshot tensor type error!", contour_snapshot.dtype() == torch::kFloat32);
+    cout << "contour snapshot input" << endl << contour_snapshot << endl;
     std::tie(rnn_out, this->hidden_state) = rnn->forward(contour_snapshot, this->hidden_state);
+    cout << "hidden_state output" << endl << hidden_state << endl;
 
     // concat state and rnn_out    
     // only takes the last rnn_out
+    cout << "rnn bf slice" << endl << rnn_out << endl;
     rnn_out = rnn_out.slice(1, rnn_out.size(1)-1, rnn_out.size(1)).reshape({batch_size, rnn_hidden_size});
+    cout << "rnn_out" << endl << rnn_out << endl;
     s = torch::cat({s, rnn_out}, 1);
 
     torch::Tensor linear_output = net->forward(s);
@@ -85,18 +89,19 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     cout << "arg_softmax_map" << endl << this->arg_softmax_map << endl;
     #endif    
 
-    label_softmax = label_softmax.mul(arg_softmax_map);
-    #if TORCH_DEBUG >= 0    
-    if(label_softmax.grad_fn() != NULL)
-        cout << "label_softmax grad_fn: " << label_softmax.grad_fn()->name() << endl;
-    cout << "label_softmax after mul" << endl << label_softmax << endl;
-    #endif
+    // label_softmax = label_softmax.mul(arg_softmax_map);
+    // #if TORCH_DEBUG >= 0    
+    // if(label_softmax.grad_fn() != NULL)
+    //     cout << "label_softmax grad_fn: " << label_softmax.grad_fn()->name() << endl;
+    // cout << "label_softmax after mul" << endl << label_softmax << endl;
+    // #endif
 
-    label_softmax = label_softmax.sum(-1).unsqueeze(-1).floor().add(1.0);
-    #if TORCH_DEBUG >= 0
-    cout << "label_softmax after sum" << endl << label_softmax << endl;
-    #endif
+    // label_softmax = label_softmax.sum(-1).unsqueeze(-1).floor().add(1.0);
+    // #if TORCH_DEBUG >= 0
+    // cout << "label_softmax after sum" << endl << label_softmax << endl;
+    // #endif
     torch::Tensor output = torch::hstack({prob, label_in_num, label_softmax});
+    cout << "output" << endl << output << endl;
     #if TORCH_DEBUG >= 0
     cout << "output" << endl << output << endl;
     #endif

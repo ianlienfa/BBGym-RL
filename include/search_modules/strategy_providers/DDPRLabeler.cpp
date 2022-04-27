@@ -2,12 +2,12 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-4 * 0.5;
-    lr_pi=1e-5 * 0.5;
+    lr_q=1e-5;
+    lr_pi=1e-6 * 0.5;
     polyak=0.995;
-    num_epoch=20;
+    num_epoch=5;
     max_steps=20000;
-    update_start_epoch=10;
+    update_start_epoch=3;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -136,7 +136,7 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 // }
 
 // tuple (prob, noise, floor_label)
-std::tuple<float, float, float> DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option)
+ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option)
 {
     #if DEBUG_LEVEL >= 2
     cout << "state_flated array: ";
@@ -149,7 +149,7 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> state_flat, vec
     torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size()), 1}).clone();  
     float prob;
     float noise;
-    float floor_label;
+    vector<float> softmax;
 
     // forward and get label
     {
@@ -157,7 +157,10 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> state_flat, vec
         torch::Tensor out = net->pi->forward(tensor_s, tensor_contour);
         prob = out.index({0, 0}).item<float>();
         noise = out.index({0, 1}).item<float>();
-        floor_label = out.index({0, 2}).item<float>();
+        for(int i = 1; i <= action_range.second-1; i++){
+            softmax.push_back(out.index({0, 1+i}).item<float>());
+        }
+        assertm("softmax size is not correct", softmax.size() == out.sizes()[1] - 2);
         #if TORCH_DEBUG >= 0
         cout << "prob: " << prob << " noise: " << noise << " floor_label: " << floor_label << endl;
         #endif
@@ -166,7 +169,8 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> state_flat, vec
     // add exploration noise if training
     if(operator_option == OperatorOptions::RANDOM)
     {
-        floor_label = (rand() % (int)(action_range.second - 1)) + 1;
+        softmax.assign(softmax.size(), 0.0);        
+        softmax[(rand() % softmax.size())] = 1.0;
         noise = (rand() % 100) / 100.0;
         noise = (rand() % 2) == 0 ? noise : -noise;
         prob = (rand() % 10 > 2) ? ((rand() % 50) / 100.0 + 0.5): ((rand() % 50) / 100.0 + 0.5);
@@ -197,14 +201,15 @@ std::tuple<float, float, float> DDPRLabeler::train(vector<float> state_flat, vec
         // }
         
     }     
-    return std::make_tuple(prob, noise, floor_label);
+    return std::make_tuple(prob, noise, softmax);
 }
 
 float DDPRLabeler::label_decision(const ActorOut &in)
 {
     const float &prob = std::get<0>(in);
     const float &noise = std::get<1>(in);
-    const float &floor = std::get<2>(in);
+    const vector<float> &softmax = std::get<2>(in);
+    const float floor = vec_argmax(softmax);
     assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));    
     return (prob > 0.5) ? floor : noise + floor;
 }
@@ -215,7 +220,8 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
         throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
     float &prob = std::get<0>(in);
     float &noise = std::get<1>(in);
-    float &floor = std::get<2>(in);
+    vector<float> &softmax = std::get<2>(in);
+    float floor = vec_argmax(softmax);    
     float label = (prob > 0.5) ? floor : noise + floor;    
     assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
     
@@ -229,7 +235,9 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
     else
     {
         // exlpore
-        floor = (rand() % (int)(action_range.second - 1)) + 1;
+        softmax.assign(softmax.size(), 0.0);
+        softmax[(rand() % softmax.size())] = 1.0;
+        float floor = vec_argmax(softmax);                    
         assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
         noise = (rand() % 100) / 100.0;
         prob = (rand() % 100) / 100.0;
@@ -250,6 +258,7 @@ float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapf
     float prob;
     float noise;
     float floor_label;
+    vector<float> softmax;
 
     // forward and get label
     {
@@ -257,11 +266,13 @@ float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapf
         torch::Tensor out = net->pi->forward(tensor_in, tensor_contour);
         prob = out[0].item<float>();
         noise = out[1].item<float>();
-        floor_label = out[2].item<float>();  
+        for(int i = 1; i <= action_range.second-1; i++){
+            softmax.push_back(out.index({0, 1+i}).item<float>());
+        }                
         // Clipping and extending is done in forward function
     }
 
-    label = label_decision(std::make_tuple(prob, noise, floor_label));
+    label = label_decision(std::make_tuple(prob, noise, softmax));
     assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
     return label;
 }

@@ -75,6 +75,7 @@ void ReplayBufferImpl::submit()
 
     if(safe_to_submit())
     {        
+        cout << "a_prep: " << a_prep << endl;
         this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep, this->contour_snapshot_prep, this->contour_snapshot_next_prep);
     }
     else
@@ -147,15 +148,6 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
     vector<vector<float>> contour_snapshot;
     vector<vector<float>> contour_snapshot_next;
 
-    // cout << "contour_snapshot: " << contour_snapshot.size() << endl;
-    // for(auto it: contour_snapshot){
-    //     cout << it << endl;
-    // }
-    // cout << "contour_snapshot_next: " << contour_snapshot_next.size() << endl;
-    // for(auto it: contour_snapshot_next){
-    //     cout << it << endl;
-    // }    
-
     for(int i = 0; i < indecies.size(); i++)
     {
         int idx = indecies[i];
@@ -168,6 +160,13 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
         done.push_back(this->done[idx]);
         contour_snapshot.push_back(this->contour_snapshot[idx]);
         contour_snapshot_next.push_back(this->contour_snapshot_next[idx]);
+    }
+
+    // sampled action
+    cout << "sampled action: " << endl;
+    for(auto it: a)
+    {
+        cout << it << endl;
     }
 
     assertm("batch size should be identical", (s.size() == a.size() && s.size() == r.size() && s.size() == s_next.size() && s.size() == done.size() && s.size() == batch_size));
@@ -183,6 +182,7 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
 
     int state_dim = this->s[0].size();
     assertm("state size should be identical", (s_flat.size() == s_next_flat.size() && s_flat.size() == state_dim * batch_size));
+    
 
     vector<float> action_flat;
     for(int i = 0; i < batch_size; i++)
