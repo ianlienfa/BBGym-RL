@@ -147,6 +147,15 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
     vector<vector<float>> contour_snapshot;
     vector<vector<float>> contour_snapshot_next;
 
+    cout << "contour_snapshot: " << contour_snapshot.size() << endl;
+    for(auto it: contour_snapshot){
+        cout << it << endl;
+    }
+    cout << "contour_snapshot_next: " << contour_snapshot_next.size() << endl;
+    for(auto it: contour_snapshot_next){
+        cout << it << endl;
+    }    
+
     for(int i = 0; i < indecies.size(); i++)
     {
         int idx = indecies[i];

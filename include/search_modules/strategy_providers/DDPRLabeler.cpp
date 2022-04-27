@@ -2,8 +2,8 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.99;
-    lr_q=1e-5;
-    lr_pi=1e-6;
+    lr_q=1e-4;
+    lr_pi=1e-5 * 0.3;
     polyak=0.995;
     num_epoch=10;
     max_steps=20000;
@@ -14,7 +14,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     batch_size=100;
     update_freq=10;
     tail_updates=50;
-    max_num_contour=100;
+    max_num_contour=50;
     rnn_hidden_size = 16;
     rnn_num_layers = 1;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
@@ -205,6 +205,7 @@ float DDPRLabeler::label_decision(const ActorOut &in)
     const float &floor = std::get<0>(in);
     const float &noise = std::get<1>(in);
     const float &prob = std::get<2>(in);
+    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
     return (prob > 0.5) ? floor : noise + floor;
 }
 
@@ -216,6 +217,7 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
     float &noise = std::get<1>(in);
     float &floor = std::get<2>(in);
     float label = (prob > 0.5) ? floor : noise + floor;
+    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
     
     // implement epsilon greedy
     if((rand() % 100) / 100.0 < epsilon)
@@ -233,27 +235,29 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
 }
 
 
-float DDPRLabeler::operator()(vector<float> flatten, int operator_option)
+float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option)
 {
-    // torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
-    // float label;
-    // float prob;
-    // float noise;
-    // float floor_label;
+    torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
+    torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size()), 1}).clone();  
 
-    // // forward and get label
-    // {
-    //     InferenceMode guard(true);
-    //     torch::Tensor out = net->pi->forward(tensor_in);
-    //     prob = out[0].item<float>();
-    //     noise = out[1].item<float>();
-    //     floor_label = out[2].item<float>();  
-    //     // Clipping and extending is done in forward function
-    // }
+    float label;
+    float prob;
+    float noise;
+    float floor_label;
 
-    // label = label_decision(std::make_tuple(prob, noise, floor_label));
+    // forward and get label
+    {
+        InferenceMode guard(true);
+        torch::Tensor out = net->pi->forward(tensor_in, tensor_contour);
+        prob = out[0].item<float>();
+        noise = out[1].item<float>();
+        floor_label = out[2].item<float>();  
+        // Clipping and extending is done in forward function
+    }
 
-    // return label;
+    label = label_decision(std::make_tuple(prob, noise, floor_label));
+    assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
+    return label;
 }
 
 
@@ -315,7 +319,15 @@ torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 {    
     const torch::Tensor &s = get<0>(batch_data);
     const torch::Tensor &contour_snapshot = get<5>(batch_data);
-    torch::Tensor loss = -(net->q->forward(s, contour_snapshot, net->pi->forward(s, contour_snapshot))).mean();
+
+    torch::Tensor pi_action = net->pi->forward(s, contour_snapshot);
+    cout << "pi_action: " << pi_action << endl;
+    torch::Tensor q_val = net->q->forward(s, contour_snapshot, pi_action);
+    cout << "q_val: " << q_val << endl;
+    torch::Tensor loss = -q_val.mean();
+    cout << "loss: " << loss << endl;
+
+    // torch::Tensor loss = -(net->q->forward(s, contour_snapshot, net->pi->forward(s, contour_snapshot))).mean();
     return loss;
 }
 

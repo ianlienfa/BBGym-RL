@@ -51,14 +51,13 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     this->hidden_state = torch::zeros({rnn_num_layers, batch_size, rnn_hidden_size});
 
     // do rnn encoding on contour snapshot
+    cout << "contour snapshot tensor input: " << endl << contour_snapshot << endl;
+    // assert the type of tensor, should be float32
+    assertm("contour snapshot tensor type error!", contour_snapshot.dtype() == torch::kFloat32);
     std::tie(rnn_out, this->hidden_state) = rnn->forward(contour_snapshot, this->hidden_state);
 
-    // concat state and rnn_out
-    cout << "s.size" << endl << s.sizes() << endl;
-    cout << "rnn_out.size" << endl << rnn_out.sizes() << endl;
-    
+    // concat state and rnn_out    
     // only takes the last rnn_out
-    cout << "rnn_out bf slicing: " << rnn_out.sizes() << endl << rnn_out << endl;
     rnn_out = rnn_out.slice(1, rnn_out.size(1)-1, rnn_out.size(1)).reshape({batch_size, rnn_hidden_size});
     cout << "rnn_out af slicing: " << rnn_out.sizes() << endl << rnn_out << endl;
     s = torch::cat({s, rnn_out}, 1);
@@ -100,11 +99,10 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     #if TORCH_DEBUG >= 0
     cout << "label_softmax after sum" << endl << label_softmax << endl;
     #endif
-
     torch::Tensor output = torch::hstack({prob, label_in_num, label_softmax});
     #if TORCH_DEBUG >= 0
     cout << "output" << endl << output << endl;
     #endif
-
+    
     return output;
 }

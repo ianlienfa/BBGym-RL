@@ -85,7 +85,7 @@ struct DDPRLabeler: Labeler
     DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path = "", string load_pi_path = "", string q_optim_path = "", string pi_optim_path = "", DDPRLabelerOptions options = DDPRLabelerOptions());    
     void fill_option(const DDPRLabelerOptions &options);
     // float operator()(StateInput input);
-    float operator()(vector<float> flatten, int operator_option);
+    float operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option);
     ActorOut train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option);
     float label_decision(const ActorOut &in);
     float label_decision(ActorOut &in, bool explore, float epsilon=0.5);

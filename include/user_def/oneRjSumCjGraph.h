@@ -73,15 +73,16 @@ struct OneRjSumCjGraph: SearchGraph
         contour_snapshot.assign(max_num_contour, 0);      
         int i = 0;  
         for(auto iter = contours.begin(); iter != contours.end(); iter++, i++){
-            contour_snapshot[i] = iter->second.size() * iter->first;
+            contour_snapshot[i] = ((float)(iter->second.size())) * iter->first;
         }        
         return contour_snapshot;
     }
     // clip inserting for rnn, with max_num_contour
-    void clip_insert(int max_num_contour, map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &contour, OneRjSumCjNode &node, int label)
+    void clip_insert(int max_num_contour, map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &contour, OneRjSumCjNode &node, float label)
     {
         if(contour.size() < max_num_contour)
         {
+            assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
             map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = contour.find(label);
             if(target_contour_iter == contours.end())
             {
@@ -108,6 +109,7 @@ struct OneRjSumCjGraph: SearchGraph
             {
                 target_contour_iter--;
             }
+            assertm("should not push into 0 contour: ", target_contour_iter->first != 0);
             target_contour_iter->second.push(node);
         }
         else

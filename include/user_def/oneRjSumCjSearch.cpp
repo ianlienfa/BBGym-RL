@@ -83,6 +83,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         StateInput stateInput(current_node, *it, *this->graph);
         vector<float> s = stateInput.get_state_encoding();  
         vector<float> contour_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);      
+        cout << "contour_snap: " << contour_snap << endl;
         bool inference = INF_MODE;
         float label = 0;   
         float prob, noise, floor;
@@ -93,6 +94,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             {                
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::RANDOM);
                 label = (*labeler).label_decision(out); // plain interpretation  
+                assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
@@ -103,6 +105,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 // for tensor related data, pass by value would be better
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::TRAIN);
                 label = (*labeler).label_decision(out, true);  // exploration interpretation
+                assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
                     throw std::runtime_error("Labeler returned NaN");
@@ -114,12 +117,14 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 cout << "INFERENCING ... " << endl;
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::INFERENCE);
                 label = (*labeler).label_decision(out);
+                assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
             }
+            
             std::tie(prob, noise, floor) = out; // copy for buffer use
             assertm("prob not in range", 0.0 <= prob && prob <= 1.0);
             assertm("noise not in range", -1.0 <= noise && noise <= 1.0);
             assertm("floor_label not in range", 0 < floor && floor < (*labeler).action_range.second);
-
+            
             vector<float> action_prep = {prob, noise, floor};
             if(!labeler->buffer->isin_prep()) 
             {     
@@ -152,12 +157,22 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         }
         else
         {
-            label = (*labeler)(s, DDPRLabeler::OperatorOptions::INFERENCE);  
+            label = (*labeler)(s, contour_snap, DDPRLabeler::OperatorOptions::INFERENCE);  
         }        
         // increase the step count
         labeler->step++;        
 
+        #ifndef NDEBUG
+        auto current_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);
+        for(size_t i = 0; i < contour_snap.size(); i++)
+        {
+            assertm("contour snap should have same value as current snap", current_snap[i] == contour_snap[i]);
+        }
+        #endif
+
         // Push the label(action) into contour : step()
+        assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
+        cout << "label: " << label << endl;
         this->graph->clip_insert(labeler->max_num_contour, this->graph->contours, *it, label);
     }
 
