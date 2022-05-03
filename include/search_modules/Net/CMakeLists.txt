@@ -14,5 +14,11 @@ add_library(
     DDPR/NetDDPR.cpp
 )
 
-target_link_libraries(NetDDPR oneRjSumCjGraph)
+add_library(
+    DDPR
+    DDPR/DDPR.h
+)
+# target_include_directories(DDPR INTERFACE ./DDPR)
+
+target_link_libraries(DDPR NetDDPR oneRjSumCjGraph)
 

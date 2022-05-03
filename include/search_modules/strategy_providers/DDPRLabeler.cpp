@@ -1,13 +1,13 @@
 #include "search_modules/strategy_providers/DDPRLabeler.h"
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
-    gamma=0.99;
+    gamma=0.95;
     lr_q=1e-5;
     lr_pi=1e-6 * 0.5;
     polyak=0.995;
-    num_epoch=5;
+    num_epoch=12;
     max_steps=20000;
-    update_start_epoch=3;
+    update_start_epoch=5;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -146,7 +146,7 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
     #endif
     torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();    
     // (N: 1, L: max_num_contour, H_{in}: 1)    
-    torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size()), 1}).clone();  
+    torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size())}).clone();  
     float prob;
     float noise;
     vector<float> softmax;
@@ -161,8 +161,8 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
             softmax.push_back(out.index({0, 1+i}).item<float>());
         }
         assertm("softmax size is not correct", softmax.size() == out.sizes()[1] - 2);
-        #if TORCH_DEBUG >= 0
-        cout << "prob: " << prob << " noise: " << noise << " floor_label: " << floor_label << endl;
+        #if TORCH_DEBUG >= -1
+        cout << "prob: " << prob << " noise: " << noise << " softmax: " << softmax << endl;
         #endif
         // Clipping and extending is done in forward function
     }
@@ -174,8 +174,8 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
         noise = (rand() % 100) / 100.0;
         noise = (rand() % 2) == 0 ? noise : -noise;
         prob = (rand() % 10 > 2) ? ((rand() % 50) / 100.0 + 0.5): ((rand() % 50) / 100.0 + 0.5);
-        #if TORCH_DEBUG >= 0
-        cout << "RANDOM: " << "floor_label: " << floor_label << " noise: " << noise << " prob: " << prob << endl;
+        #if TORCH_DEBUG >= -1
+        cout << "RANDOM: " << "softmax: " << softmax << " noise: " << noise << " prob: " << prob << endl;
         #endif
     }
     else if(operator_option == OperatorOptions::TRAIN)

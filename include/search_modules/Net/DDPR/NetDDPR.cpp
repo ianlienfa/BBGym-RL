@@ -267,8 +267,8 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor,
     for(int i = 0; i < batch_size; i++)
         cArr_done[i] = done[i];    
     Tensor done_tensor = torch::from_blob(cArr_done, {batch_size, 1}, torch::TensorOptions().dtype(torch::kBool)).clone();
-    Tensor contour_snapshot_tensor = torch::from_blob(contour_snapflat.data(), {batch_size, contour_snapshot_feature_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    Tensor contour_snapshot_next_tensor = torch::from_blob(contour_snapflat_next.data(), {batch_size, contour_snapshot_feature_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor contour_snapshot_tensor = torch::from_blob(contour_snapflat.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor contour_snapshot_next_tensor = torch::from_blob(contour_snapflat_next.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     return make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor, contour_snapshot_tensor, contour_snapshot_next_tensor);
 }
 
@@ -281,8 +281,8 @@ NetDDPRImpl::NetDDPRImpl(NetDDPROptions opt)
     assertm("max_num_contour should be greater than 0", opt.max_num_contour > 0);
     assertm("rnn_hidden_size should be greater than 0", opt.rnn_hidden_size > 0);
     assertm("rnn_num_layers should be greater than 0", opt.rnn_num_layers > 0);
-    NetDDPRQNet q_net(opt.state_dim, opt.action_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers);
-    NetDDPRActor pi_net(opt.state_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers);    
+    NetDDPRQNet q_net(opt);
+    NetDDPRActor pi_net(opt);    
 
     if(opt.q_path != "" && opt.pi_path != "")
     {

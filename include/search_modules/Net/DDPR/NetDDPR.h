@@ -4,6 +4,7 @@
 #include <torch/torch.h>
 // #include "third_party/matplotlibcpp/include/matplotlibcpp.h"
 // #include "util/TorchUtil.h"
+#include "search_modules/Net/DDPR/DDPR.h"
 #include "search_modules/Net/DDPR/NetDDPRActor.h"
 #include "search_modules/Net/DDPR/NetDDPRQNet.h"
 #include "user_def/oneRjSumCjNode.h"
@@ -65,17 +66,6 @@ public:
 };
 typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;
 
-struct NetDDPROptions{
-    int64_t state_dim;
-    int64_t action_dim;
-    Pdd action_range;
-    string q_path = "";
-    string pi_path = "";
-    int64_t max_num_contour = 10000;
-    int64_t rnn_hidden_size = 16;
-    int64_t rnn_num_layers = 1;
-};
-
 struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
 {
     NetDDPROptions opt;
@@ -87,8 +77,8 @@ struct NetDDPRImpl: nn::Cloneable<NetDDPRImpl>
     float act(torch::Tensor s);
     void reset() override
     {
-        pi = register_module("PolicyNet", NetDDPRActor(opt.state_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers));    
-        q = register_module("QNet", NetDDPRQNet(opt.state_dim, opt.action_dim, opt.action_range, opt.max_num_contour, opt.rnn_hidden_size, opt.rnn_num_layers));
+        pi = register_module("PolicyNet", NetDDPRActor(opt));    
+        q = register_module("QNet", NetDDPRQNet(opt));
     }
 };
 TORCH_MODULE(NetDDPR);

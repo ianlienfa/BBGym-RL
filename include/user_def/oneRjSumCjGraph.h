@@ -67,13 +67,14 @@ struct OneRjSumCjGraph: SearchGraph
         min_obj = numeric_limits<double>::max();        
     }
 #if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+    // normalization is done by dividing by 1e4
     vector<float> get_contour_snapshot(int max_num_contour)
     {
         vector<float> contour_snapshot;
-        contour_snapshot.assign(max_num_contour, -1);      
+        contour_snapshot.assign(max_num_contour, 0.0);      
         int i = 0;  
         for(auto iter = contours.begin(); iter != contours.end(); iter++, i++){
-            contour_snapshot[i] = ((float)(iter->second.size())) * iter->first;
+            contour_snapshot[i] = ((float)(iter->second.size())) * iter->first / 1e3;
         }        
         return contour_snapshot;
     }

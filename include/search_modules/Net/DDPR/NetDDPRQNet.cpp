@@ -1,44 +1,27 @@
 #include "search_modules/Net/DDPR/NetDDPRQNet.h"
 
-NetDDPRQNetImpl::NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim, Pdd action_range, int64_t num_max_contour, int64_t rnn_hidden_size, int64_t rnn_num_layers)
+NetDDPRQNetImpl::NetDDPRQNetImpl(const NetDDPROptions &ops)
 {
-    this->action_dim = action_dim;
-    this->state_dim = state_dim;
-    this->action_range = action_range;
+    this->action_dim = ops.action_dim;
+    this->state_dim = ops.state_dim;
+    this->action_range = ops.action_range;    
     net = register_module("Sequential", nn::Sequential(
-        nn::Linear(state_dim+rnn_hidden_size+action_dim, 32),
+        nn::Linear(ops.state_dim + ops.action_dim + ops.max_num_contour, 32),
         nn::ReLU(),
         nn::Linear(32, 64),
         nn::ReLU(),
-        // nn::Linear(64, 256),
-        // nn::ReLU(),
-        // nn::Linear(256, 64),
-        // nn::ReLU(),
         nn::Linear(64, 32),
         nn::ReLU(),
         nn::Linear(32, 1)
     ));
-    this->rnn_hidden_size = rnn_hidden_size;
-    this->rnn_num_layers = rnn_num_layers; 
-    // input_size would be 1, and the sequence length would be num_max_contour   
-    rnn = register_module("RNN", 
-        torch::nn::RNN(nn::RNNOptions(1, rnn_hidden_size).num_layers(rnn_num_layers).batch_first(true))
-    );
 }
 
 
 torch::Tensor NetDDPRQNetImpl::forward(torch::Tensor state, torch::Tensor contour_snapshot, torch::Tensor action)
 {
-    // hidden state init
-    torch::Tensor rnn_out;
     int64_t batch_size = state.size(0);
-    this->hidden_state = torch::zeros({rnn_num_layers, batch_size, rnn_hidden_size});
 
-    // do rnn encoding on contour snapshot
-    std::tie(rnn_out, this->hidden_state) = rnn->forward(contour_snapshot, this->hidden_state);
-
-    rnn_out = rnn_out.slice(1, rnn_out.size(1)-1, rnn_out.size(1)).reshape({batch_size, rnn_hidden_size});
-    state = torch::cat({state, rnn_out}, 1);
+    state = torch::cat({state, contour_snapshot}, 1);
     auto input = torch::cat({state, action}, -1);
     #if TORCH_DEBUG >= 1
         std::cout << "action norm: " << action << std::endl;

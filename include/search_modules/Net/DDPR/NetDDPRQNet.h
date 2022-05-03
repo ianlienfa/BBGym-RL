@@ -3,6 +3,7 @@
 #include <iostream>
 #include <torch/torch.h>
 // #include "third_party/matplotlibcpp/include/matplotlibcpp.h"
+#include "search_modules/Net/DDPR/DDPR.h"
 #include "util/TorchUtil.h"
 #include "util/types.h"
 using namespace torch;
@@ -21,7 +22,7 @@ struct NetDDPRQNetImpl: nn::Module
     nn::RNN rnn{nullptr};
     torch::Tensor hidden_state;
     
-    NetDDPRQNetImpl(int64_t state_dim, int64_t action_dim, Pdd action_range, int64_t num_max_contour = 500, int64_t rnn_hidden_size = 1, int64_t rnn_num_layers = 1);
+    NetDDPRQNetImpl(const NetDDPROptions &ops);
     torch::Tensor forward(torch::Tensor state, torch::Tensor contour_snapshot, torch::Tensor action);
 };
 TORCH_MODULE(NetDDPRQNet);
