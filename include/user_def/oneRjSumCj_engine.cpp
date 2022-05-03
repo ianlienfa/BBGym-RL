@@ -160,6 +160,7 @@ void post_print_config(const OneRjSumCjGraph &graph)
         cout << *it << " ";
     cout << endl;
     cout << "accu_reward: " << graph.accu_reward << endl;
+    cout << "avg_reward: " << graph.avg_reward << endl;
     cout << "=============== Search Ended ===============" << endl;
     cout << endl << endl;
 }

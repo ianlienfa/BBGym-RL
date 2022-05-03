@@ -236,7 +236,12 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         cout << "current_iter: " << this->graph->current_contour_iter->first << endl;
     }
     #endif
-
+    if(this->graph->avg_reward){ 
+        this->graph->avg_reward = this->graph->avg_reward * 0.9 + this->graph->accu_reward * 0.1;
+    }
+    else{
+        this->graph->avg_reward = this->graph->accu_reward;
+    }
     return branched_nodes;
 }
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)

@@ -1,20 +1,20 @@
 #include "search_modules/strategy_providers/DDPRLabeler.h"
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
-    gamma=0.95;
+    gamma=1;
     lr_q=1e-5;
     lr_pi=1e-6 * 0.5;
     polyak=0.995;
-    num_epoch=12;
+    num_epoch=10;
     max_steps=20000;
-    update_start_epoch=5;
+    update_start_epoch=3;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
     batch_size=100;
     update_freq=10;
     tail_updates=50;
-    max_num_contour=50;
+    max_num_contour=10;
     rnn_hidden_size = 16;
     rnn_num_layers = 1;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;

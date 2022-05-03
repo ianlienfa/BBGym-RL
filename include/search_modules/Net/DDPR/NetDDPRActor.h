@@ -19,7 +19,7 @@ struct NetDDPRActorImpl: nn::Module
     torch::Tensor arg_softmax_map;
             
     NetDDPRActorImpl(const NetDDPROptions &ops);    
-    torch::Tensor forward(torch::Tensor s, torch::Tensor contour_snapshot);
+    torch::Tensor forward(torch::Tensor s, torch::Tensor contour_snapshot);    
 };
 TORCH_MODULE(NetDDPRActor);
 #endif

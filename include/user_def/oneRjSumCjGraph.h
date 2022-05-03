@@ -40,13 +40,15 @@ struct OneRjSumCjGraph: SearchGraph
     OneRjSumCjNode current_node;
     bool optimal_found;
     float accu_reward;
+    float avg_reward;
 
     OneRjSumCjGraph(){
         optimal_found = false;
         searched_node_num = 0;
         accu_reward = 0;
+        avg_reward = 0;
     };
-    OneRjSumCjGraph(vector<TIME_TYPE> &processing_time, vector<TIME_TYPE> &release_time, vector<TIME_TYPE> &job_weight, int jobs_num)
+    OneRjSumCjGraph(vector<TIME_TYPE> &processing_time, vector<TIME_TYPE> &release_time, vector<TIME_TYPE> &job_weight, int jobs_num): OneRjSumCjGraph()
     {
         this->processing_time = processing_time;
         this->release_time = release_time;
