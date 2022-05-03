@@ -27,7 +27,7 @@ struct OneRjSumCjSearch: SearchMod
     OneRjSumCjSearch(std::shared_ptr<DDPRLabeler> labeler): labeler(labeler) {}
     const float node_reward = -1e-2;
     const float neg_zero_reward = -1e-7;
-    const float pos_zero_reward = 1;
+    const float pos_zero_reward = 1e-7;
 #endif
     OneRjSumCjSearch();
     bool get_find_optimal();    

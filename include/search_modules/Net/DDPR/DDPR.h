@@ -17,11 +17,4 @@ struct NetDDPROptions{
     int64_t rnn_num_layers = 1;
 };
 
-void initialize_weights_norm(nn::Module& module) {
-    torch::NoGradGuard no_grad;
-    if (auto* linear = module.as<nn::Linear>()) {
-        torch::nn::init::xavier_normal_(linear->weight);
-        torch::nn::init::constant_(linear->bias, 0.01);
-}
-
 #endif

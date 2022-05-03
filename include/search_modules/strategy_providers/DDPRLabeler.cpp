@@ -1,13 +1,13 @@
 #include "search_modules/strategy_providers/DDPRLabeler.h"
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
-    gamma=1;
+    gamma=0.995;
     lr_q=1e-5;
     lr_pi=1e-6 * 0.5;
     polyak=0.995;
-    num_epoch=10;
+    num_epoch=20;
     max_steps=20000;
-    update_start_epoch=3;
+    update_start_epoch=5;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -53,7 +53,7 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     auto net_copy_ptr = net->clone();
     net_tar = std::dynamic_pointer_cast<NetDDPRImpl>(net_copy_ptr);
 
-    #if TORCH_DEBUG >= 1
+    #if TORCH_DEBUG >= -1
     cout << "weight of copied net: " << endl;
     layer_weight_print((*net_copy_ptr));
     

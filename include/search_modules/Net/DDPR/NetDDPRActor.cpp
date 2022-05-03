@@ -22,6 +22,16 @@ NetDDPRActorImpl::NetDDPRActorImpl(const NetDDPROptions& ops)
         this->arg_softmax_map_arr.push_back(float(i));
     }
     this->arg_softmax_map = torch::from_blob(arg_softmax_map_arr.data(), {1, (long long)(ops.action_range.second-1)}, torch::TensorOptions().dtype(torch::kFloat32));
+
+    // weight init
+    auto initialize_weights_norm = [](nn::Module& module) {
+        torch::NoGradGuard no_grad;
+        if (auto* linear = module.as<nn::Linear>()) {
+            torch::nn::init::xavier_normal_(linear->weight);
+            torch::nn::init::constant_(linear->bias, 0.01);
+        }
+    };
+    this->apply(initialize_weights_norm);
 }
 
 torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_snapshot)
