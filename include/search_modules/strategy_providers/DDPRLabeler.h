@@ -87,12 +87,14 @@ struct DDPRLabeler: Labeler
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option);
     ActorOut train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option);
-    float label_decision(const ActorOut &in);
-    float label_decision(ActorOut &in, bool explore, float epsilon=0.5);
+    // float label_decision(const ActorOut &in);
+    // float label_decision(ActorOut &in, bool explore = false, float epsilon=0.5);
+    tuple<ActorOut, float> concept_label_decision(ActorOut &in, bool explore = false, float epsilon=0.5);
     torch::Tensor compute_q_loss(const Batch &batch_data);
     torch::Tensor compute_pi_loss(const Batch &batch_data);
     void update(const RawBatch &batch_data);
     float get_action(const StateInput &input);
+    void grad_toggle(bool on);
 
     // vec_argmax is 1-based index, for contour_candidates
     float vec_argmax(const vector<float> &v){return std::distance(v.begin(), std::max_element(v.begin(), v.end())) + 1;}

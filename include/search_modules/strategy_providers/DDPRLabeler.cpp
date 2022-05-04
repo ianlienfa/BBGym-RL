@@ -5,7 +5,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-5;
     lr_pi=1e-6 * 0.5;
     polyak=0.995;
-    num_epoch=50;
+    num_epoch=100;
     max_steps=20000;
     update_start_epoch=10;
     buffer_size=int64_t(1e6);
@@ -153,7 +153,9 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
 
     // forward and get label
     {
-        InferenceMode guard(true);
+        // InferenceMode guard(true);
+        GRAD_TOGGLE(net->pi, false);
+        GRAD_TOGGLE(net->q, false);
         torch::Tensor out = net->pi->forward(tensor_s, tensor_contour);
         prob = out.index({0, 0}).item<float>();
         noise = out.index({0, 1}).item<float>();
@@ -165,6 +167,8 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
         cout << "prob: " << prob << " noise: " << noise << " softmax: " << softmax << endl;
         #endif
         // Clipping and extending is done in forward function
+        GRAD_TOGGLE(net->pi, true);
+        GRAD_TOGGLE(net->q, true);
     }
     // add exploration noise if training
     if(operator_option == OperatorOptions::RANDOM)
@@ -204,48 +208,83 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
     return std::make_tuple(prob, noise, softmax);
 }
 
-float DDPRLabeler::label_decision(const ActorOut &in)
-{
-    const float &prob = std::get<0>(in);
-    const float &noise = std::get<1>(in);
-    const vector<float> &softmax = std::get<2>(in);
-    const float floor = vec_argmax(softmax);
-    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));    
-    return (prob > 0.5) ? floor : noise + floor;
-}
+// float DDPRLabeler::label_decision(const ActorOut &in)
+// {
+//     const float &prob = std::get<0>(in);
+//     const float &noise = std::get<1>(in);
+//     const vector<float> &softmax = std::get<2>(in);
+//     const float floor = vec_argmax(softmax);
+//     assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));    
+//     return (prob > 0.5) ? floor : noise + floor;
+// }
 
-float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
-{
-    if(explore != true)
-        throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
-    float &prob = std::get<0>(in);
-    float &noise = std::get<1>(in);
-    vector<float> &softmax = std::get<2>(in);
-    float floor = vec_argmax(softmax);    
-    float label = (prob > 0.5) ? floor : noise + floor;    
-    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
+// float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
+// {
+//     if(explore != true)
+//         throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
+//     float &prob = std::get<0>(in);
+//     float &noise = std::get<1>(in);
+//     vector<float> &softmax = std::get<2>(in);
+//     float floor = vec_argmax(softmax);    
+//     float label = (prob > 0.5) ? floor : noise + floor;    
+//     assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
     
-    // implement epsilon greedy
-    if((rand() % 100) / 100.0 < epsilon)
+//     // implement epsilon greedy
+//     if((rand() % 100) / 100.0 < epsilon)
+//     {
+//         cout << "by model... " << endl;
+//         cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
+//     }
+//     else
+//     {
+//         // exlpore
+//         softmax.assign(softmax.size(), 0.0);
+//         softmax[(rand() % softmax.size())] = 1.0;
+//         float floor = vec_argmax(softmax);                    
+//         assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
+//         noise = (rand() % 100) / 100.0;
+//         prob = (rand() % 100) / 100.0;
+//         label = (prob > 0.5) ? floor : noise + floor;
+//         cout << "epsilon greedy ..." << endl;
+//         cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
+//     }    
+
+//     return label;
+// }
+
+
+tuple<ActorOut, float> DDPRLabeler::concept_label_decision(ActorOut &in, bool explore, float epsilon)
+{
+    if(!explore)
     {
-        cout << "by model... " << endl;
-        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
-        return label;
+        const vector<float> &softmax = std::get<2>(in);
+        float label = vec_argmax(softmax);    
+        assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
+        return std::make_tuple(in, label);
     }
     else
     {
-        // exlpore
-        softmax.assign(softmax.size(), 0.0);
-        softmax[(rand() % softmax.size())] = 1.0;
-        float floor = vec_argmax(softmax);                    
-        assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
-        noise = (rand() % 100) / 100.0;
-        prob = (rand() % 100) / 100.0;
-        label = (prob > 0.5) ? floor : noise + floor;
-        cout << "epsilon greedy ..." << endl;
-        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
-        return label;
-    }    
+        vector<float> &softmax = std::get<2>(in);
+        // implement epsilon greedy
+        if((rand() % 100) / 100.0 < epsilon)
+        {
+            float label = vec_argmax(softmax);  
+            cout << "by model... " << endl;
+            cout << " label: " << label << endl;   
+            return std::make_tuple(in, label);     
+        }
+        else
+        {
+            // exlpore
+            softmax.assign(((int)softmax.size()), 0.0);
+            softmax[(rand() % ((int)softmax.size()))] = 1.0;
+            float label = vec_argmax(softmax);                    
+            assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
+            cout << "epsilon greedy ..." << endl;
+            cout << "label" << label << endl;      
+            return std::make_tuple(in, label);  
+        }    
+    }
 }
 
 
@@ -262,17 +301,19 @@ float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapf
 
     // forward and get label
     {
-        InferenceMode guard(true);
+        GRAD_TOGGLE(net->pi, false);
         torch::Tensor out = net->pi->forward(tensor_in, tensor_contour);
         prob = out[0].item<float>();
         noise = out[1].item<float>();
         for(int i = 1; i <= action_range.second-1; i++){
             softmax.push_back(out.index({0, 1+i}).item<float>());
         }                
+        GRAD_TOGGLE(net->pi, true);
         // Clipping and extending is done in forward function
     }
 
-    label = label_decision(std::make_tuple(prob, noise, softmax));
+    auto in = std::make_tuple(prob, noise, softmax);
+    std::tie(in, label) = concept_label_decision(in);
     assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
     return label;
 }
@@ -292,8 +333,7 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     torch::Tensor target_qval;
     torch::Tensor raw_target_q;
     torch::Tensor tar_pi;
-    {
-        torch::NoGradGuard no_grad;
+    {        
         tar_pi = net_tar->pi->forward(s_next, contour_snapshot_next);
         raw_target_q = net_tar->q->forward(s_next, contour_snapshot_next, tar_pi);
         // raw_target_q = (net_tar->q->forward(s_next, net_tar->pi->forward(s_next)));
@@ -414,7 +454,12 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     
     {
         // update target network
-        torch::NoGradGuard no_grad;
+            
+        for(auto& p : net->q->parameters())
+            p.requires_grad_(false);
+        for(auto& p : net->pi->parameters())
+            p.requires_grad_(false);
+
         #if TORCH_DEBUG >= 1
         cout << "no grad" << endl;
         cout << "-------------" << endl;
@@ -430,17 +475,9 @@ void DDPRLabeler::update(const RawBatch &batch_data)
 
         auto p_iter = param_pi.begin();
         auto p_tar_iter = param_pi_tar.begin();
+
         while (p_iter != param_pi.end())
-        {
-            #if VALIDATION_LEVEL == validation_level_HIGH
-            if ((*p_iter).sizes() != (*p_tar_iter).sizes())
-            {
-                cout << "p_iter: " << (*p_iter).sizes() << endl;
-                cout << "p_tar_iter: " << (*p_tar_iter).sizes() << endl;
-                throw std::runtime_error("parameter size mismatch");
-            }            
-            #endif
-       
+        {                   
             (*p_tar_iter).mul_(this->polyak);            
             (*p_tar_iter).add_((1 - this->polyak) * (*p_iter));
 
@@ -448,23 +485,26 @@ void DDPRLabeler::update(const RawBatch &batch_data)
             ++p_tar_iter;
         }
 
-        p_iter = param_q.begin();
-        p_tar_iter = param_q_tar.begin();
-        while (p_iter != param_q.end())
-        {
-            #if VALIDATION_LEVEL == validation_level_HIGH
-            if ((*p_iter).sizes() != (*p_tar_iter).sizes())
-            {
-                cout << "p_iter: " << (*p_iter).sizes() << endl;
-                cout << "p_tar_iter: " << (*p_tar_iter).sizes() << endl;
-                throw std::runtime_error("parameter size mismatch");
-            }            
-            #endif
-            (*p_tar_iter).mul_(this->polyak);            
-            (*p_tar_iter).add_((1 - this->polyak) * (*p_iter));
+ 
+        // slow down the update of q-network
+        // if(update_count % 10 == 0)
+        // {            
+            p_iter = param_q.begin();
+            p_tar_iter = param_q_tar.begin();
+            while (p_iter != param_q.end())
+            {         
+                (*p_tar_iter).mul_(this->polyak);            
+                (*p_tar_iter).add_((1 - this->polyak) * (*p_iter));
 
-            ++p_iter;
-            ++p_tar_iter;
-        }
+                ++p_iter;
+                ++p_tar_iter;
+            }
+        // }
+
+        for(auto& p : net->q->parameters())
+            p.requires_grad_(true);
+        for(auto& p : net->pi->parameters())
+            p.requires_grad_(true);
+
     }
 }

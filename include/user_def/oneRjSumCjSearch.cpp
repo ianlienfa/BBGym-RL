@@ -93,7 +93,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             if(labeler->epoch < labeler->update_start_epoch)
             {                
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::RANDOM);
-                label = (*labeler).label_decision(out); // plain interpretation  
+                std::tie(out, label) = (*labeler).concept_label_decision(out); // plain interpretation  
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
@@ -104,7 +104,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             {
                 // for tensor related data, pass by value would be better
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::TRAIN);
-                label = (*labeler).label_decision(out, true);  // exploration interpretation
+                std::tie(out, label) = (*labeler).concept_label_decision(out, true); // exploration interpretation                
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
                 #if TORCH_DEBUG == 1                        
                 if(std::isnan(label))
@@ -116,7 +116,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 // last epoch do one inference
                 cout << "INFERENCING ... " << endl;
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::INFERENCE);
-                label = (*labeler).label_decision(out);
+                std::tie(out, label) = (*labeler).concept_label_decision(out); // plain interpretation  
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
             }
             
