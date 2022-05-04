@@ -73,7 +73,7 @@ struct OneRjSumCjGraph: SearchGraph
     {
         const float norm_factor = 1e3;
         vector<float> contour_snapshot;
-        contour_snapshot.assign(max_num_contour, 0.0);      
+        contour_snapshot.assign(max_num_contour, -1e-11);      
         int i = 0;  
         for(auto iter = contours.begin(); iter != contours.end(); iter++, i++){
             contour_snapshot[i] = ((float)(iter->second.size())) * iter->first / norm_factor;

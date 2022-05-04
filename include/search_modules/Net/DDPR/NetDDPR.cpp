@@ -89,7 +89,6 @@ void ReplayBufferImpl::submit()
 
 vector<float> StateInput::get_state_encoding(bool get_terminal)
 {    
-    const float epsilon = 1e-6;
     vector<float> state_encoding;
 
     // for terminal state
@@ -102,13 +101,8 @@ vector<float> StateInput::get_state_encoding(bool get_terminal)
 
     vector<float> current_node_state = flatten_and_norm(this->node);
     vector<float> parent_node_state = flatten_and_norm(this->node_parent);
-
     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
     state_encoding.insert(state_encoding.end(), make_move_iterator(parent_node_state.begin()), make_move_iterator(parent_node_state.end()));
-
-    // norm_feasible_solution
-    float norm_current_feasible_solution = (graph.min_obj+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
-    state_encoding.push_back(norm_current_feasible_solution);
 
     // initialize the state encoding dimension
     if(state_dim == 0) state_dim = state_encoding.size();    
@@ -119,7 +113,8 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
 {   
     float state_processed_rate = 0.0,
         norm_lb = 0.0,
-        norm_weighted_completion_time = 0.0
+        norm_weighted_completion_time = 0.0,
+        norm_current_feasible_solution = 0.0
     ;
     const float epsilon = 1e-6;
     vector<float> node_state_encoding;
@@ -135,6 +130,10 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     // norm_weighted_completion_timeπ
     norm_weighted_completion_time = (node.weighted_completion_time+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
     node_state_encoding.push_back(norm_weighted_completion_time);
+
+    // norm_feasible_solution
+    norm_current_feasible_solution = (graph.min_obj+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
+    node_state_encoding.push_back(norm_current_feasible_solution);
 
     return node_state_encoding;
 }

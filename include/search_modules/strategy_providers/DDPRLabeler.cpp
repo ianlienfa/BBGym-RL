@@ -5,7 +5,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-5;
     lr_pi=1e-6 * 0.5;
     polyak=0.995;
-    num_epoch=100;
+    num_epoch=200;
     max_steps=20000;
     update_start_epoch=5;
     buffer_size=int64_t(1e6);
@@ -14,7 +14,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     batch_size=100;
     update_freq=10;
     tail_updates=50;
-    max_num_contour=5;
+    max_num_contour=10;
     rnn_hidden_size = 16;
     rnn_num_layers = 1;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
