@@ -2,6 +2,7 @@
 #define ONE_RJ_SUM_CJ_GRAPH_H
 
 #include <vector>
+#include <iomanip>
 #include <queue>
 #include <map>
 #include <limits>
@@ -75,8 +76,12 @@ struct OneRjSumCjGraph: SearchGraph
         vector<float> contour_snapshot;
         contour_snapshot.assign(max_num_contour, -1e-11);      
         int i = 0;  
-        for(auto iter = contours.begin(); iter != contours.end(); iter++, i++){
-            contour_snapshot[i] = ((float)(iter->second.size())) * iter->first / norm_factor;
+        for(auto iter = contours.begin(); iter != contours.end(); iter++){
+            if((!iter->second.empty()) && (iter->first != 0.0)){
+                contour_snapshot[i] = ((float)(iter->second.size())) * iter->first / norm_factor;
+                i++;
+            }      
+            assertm("snapshot with zero value", contour_snapshot[i] != 0);
         }        
         return contour_snapshot;
     }
