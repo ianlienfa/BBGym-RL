@@ -209,7 +209,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             StateInput dummy(current_node, current_node, *this->graph);
             labeler->buffer->s_next_prep = dummy.get_state_encoding();            
             labeler->buffer->contour_snapshot_next_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);        
-            labeler->buffer->reward_prep = neg_zero_reward;
+            labeler->buffer->reward_prep = pos_zero_reward;
             labeler->buffer->done_prep = 1.0;
             labeler->buffer->leave_data_prep_section();
             labeler->buffer->submit();

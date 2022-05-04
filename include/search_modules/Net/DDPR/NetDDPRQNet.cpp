@@ -22,7 +22,7 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(const NetDDPROptions &ops)
             torch::nn::init::constant_(linear->bias, 0.01);
         }
     };
-    this->apply(initialize_weights_norm);
+    // this->apply(initialize_weights_norm);
 }
 
 

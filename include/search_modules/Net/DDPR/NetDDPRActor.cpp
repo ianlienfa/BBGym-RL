@@ -67,11 +67,7 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     torch::Tensor prob = (tensor_bf_split[0]).sigmoid();
     
     // label_in_num : activation -- 2 / (1 + e^(-x)) - 1
-    torch::Tensor label_in_num = (tensor_bf_split[1]);
-    label_in_num = torch::mul(label_in_num, -1);
-    label_in_num = torch::add(torch::exp(label_in_num), 1);
-    label_in_num = torch::mul(torch::reciprocal(label_in_num), 2);
-    label_in_num = torch::sub(label_in_num, 1);
+    torch::Tensor label_in_num = (tensor_bf_split[1]).tanh();
 
     // // label_softmax
     torch::Tensor label_softmax = (tensor_bf_split[2]);
