@@ -2,12 +2,12 @@
 
 DDPRLabelerOptions::DDPRLabelerOptions(){
     gamma=0.995;
-    lr_q=1e-5;
-    lr_pi=1e-6 * 0.5;
+    lr_q=1e-6;
+    lr_pi=1e-6 * 0.3;
     polyak=0.995;
-    num_epoch=100;
+    num_epoch=200;
     max_steps=20000;
-    update_start_epoch=10;
+    update_start_epoch=20;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -34,10 +34,6 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
 
     // set up buffer
     buffer = std::make_shared<ReplayBufferImpl>(buffer_size);
-
-    // set up random seeds
-    srand(2);
-    torch::manual_seed(2);
 
     // set up MLP    
     net = std::make_shared<NetDDPRImpl>(NetDDPROptions({
@@ -291,7 +287,7 @@ tuple<ActorOut, float> DDPRLabeler::concept_label_decision(ActorOut &in, bool ex
 float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option)
 {
     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
-    torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size()), 1}).clone();  
+    torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size())}).clone();  
 
     float label;
     float prob;
@@ -303,8 +299,8 @@ float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapf
     {
         GRAD_TOGGLE(net->pi, false);
         torch::Tensor out = net->pi->forward(tensor_in, tensor_contour);
-        prob = out[0].item<float>();
-        noise = out[1].item<float>();
+        prob = out.index({0, 0}).item<float>();
+        noise = out.index({0, 1}).item<float>();
         for(int i = 1; i <= action_range.second-1; i++){
             softmax.push_back(out.index({0, 1+i}).item<float>());
         }                

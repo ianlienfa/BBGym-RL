@@ -124,8 +124,11 @@ int main(int argc, char* argv[])
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
     {              
-        srand(time(NULL));
-        torch::manual_seed(time(NULL));                  
+        int rand_seed = 1651652038;
+        cerr << "Random seed: " << rand_seed << endl;
+        srand(rand_seed);
+        torch::manual_seed(rand_seed);    
+                      
         string filename(argv[2]);  
         for(int epoch = 1; epoch <= labeler->num_epoch; epoch++)              
         {                
@@ -194,7 +197,6 @@ int main(int argc, char* argv[])
     {        
         // read problem
         #define INSTANCE_NUM 42
-        srand(time(NULL));
         InputHandler inputHandler((string(argv[1])));
         string filepath;
         int instance_idx = INSTANCE_NUM;

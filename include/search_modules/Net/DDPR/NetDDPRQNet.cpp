@@ -14,18 +14,19 @@ NetDDPRQNetImpl::NetDDPRQNetImpl(const NetDDPROptions &ops)
         nn::ReLU(),
         nn::Linear(32, 1)
     ));
-    // {
-    //     torch::NoGradGuard no_grad;
-    //     // weight init
-    //     auto initialize_weights_norm = [](nn::Module& module) {
-    //         torch::NoGradGuard no_grad;
-    //         if (auto* linear = module.as<nn::Linear>()) {
-    //             torch::nn::init::xavier_normal_(linear->weight);
-    //             torch::nn::init::constant_(linear->bias, 0.01);
-    //         }
-    //     };
-    //     this->apply(initialize_weights_norm);
-    // }
+
+    {
+        torch::NoGradGuard no_grad;
+        // weight init
+        auto initialize_weights_norm = [](nn::Module& module) {
+            torch::NoGradGuard no_grad;
+            if (auto* linear = module.as<nn::Linear>()) {
+                torch::nn::init::kaiming_uniform_(linear->weight);
+                torch::nn::init::constant_(linear->bias, 0.01);
+            }
+        };
+        this->apply(initialize_weights_norm);
+    }
 }
 
 
