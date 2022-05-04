@@ -5,9 +5,9 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-6;
     lr_pi=1e-6 * 0.3;
     polyak=0.995;
-    num_epoch=200;
+    num_epoch=300;
     max_steps=20000;
-    update_start_epoch=20;
+    update_start_epoch=30;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -204,49 +204,49 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
     return std::make_tuple(prob, noise, softmax);
 }
 
-// float DDPRLabeler::label_decision(const ActorOut &in)
-// {
-//     const float &prob = std::get<0>(in);
-//     const float &noise = std::get<1>(in);
-//     const vector<float> &softmax = std::get<2>(in);
-//     const float floor = vec_argmax(softmax);
-//     assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));    
-//     return (prob > 0.5) ? floor : noise + floor;
-// }
+float DDPRLabeler::label_decision(const ActorOut &in)
+{
+    const float &prob = std::get<0>(in);
+    const float &noise = std::get<1>(in);
+    const vector<float> &softmax = std::get<2>(in);
+    const float floor = vec_argmax(softmax);
+    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));    
+    return (prob > 0.5) ? floor : noise + floor;
+}
 
-// float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
-// {
-//     if(explore != true)
-//         throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
-//     float &prob = std::get<0>(in);
-//     float &noise = std::get<1>(in);
-//     vector<float> &softmax = std::get<2>(in);
-//     float floor = vec_argmax(softmax);    
-//     float label = (prob > 0.5) ? floor : noise + floor;    
-//     assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
+float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
+{
+    if(explore != true)
+        throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
+    float &prob = std::get<0>(in);
+    float &noise = std::get<1>(in);
+    vector<float> &softmax = std::get<2>(in);
+    float floor = vec_argmax(softmax);    
+    float label = (prob > 0.5) ? floor : noise + floor;    
+    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
     
-//     // implement epsilon greedy
-//     if((rand() % 100) / 100.0 < epsilon)
-//     {
-//         cout << "by model... " << endl;
-//         cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
-//     }
-//     else
-//     {
-//         // exlpore
-//         softmax.assign(softmax.size(), 0.0);
-//         softmax[(rand() % softmax.size())] = 1.0;
-//         float floor = vec_argmax(softmax);                    
-//         assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
-//         noise = (rand() % 100) / 100.0;
-//         prob = (rand() % 100) / 100.0;
-//         label = (prob > 0.5) ? floor : noise + floor;
-//         cout << "epsilon greedy ..." << endl;
-//         cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
-//     }    
+    // implement epsilon greedy
+    if((rand() % 100) / 100.0 < epsilon)
+    {
+        cout << "by model... " << endl;
+        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
+    }
+    else
+    {
+        // exlpore
+        softmax.assign(softmax.size(), 0.0);
+        softmax[(rand() % softmax.size())] = 1.0;
+        float floor = vec_argmax(softmax);                    
+        assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
+        noise = (rand() % 100) / 100.0;
+        prob = (rand() % 100) / 100.0;
+        label = (prob > 0.5) ? floor : noise + floor;
+        cout << "epsilon greedy ..." << endl;
+        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
+    }    
 
-//     return label;
-// }
+    return label;
+}
 
 
 tuple<ActorOut, float> DDPRLabeler::concept_label_decision(ActorOut &in, bool explore, float epsilon)
@@ -309,7 +309,7 @@ float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapf
     }
 
     auto in = std::make_tuple(prob, noise, softmax);
-    std::tie(in, label) = concept_label_decision(in);
+    label = label_decision(in);
     assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
     return label;
 }

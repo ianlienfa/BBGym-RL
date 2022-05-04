@@ -87,8 +87,8 @@ struct DDPRLabeler: Labeler
     // float operator()(StateInput input);
     float operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option);
     ActorOut train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option);
-    // float label_decision(const ActorOut &in);
-    // float label_decision(ActorOut &in, bool explore = false, float epsilon=0.5);
+    float label_decision(const ActorOut &in);
+    float label_decision(ActorOut &in, bool explore, float epsilon=0.5);
     tuple<ActorOut, float> concept_label_decision(ActorOut &in, bool explore = false, float epsilon=0.5);
     torch::Tensor compute_q_loss(const Batch &batch_data);
     torch::Tensor compute_pi_loss(const Batch &batch_data);

@@ -74,14 +74,15 @@ struct OneRjSumCjGraph: SearchGraph
     {
         const float norm_factor = 1e3;
         vector<float> contour_snapshot;
+        assertm("contour size exceeds max_num_contour", max_num_contour >= contours.size());
         contour_snapshot.assign(max_num_contour, -1e-11);      
         int i = 0;  
         for(auto iter = contours.begin(); iter != contours.end(); iter++){
             if((!iter->second.empty()) && (iter->first != 0.0)){
                 contour_snapshot[i] = ((float)(iter->second.size())) * iter->first / norm_factor;
+                assertm("snapshot with zero value", contour_snapshot[i] != 0.0);
                 i++;
-            }      
-            assertm("snapshot with zero value", contour_snapshot[i] != 0);
+            }    
         }        
         return contour_snapshot;
     }

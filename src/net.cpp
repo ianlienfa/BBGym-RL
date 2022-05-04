@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
     {              
-        int rand_seed = 1651652038;
+        int rand_seed = time(NULL);
         cerr << "Random seed: " << rand_seed << endl;
         srand(rand_seed);
         torch::manual_seed(rand_seed);    
