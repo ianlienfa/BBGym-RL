@@ -28,6 +28,7 @@ struct DDPRLabelerOptions{
     int64_t rnn_hidden_size;
     int64_t rnn_num_layers;
     int64_t update_delay;
+    float entropy_lambda;
     DDPRLabelerOptions();
 };
 
@@ -55,6 +56,7 @@ struct DDPRLabeler: Labeler
     int64_t rnn_hidden_size;
     int64_t rnn_num_layers;
     int64_t update_delay;
+    float entropy_lambda;
     
     NetDDPR net{nullptr};
     NetDDPR net_tar{nullptr};    

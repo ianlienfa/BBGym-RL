@@ -5,9 +5,9 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-6;
     lr_pi=1e-6 * 0.3;
     polyak=0.995;
-    num_epoch=300;
+    num_epoch=1000;
     max_steps=20000;
-    update_start_epoch=30;
+    update_start_epoch=50;
     buffer_size=int64_t(1e6);
     noise_scale=0.1;
     epsilon = 0.5;
@@ -18,6 +18,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     rnn_hidden_size = 16;
     rnn_num_layers = 1;
     update_delay = 2;
+    entropy_lambda = 0.1;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
@@ -117,6 +118,7 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
     rnn_hidden_size = options.rnn_hidden_size;
     rnn_num_layers = options.rnn_num_layers;
     update_delay = options.update_delay;
+    entropy_lambda = options.entropy_lambda;
 }
 
 
@@ -374,13 +376,15 @@ torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 {    
     const torch::Tensor &s = get<0>(batch_data);
     const torch::Tensor &contour_snapshot = get<5>(batch_data);
-    torch::Tensor loss = -(net->q->forward(s, contour_snapshot, net->pi->forward(s, contour_snapshot))).mean();
+    torch::Tensor action_pred = net->pi->forward(s, contour_snapshot);
+    torch::Tensor loss = -(net->q->forward(s, contour_snapshot, action_pred)).mean();
     return loss;
 }
 
 void DDPRLabeler::update(const RawBatch &batch_data)
 {       
     using std::cout, std::endl; 
+    const int mean_size = 1;
     #if TORCH_DEBUG >= -1
     cout << "before update" << endl;
     cout << "-------------" << endl;
@@ -410,99 +414,101 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     cout << "-------------" << endl << endl;
     #endif
 
-    // stablize the gradient for q-network
-    for(auto& p : net->q->parameters())
-        p.requires_grad_(false);
-
-    // update pi
-    optimizer_pi->zero_grad();       
-    torch::Tensor pi_loss = compute_pi_loss(batch);
-    pi_loss_vec.push_back(pi_loss.item<float>());
-    #if TORCH_DEBUG >= 1
-    cout << "action tensor after pi update" << endl;
-    cout << get<1>(batch) << endl;
-    #endif
-    pi_loss.backward();
-    optimizer_pi->step();
-
-    #if TORCH_DEBUG >= 1
-    cout << "updated pi" << endl;
-    cout << "-------------" << endl;
-    layer_weight_print(*(net->pi));
-    cout << "-------------" << endl << endl;
-    #endif
-
-    // update history tracking
-    update_count++;
-    const int mean_size = 1;
+    // update history tracking, track q_loss
     if(update_count % mean_size == 0)
     {
         float mean_q = std::accumulate(q_loss_vec.begin(), q_loss_vec.end(), 0.0) / mean_size;
-        float mean_pi = std::accumulate(pi_loss_vec.begin(), pi_loss_vec.end(), 0.0) / mean_size;
         q_loss_vec.clear();
-        pi_loss_vec.clear();
         q_mean_loss.push_back(mean_q);
-        pi_mean_loss.push_back(mean_pi);
     }
+    cout << "update_count: " << update_count << ", updating q" << endl;
 
+    // update pi for every update_delay steps
+    if(update_count % update_delay == 0)
+    {    
 
-    // resume gradient computation for q-network
-    for(auto& p : net->q->parameters())
-        p.requires_grad_(true);
-    
-    {
-        // update target network
-            
+        cout << "update_count: " << update_count << ", updating pi" << endl;
+        // stablize the gradient for q-network
         for(auto& p : net->q->parameters())
             p.requires_grad_(false);
-        for(auto& p : net->pi->parameters())
-            p.requires_grad_(false);
+
+        // update pi
+        optimizer_pi->zero_grad();       
+        torch::Tensor pi_loss = compute_pi_loss(batch);
+        pi_loss_vec.push_back(pi_loss.item<float>());
+        #if TORCH_DEBUG >= 1
+        cout << "action tensor after pi update" << endl;
+        cout << get<1>(batch) << endl;
+        #endif
+        pi_loss.backward();
+        optimizer_pi->step();
 
         #if TORCH_DEBUG >= 1
-        cout << "no grad" << endl;
+        cout << "updated pi" << endl;
         cout << "-------------" << endl;
-        layer_weight_print(*(net));
+        layer_weight_print(*(net->pi));
         cout << "-------------" << endl << endl;
-        #endif    
+        #endif
 
-        // update target network, set recurse=true to update all layers
-        auto param_pi = net->pi->parameters(true);
+        // resume gradient computation for q-network
+        for(auto& p : net->q->parameters())
+            p.requires_grad_(true);
+
+        // track pi_loss
+        if(update_count % mean_size == 0)
+        {
+            float mean_pi = std::accumulate(pi_loss_vec.begin(), pi_loss_vec.end(), 0.0) / mean_size;
+            pi_loss_vec.clear();
+            pi_mean_loss.push_back(mean_pi);
+        }
+    }
+
+    
+    {
+        cout << "update_count: " << update_count << ", updating target q" << endl;
+        // update target network            
+        for(auto& p : net->q->parameters())
+            p.requires_grad_(false);
+
         auto param_q = net->q->parameters(true);
-        auto param_pi_tar = net_tar->pi->parameters(true);
         auto param_q_tar = net_tar->q->parameters(true);
-
-        auto p_iter = param_pi.begin();
-        auto p_tar_iter = param_pi_tar.begin();
-
-        while (p_iter != param_pi.end())
-        {                   
+        auto p_iter = param_q.begin();
+        auto p_tar_iter = param_q_tar.begin();        
+        
+        while (p_iter != param_q.end())
+        {         
             (*p_tar_iter).mul_(this->polyak);            
             (*p_tar_iter).add_((1 - this->polyak) * (*p_iter));
 
             ++p_iter;
             ++p_tar_iter;
         }
+        for(auto& p : net->q->parameters())
+            p.requires_grad_(true);
 
- 
-        // slow down the update of q-network
-        // if(update_count % 10 == 0)
-        // {            
-            p_iter = param_q.begin();
-            p_tar_iter = param_q_tar.begin();
-            while (p_iter != param_q.end())
-            {         
+        if(update_count % update_delay == 0)
+        {
+            cout << "update_count: " << update_count << ", updating target pi" << endl;
+            for(auto& p : net->pi->parameters())
+                p.requires_grad_(false);
+
+            auto param_pi = net->pi->parameters(true);
+            auto param_pi_tar = net_tar->pi->parameters(true);
+
+            auto p_iter = param_pi.begin();
+            auto p_tar_iter = param_pi_tar.begin();
+
+            while (p_iter != param_pi.end())
+            {                   
                 (*p_tar_iter).mul_(this->polyak);            
                 (*p_tar_iter).add_((1 - this->polyak) * (*p_iter));
 
                 ++p_iter;
                 ++p_tar_iter;
             }
-        // }
-
-        for(auto& p : net->q->parameters())
-            p.requires_grad_(true);
-        for(auto& p : net->pi->parameters())
-            p.requires_grad_(true);
-
+            for(auto& p : net->pi->parameters())
+                p.requires_grad_(true);
+        }
     }
+    update_count++;
 }

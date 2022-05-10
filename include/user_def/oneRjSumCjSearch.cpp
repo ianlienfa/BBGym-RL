@@ -242,6 +242,12 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     else{
         this->graph->avg_reward = this->graph->accu_reward;
     }
+    
+    std::ofstream outfile;
+    outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
+    outfile << this->graph->avg_reward << ", ";  
+    outfile.close();
+
     return branched_nodes;
 }
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)
