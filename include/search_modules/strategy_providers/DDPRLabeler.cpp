@@ -17,6 +17,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     max_num_contour=10;
     rnn_hidden_size = 16;
     rnn_num_layers = 1;
+    update_delay = 2;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
@@ -115,6 +116,7 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
     max_num_contour = options.max_num_contour;
     rnn_hidden_size = options.rnn_hidden_size;
     rnn_num_layers = options.rnn_num_layers;
+    update_delay = options.update_delay;
 }
 
 

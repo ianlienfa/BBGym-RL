@@ -27,6 +27,7 @@ struct DDPRLabelerOptions{
     int64_t max_num_contour;
     int64_t rnn_hidden_size;
     int64_t rnn_num_layers;
+    int64_t update_delay;
     DDPRLabelerOptions();
 };
 
@@ -53,7 +54,7 @@ struct DDPRLabeler: Labeler
     int64_t max_num_contour;
     int64_t rnn_hidden_size;
     int64_t rnn_num_layers;
-    
+    int64_t update_delay;
     
     NetDDPR net{nullptr};
     NetDDPR net_tar{nullptr};    
