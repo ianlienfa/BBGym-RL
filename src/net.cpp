@@ -2,12 +2,13 @@
 #include <stdexcept>
 #include <memory>
 #include <fstream>
-
+#include <chrono>
 
 #include "user_def/oneRjSumCj_engine.h"
 #include "user_def/oneRjSumCjPrune.h"
 #include "problem_parser/problemParser.h"
 #include "search_modules/Net/DDPR/NetDDPR.h"
+
 
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
@@ -87,6 +88,59 @@ void optimalFoundCallbackImpl(void* engine_ptr)
 
 int main(int argc, char* argv[])
 {        
+    string filename = "";
+    // parse command line arguments
+    if(argc < 2)
+    {
+        cout << "Usage: ./net_ddpr -f <problem_file>" << endl;
+        exit(1);
+    }
+    else
+    {
+        vector<pair<string, vector<string>>> commands;
+        for(int i = 0; i < argc; i++)
+        {
+            pair<string, vector<string>> command;
+            if(string(argv[i])[0] == '-')
+            {
+                command.first = string(argv[i]);
+            }
+            else
+            {
+                command.second.push_back(string(argv[i]));
+            }
+        }
+
+        // parse command 
+        for(auto &command : commands)
+        {
+            if(command.first == "-f")
+            {
+                if(command.second.size() != 1)
+                {
+                    cout << "Usage: ./net_ddpr -f <problem_file>" << endl;
+                    exit(1);
+                }
+                filename = command.second[0];
+            }
+            else if(command.first == "-v")
+            {
+                for(auto &hyper_param : command.second)
+                {
+                    string name = hyper_param.substr(0, hyper_param.find("="));
+                    float value = std::stof(hyper_param.substr(hyper_param.find("=") + 1));
+                }
+            }
+            else
+            {
+                cout << "not supported command: '" << command.first << "'" << endl;
+            }
+
+        }
+    }
+
+
+
 
     OneRjSumCjPrune::prune_funcs = {
         prune__OneRjSumCj__LU_AND_SAL__Theorem1
@@ -124,7 +178,7 @@ int main(int argc, char* argv[])
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
     {              
-        int rand_seed = 1651674009;
+        int rand_seed = rand();
         cerr << "Random seed: " << rand_seed << endl;
         srand(rand_seed);
         torch::manual_seed(rand_seed);    

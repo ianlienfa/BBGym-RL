@@ -18,6 +18,8 @@
 #define PiOptimPath "../saved_model/optimizer_pi.pt"
 #define QOptimPath "../saved_model/optimizer_q.pt"
 #define INF_MODE 0
+#define MEASURE_MODE 0
+#define NDEBUG
 
 
 /* Available Search Options Definitions */

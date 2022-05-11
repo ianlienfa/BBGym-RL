@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <bitset>
+#include <iomanip>
 #include "util/config.h"
 #include <cassert>
 using std::vector;
@@ -43,5 +44,24 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& v)
     os << " ]";
     return os;
 }
+
+struct Measurer {
+    std::chrono::steady_clock::time_point time_begin;
+    std::chrono::steady_clock::time_point time_end;
+    Measurer(){};
+    void start() {
+        time_begin = std::chrono::steady_clock::now();
+    }
+    void end(std::string msg = "") {
+        time_end = std::chrono::steady_clock::now();
+        std::cerr << std::setw(100) << msg << ": " << std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_begin).count() << "ns" << std::endl;
+    }
+};
+
+#if MEASURE_MODE == 1
+    #define MEASURE(name, msg, command) Measurer name; name.start(); command name.end(msg);
+#else 
+    #define MEASURE(name, msg, command) command
+#endif
 
 #endif

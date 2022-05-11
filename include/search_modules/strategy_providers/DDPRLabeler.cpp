@@ -5,7 +5,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     lr_q=1e-6;
     lr_pi=1e-6 * 0.3;
     polyak=0.995;
-    num_epoch=1000;
+    num_epoch=500;
     max_steps=20000;
     update_start_epoch=50;
     buffer_size=int64_t(1e6);
@@ -18,7 +18,7 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     rnn_hidden_size = 16;
     rnn_num_layers = 1;
     update_delay = 2;
-    entropy_lambda = 0.1;
+    entropy_lambda = 0.01;
     operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
 }
 
@@ -374,10 +374,16 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
 
 torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
 {    
+    const int64_t softmax_head_count = action_range.second - 1;
     const torch::Tensor &s = get<0>(batch_data);
     const torch::Tensor &contour_snapshot = get<5>(batch_data);
     torch::Tensor action_pred = net->pi->forward(s, contour_snapshot);
-    torch::Tensor loss = -(net->q->forward(s, contour_snapshot, action_pred)).mean();
+    torch::Tensor softmax_part =  action_pred.split_with_sizes({action_dim - softmax_head_count, softmax_head_count}, -1)[1];   
+    torch::Tensor entropy_loss = softmax_part.log_softmax(-1).mean() * entropy_lambda;
+    torch::Tensor actor_loss = -(net->q->forward(s, contour_snapshot, action_pred)).mean();
+    cout << "entropy_loss: " << entropy_loss << endl;
+    cout << "actor_loss: " << actor_loss << endl;
+    torch::Tensor loss = actor_loss + entropy_loss;
     return loss;
 }
 

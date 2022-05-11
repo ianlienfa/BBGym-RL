@@ -80,9 +80,15 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
         
         // label and push
+        MEASURE(stateInput_measurer, "stateInput",
         StateInput stateInput(current_node, *it, *this->graph);
+        );
+        MEASURE(get_state_encoding_measurer, "get_state_encoding",
         vector<float> s = stateInput.get_state_encoding();  
+        );
+        MEASURE(get_contour_snapshot_measurer, "get_contour_snapshot",
         vector<float> contour_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);      
+        );
         bool inference = INF_MODE;
         float label = 0;   
         float prob, noise;
@@ -92,7 +98,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         {     
             if(labeler->epoch < labeler->update_start_epoch)
             {                
+                MEASURE(train, "train",                
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::RANDOM);
+                );
                 label = (*labeler).label_decision(out); // plain interpretation  
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
                 #if TORCH_DEBUG == 1                        
@@ -103,7 +111,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             else if(labeler->epoch < labeler->num_epoch)
             {
                 // for tensor related data, pass by value would be better
+                MEASURE(train, "train",              
                 out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::TRAIN);
+                );
                 label = (*labeler).label_decision(out, true); 
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
                 #if TORCH_DEBUG == 1                        
@@ -122,16 +132,13 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             
             std::tie(prob, noise, softmax) = out; // copy for buffer use
             assertm("prob not in range", 0.0 <= prob && prob <= 1.0);
-            assertm("noise not in range", -1.0 <= noise && noise <= 1.0);
-            #ifndef NDEBUG
-            for(auto & p : softmax)
-                assertm("softmax not in range", 0.0 <= p && p <= 1.0);
-            #endif
+            assertm("noise not in range", -1.0 <= noise && noise <= 1.0);            
             
             vector<float> action_prep = {prob, noise};
             action_prep.insert(action_prep.end(), softmax.begin(), softmax.end());
             cout << "action_prep: " << endl << action_prep << endl;
 
+            MEASURE(buffer_measurer, "buffer_measurer",
             if(!labeler->buffer->isin_prep()) 
             {     
                 labeler->buffer->enter_data_prep_section();
@@ -160,6 +167,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 labeler->buffer->a_prep = action_prep;
                 labeler->buffer->contour_snapshot_prep = contour_snap;
             }
+            );
         }
         else
         {
@@ -168,17 +176,12 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         // increase the step count
         labeler->step++;        
 
-        #ifndef NDEBUG
-        auto current_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);
-        for(size_t i = 0; i < contour_snap.size(); i++)
-        {
-            assertm("contour snap should have same value as current snap", current_snap[i] == contour_snap[i]);
-        }
-        #endif
-
         // Push the label(action) into contour : step()
         assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
+        
+        MEASURE(clip_insert_measurer, "clip_insert",
         this->graph->clip_insert(labeler->max_num_contour, this->graph->contours, *it, label);
+        );
     }
 
     // locate the next contour
@@ -242,7 +245,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     else{
         this->graph->avg_reward = this->graph->accu_reward;
     }
-    
+
     std::ofstream outfile;
     outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
     outfile << this->graph->avg_reward << ", ";  

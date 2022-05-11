@@ -21,9 +21,14 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
     this->graph = searcher.init(rootProblem);
 
     // save the reference of graph in all modules
+    MEASURE(fill_graph_measurer, "fill_graph_measurer",
+    /// ---- measure target ---------------------------------------
     searcher.fill_graph(&graph);
     brancher.fill_graph(&graph);
     pruner.fill_graph(&graph);
+    /// -----------------------------------------------------------
+    );
+
 
     // a incumbent init for Lu & Sal
     OneRjSumCjNode initIncumbent = OneRjSumCjNode::getInitESTSeq();
@@ -42,8 +47,9 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
         SOLVE_CALLBACK(this);
 
         // searcher search on to a new node, make changes on its internal data structure, then return the new node
+        MEASURE(search_next_measurer, "search_next",
         this->graph.current_node = searcher.search_next();
-
+        );
         #if DEBUG_LEVEL >= 2
             cout << "==============================New Search==============================" << endl;
             std::cout << this->graph.current_node << std::endl;
@@ -61,14 +67,19 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
         }
 
         // brancher evaluate the node and decide whether to branch, and return the reference branched nodes (in vector)
+        MEASURE(branching_measurer, "branching",
         vector<OneRjSumCjNode> branched_nodes = brancher.branch(this->graph.current_node, lowerbound);
+        );
 
         // pruner evaluate the branched nodes and decide remove the nodes to prune
+        MEASURE(pruning_measurer, "pruning",
         pruner.prune(branched_nodes);
-        
+        );
 
         // update the graph
+        MEASURE(update_graph_measurer, "update_graph",
         searcher.update_graph(this->graph.current_node, branched_nodes);
+        );
     }
 
     OPTIMAL_FOUND_CALLBACK(this);
