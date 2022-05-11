@@ -5,6 +5,7 @@
 #define TIME_TYPE float
 #define FIXED_JOB_SIZE 100
 #define CONTOUR_TYPE float
+#define RANDOM_SEED 1000
 // #define NDEBUG
 
 // exit codes

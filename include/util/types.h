@@ -5,6 +5,8 @@
 #include <iostream>
 #include <bitset>
 #include <iomanip>
+#include <random>
+#include <limits>
 #include "util/config.h"
 #include <cassert>
 using std::vector;
@@ -63,5 +65,12 @@ struct Measurer {
 #else 
     #define MEASURE(name, msg, command) command
 #endif
+
+// #define BB_RAND() (std::uniform_int_distribution<int64_t> dist(0, std::numeric_limits<int64_t>::max); dist(mt))
+// #define BB_RANGED_RAND(min, max) (std::uniform_int_distribution<int64_t> dist((min), (max)); dist(mt))
+
+extern std::mt19937 _bbgym_mt;
+extern std::uniform_int_distribution<int> _bbgym_dist;
+#define BB_RAND() _bbgym_dist(_bbgym_mt)
 
 #endif

@@ -6,7 +6,6 @@
 
 int main(int argc, char* argv[])
 {        
-
     OneRjSumCjPrune::prune_funcs = {
         prune__OneRjSumCj__LU_AND_SAL__Theorem1
     };
@@ -28,7 +27,6 @@ int main(int argc, char* argv[])
     {
             // read problem
         #define INSTANCE_NUM 5
-        srand(0);
         InputHandler inputHandler((string(argv[1])));
         string filepath;
         int instance_idx = INSTANCE_NUM;

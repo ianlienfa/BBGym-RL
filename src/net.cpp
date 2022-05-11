@@ -9,7 +9,6 @@
 #include "problem_parser/problemParser.h"
 #include "search_modules/Net/DDPR/NetDDPR.h"
 
-
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
     std::string result;
@@ -37,8 +36,8 @@ void solveCallbackImpl(void* engine_ptr)
     { 
         int buffer_size = labeler->buffer->get_size(); 
         vector<int> v(labeler->batch_size);  
-        auto rand_in_range = [=](){
-            return (int(std::rand())) % (int(buffer_size));
+        auto rand_in_range = [&](){            
+            return (BB_RAND()) % (buffer_size);
         };
         generate(v.begin(), v.end(), rand_in_range); 
         RawBatch batch = labeler->buffer->sample(v);  
@@ -87,7 +86,7 @@ void optimalFoundCallbackImpl(void* engine_ptr)
 }
 
 int main(int argc, char* argv[])
-{        
+{            
     string filename = "";
     // parse command line arguments
     if(argc < 2)
@@ -140,8 +139,6 @@ int main(int argc, char* argv[])
     }
 
 
-
-
     OneRjSumCjPrune::prune_funcs = {
         prune__OneRjSumCj__LU_AND_SAL__Theorem1
     };
@@ -178,10 +175,9 @@ int main(int argc, char* argv[])
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
     {              
-        int rand_seed = rand();
+        int rand_seed = RANDOM_SEED;
         cerr << "Random seed: " << rand_seed << endl;
-        srand(rand_seed);
-        torch::manual_seed(rand_seed);    
+        torch::manual_seed(RANDOM_SEED);    
                       
         string filename(argv[2]);  
         for(int epoch = 1; epoch <= labeler->num_epoch; epoch++)              
@@ -197,7 +193,7 @@ int main(int argc, char* argv[])
                 OneRjSumCjGraph graph;
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());  
-
+                
                 #if INF_MODE != 1
                 torch::save(labeler->net->q, "../saved_model/qNet.pt");
                 torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
