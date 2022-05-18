@@ -1,6 +1,6 @@
-#include "search_modules/Net/DDPR/NetDDPR.h"
+#include "search_modules/Net/PPO/NetPPO.h"
 
-ReplayBufferImpl::ReplayBufferImpl(int max_size) {
+PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     this->max_size = max_size;
     this->idx = 0;
     this->size = 0;
@@ -16,7 +16,7 @@ ReplayBufferImpl::ReplayBufferImpl(int max_size) {
     contour_snapshot_next.resize(max_size);
 }
 
-bool ReplayBufferImpl::safe_to_submit()
+bool PPO::ReplayBufferImpl::safe_to_submit()
 {
     // do checking
     for(auto it: this->s_prep)
@@ -38,7 +38,7 @@ bool ReplayBufferImpl::safe_to_submit()
     return !enter_data_prep_sec;   
 }        
 
-void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done, vector<float> contour_snapshot, vector<float> contour_snapshot_next)
+void PPO::ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<float> s_, bool done, vector<float> contour_snapshot, vector<float> contour_snapshot_next)
 {    
     if(idx >= max_size)
     {
@@ -62,7 +62,7 @@ void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<fl
     this->size = std::min(this->size + 1, max_size);
 }
 
-void ReplayBufferImpl::submit()
+void PPO::ReplayBufferImpl::submit()
 {    
     #if TORCH_DEBUG == 1    
         cout << "label buffer dynamics: " << endl; 
@@ -87,7 +87,7 @@ void ReplayBufferImpl::submit()
 
 
 
-vector<float> StateInput::get_state_encoding(bool get_terminal)
+vector<float> PPO::StateInput::get_state_encoding(bool get_terminal)
 {    
     vector<float> state_encoding;
 
@@ -109,7 +109,7 @@ vector<float> StateInput::get_state_encoding(bool get_terminal)
     return state_encoding;
 }
 
-vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
+vector<float> PPO::StateInput::flatten_and_norm(const OneRjSumCjNode &node)
 {   
     float state_processed_rate = 0.0,
         norm_lb = 0.0,
@@ -138,7 +138,7 @@ vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     return node_state_encoding;
 }
 
-tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> ReplayBufferImpl::sample(vector<int> indecies)
+tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> PPO::ReplayBufferImpl::sample(vector<int> indecies)
 {
     int batch_size = indecies.size();
     vector<vector<float>> s;
@@ -214,7 +214,7 @@ tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, 
     return make_tuple(s_flat, action_flat, r, s_next_flat, done, contour_snapflat, contour_snapflat_next);
 }
 
-tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> raw_batch)
+tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> PPO::ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> raw_batch)
 {
     using std::get, std::make_tuple;
     
@@ -274,7 +274,7 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor,
 }
 
 
-NetDDPRImpl::NetDDPRImpl(NetDDPROptions opt)
+NetPPOImpl::NetPPOImpl(NetPPOOptions opt)
 {
     this->opt = opt;        
     assertm("state_dim should be greater than 0", opt.state_dim > 0);
@@ -282,8 +282,8 @@ NetDDPRImpl::NetDDPRImpl(NetDDPROptions opt)
     assertm("max_num_contour should be greater than 0", opt.max_num_contour > 0);
     assertm("rnn_hidden_size should be greater than 0", opt.rnn_hidden_size > 0);
     assertm("rnn_num_layers should be greater than 0", opt.rnn_num_layers > 0);
-    NetDDPRQNet q_net(opt);
-    NetDDPRActor pi_net(opt);    
+    NetPPOQNet q_net(opt);
+    NetPPOActor pi_net(opt);    
 
     if(opt.q_path != "" && opt.pi_path != "")
     {
@@ -301,7 +301,7 @@ NetDDPRImpl::NetDDPRImpl(NetDDPROptions opt)
 
 
 
-float NetDDPRImpl::act(torch::Tensor s)
+float NetPPOImpl::act(torch::Tensor s)
 {
     // torch::NoGradGuard no_grad;
     // #if DEBUG_LEVEL >= 2

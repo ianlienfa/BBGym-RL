@@ -17,4 +17,11 @@ add_library(
     DDPRLabeler.cpp
 )
 
+add_library(
+    PPOLabeler
+    PPOLabeler.h
+    PPOLabeler.cpp
+)
+
 target_link_libraries(DDPRLabeler NetDDPR)
+target_link_libraries(PPOLabeler NetPPO)

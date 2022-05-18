@@ -70,6 +70,8 @@ OneRjSumCjNode OneRjSumCjSearch::search_next() {
 
 #if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
 vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_node, vector<OneRjSumCjNode> branched_nodes) {
+    using namespace PPO;
+
     (void) current_node;
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
@@ -90,9 +92,8 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         vector<float> contour_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);      
         );
         bool inference = INF_MODE;
-        float label = 0;   
-        float prob, noise;
-        vector<float> softmax;
+        bool place, create, left, right;
+        float label;
         ActorOut out;
         if(!inference)
         {     
@@ -130,7 +131,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
                 assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
             }
             
-            std::tie(prob, noise, softmax) = out; // copy for buffer use
+            std::tie(place, create, left, right) = out; // copy for buffer use
             assertm("prob not in range", 0.0 <= prob && prob <= 1.0);
             assertm("noise not in range", -1.0 <= noise && noise <= 1.0);            
             

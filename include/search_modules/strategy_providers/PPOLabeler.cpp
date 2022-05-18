@@ -1,6 +1,7 @@
-#include "search_modules/strategy_providers/DDPRLabeler.h"
+#include "search_modules/strategy_providers/PPOLabeler.h"
 
-DDPRLabelerOptions::DDPRLabelerOptions(){
+namespace PPO{
+PPOLabelerOptions::PPOLabelerOptions(){
     gamma=0.995;
     lr_q=1e-6;
     lr_pi=1e-6 * 0.3;
@@ -19,10 +20,10 @@ DDPRLabelerOptions::DDPRLabelerOptions(){
     rnn_num_layers = 1;
     update_delay = 2;
     entropy_lambda = 0.01;
-    operator_option=DDPRLabeler::OperatorOptions::INFERENCE;
+    operator_option=PPOLabeler::OperatorOptions::INFERENCE;
 }
 
-DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, string q_optim_path, string pi_optim_path, DDPRLabelerOptions options)
+PPOLabeler::PPOLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, string q_optim_path, string pi_optim_path, PPOLabelerOptions options)
 : state_dim(state_dim), action_dim(action_dim), action_range(action_range)
 {       
 
@@ -35,21 +36,19 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
     fill_option(options);
 
     // set up buffer
-    buffer = std::make_shared<ReplayBufferImpl>(buffer_size);
+    buffer = std::make_shared<PPO::ReplayBufferImpl>(buffer_size);
 
     // set up MLP    
-    net = std::make_shared<NetDDPRImpl>(NetDDPROptions({
+    net = std::make_shared<NetPPOImpl>(NetPPOOptions({
         .state_dim = state_dim,
         .action_dim = action_dim,
         .action_range = action_range,
         .q_path = load_q_path,
         .pi_path = load_pi_path,
-        .max_num_contour = options.max_num_contour,
-        .rnn_hidden_size = options.rnn_hidden_size,
-        .rnn_num_layers = options.rnn_num_layers
+        .max_num_contour = options.max_num_contour
     }));
     auto net_copy_ptr = net->clone();
-    net_tar = std::dynamic_pointer_cast<NetDDPRImpl>(net_copy_ptr);
+    net_tar = std::dynamic_pointer_cast<NetPPOImpl>(net_copy_ptr);
 
     #if TORCH_DEBUG >= -1
     cout << "weight of copied net: " << endl;
@@ -85,7 +84,7 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
 
 }
 
-// DDPRLabeler::operator()(const OneRjSumCjNode &node) const
+// PPOLabeler::operator()(const OneRjSumCjNode &node) const
 // {
 //     // get state
 //     if(s != NULL)
@@ -99,7 +98,7 @@ DDPRLabeler::DDPRLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range
 //     label = ddpg(tensor_in);    
 //     return label;
 // }
-void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
+void PPOLabeler::fill_option(const PPOLabelerOptions &options)
 {
     gamma = options.gamma;
     lr_q = options.lr_q;
@@ -122,7 +121,7 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 }
 
 
-// float DDPRLabeler::operator()(StateInput input) 
+// float PPOLabeler::operator()(StateInput input) 
 // {        
 //     vector<float> flatten = input.get_state_encoding();
 //     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
@@ -135,8 +134,8 @@ void DDPRLabeler::fill_option(const DDPRLabelerOptions &options)
 //     return label;
 // }
 
-// tuple (prob, noise, floor_label)
-ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option)
+// Do training and buffering here, return the label if created, otherwise go throgh the network again
+ActorOut PPOLabeler::train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option)
 {
     #if DEBUG_LEVEL >= 2
     cout << "state_flated array: ";
@@ -144,24 +143,21 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
         cout<<it<<" ";
     cout<<endl;
     #endif
-    torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();    
-    // (N: 1, L: max_num_contour, H_{in}: 1)    
+    torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
     torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size())}).clone();  
-    float prob;
-    float noise;
-    vector<float> softmax;
+    bool place = false;
 
     // forward and get label
+    if(place)
     {
         // InferenceMode guard(true);
         GRAD_TOGGLE(net->pi, false);
         GRAD_TOGGLE(net->q, false);
-        torch::Tensor out = net->pi->forward(tensor_s, tensor_contour);
-        prob = out.index({0, 0}).item<float>();
-        noise = out.index({0, 1}).item<float>();
-        for(int i = 1; i <= action_range.second-1; i++){
-            softmax.push_back(out.index({0, 1+i}).item<float>());
-        }
+        // The output is expected to be an 1-hot vector <place, create, left, right>
+        torch::Tensor out = net->pi->get_action(tensor_s, tensor_contour);
+        place = out.index({0, 0}).item<float>();
+
+        
         assertm("softmax size is not correct", softmax.size() == out.sizes()[1] - 2);
         #if TORCH_DEBUG >= -1
         cout << "prob: " << prob << " noise: " << noise << " softmax: " << softmax << endl;
@@ -184,31 +180,12 @@ ActorOut DDPRLabeler::train(vector<float> state_flat, vector<float> contour_snap
     }
     else if(operator_option == OperatorOptions::TRAIN)
     {       
-        /* ======================== Exploration design ============================ /
-            | 0 <= rd < 0.1 | 0.1 < rd <= 0.2 | 0.2 < rd <= 0.5 | 0.5 <= rd <= 1 | 
-                add noise       last action       add int noise     do nothing
-        /  ======================================================================== */
-        // float random_num = (rand() % 10) / 10.0;         
-        // if(random_num < 0.1)
-        // {
-        //     label += ((rand() % 10) - 5) / 100.0;
-        //     cout << "randomed label: " << label << endl;
-        // }
-        // else if(random_num < 0.2)
-        // {
-        //     label = last_action;
-        // }
-        // else if(random_num < 0.4)
-        // {
-        //     label = contour_candidates[rand() % contour_candidates.size()];
-        //     cout << "randomed int label: " << label << endl;
-        // }
-        
+
     }     
     return std::make_tuple(prob, noise, softmax);
 }
 
-float DDPRLabeler::label_decision(const ActorOut &in)
+float PPOLabeler::label_decision(const ActorOut &in)
 {
     const float &prob = std::get<0>(in);
     const float &noise = std::get<1>(in);
@@ -218,7 +195,7 @@ float DDPRLabeler::label_decision(const ActorOut &in)
     return (prob > 0.5) ? floor : noise + floor;
 }
 
-float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
+float PPOLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
 {        
     if(explore != true)
         throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
@@ -253,7 +230,7 @@ float DDPRLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
 }
 
 
-tuple<ActorOut, float> DDPRLabeler::concept_label_decision(ActorOut &in, bool explore, float epsilon)
+tuple<ActorOut, float> PPOLabeler::concept_label_decision(ActorOut &in, bool explore, float epsilon)
 {        
     if(!explore)
     {
@@ -288,7 +265,7 @@ tuple<ActorOut, float> DDPRLabeler::concept_label_decision(ActorOut &in, bool ex
 }
 
 
-float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option)
+float PPOLabeler::operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option)
 {
     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
     torch::Tensor tensor_contour = torch::from_blob(contour_snapflat.data(), {1, int64_t(contour_snapflat.size())}).clone();  
@@ -320,7 +297,7 @@ float DDPRLabeler::operator()(vector<float> flatten, vector<float> contour_snapf
 
 
 
-torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
+torch::Tensor PPOLabeler::compute_q_loss(const Batch &batch_data)
 {   
     const torch::Tensor &s = get<0>(batch_data);
     const torch::Tensor &a = get<1>(batch_data);
@@ -372,7 +349,7 @@ torch::Tensor DDPRLabeler::compute_q_loss(const Batch &batch_data)
     return loss;
 }
 
-torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
+torch::Tensor PPOLabeler::compute_pi_loss(const Batch &batch_data)
 {    
     const int64_t softmax_head_count = action_range.second - 1;
     const torch::Tensor &s = get<0>(batch_data);
@@ -387,7 +364,7 @@ torch::Tensor DDPRLabeler::compute_pi_loss(const Batch &batch_data)
     return loss;
 }
 
-void DDPRLabeler::update(const RawBatch &batch_data)
+void PPOLabeler::update(const RawBatch &batch_data)
 {       
     using std::cout, std::endl; 
     const int mean_size = 1;
@@ -518,3 +495,5 @@ void DDPRLabeler::update(const RawBatch &batch_data)
     }
     update_count++;
 }
+
+}; // namespace PPO

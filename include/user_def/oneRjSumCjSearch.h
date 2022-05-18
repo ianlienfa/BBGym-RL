@@ -13,7 +13,7 @@ using std::make_pair;
 #include "user_def/oneRjSumCjNode.h"
 #include "user_def/oneRjSumCjGraph.h"
 #include "search_modules/strategy_providers/PlainLabeler.h"
-#include "search_modules/strategy_providers/DDPRLabeler.h"
+#include "search_modules/strategy_providers/PPOLabeler.h"
 #include "util/LowerBound.h"
 
 struct OneRjSumCjSearch: SearchMod
