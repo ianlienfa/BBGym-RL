@@ -13,11 +13,12 @@ struct NetPPOQNetImpl: nn::Module
 {
     int64_t state_dim;
     int64_t action_dim;
+    int64_t hidden_dim;
     Pdd action_range;
     nn::Sequential net{nullptr};
 
     NetPPOQNetImpl(const NetPPOOptions &ops);
-    torch::Tensor forward(torch::Tensor state, torch::Tensor contour_snapshot, torch::Tensor action);
+    torch::Tensor forward(torch::Tensor state);
 };
 TORCH_MODULE(NetPPOQNet);
 

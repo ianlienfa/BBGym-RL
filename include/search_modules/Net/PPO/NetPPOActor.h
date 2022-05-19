@@ -1,25 +1,23 @@
-#ifndef NETDDPRACTOR_H 
-#define NETDDPRACTOR_H
+#ifndef NETPPOACTOR_H 
+#define NETPPOACTOR_H
 #include <iostream>
 #include <torch/torch.h>
 #include "util/types.h"
-#include "search_modules/Net/DDPR/DDPR.h"
-// #include "third_party/matplotlibcpp/include/matplotlibcpp.h"
+#include "search_modules/Net/PPO/PPO.h"
 using namespace torch;
 using std::cout; using std::endl;
 
-
-struct NetDDPRActorImpl: nn::Module
-{   
-    Pdd action_range;
+// Discrete Actor
+struct NetPPOActorImpl: nn::Module
+{       
     int64_t state_dim;
-    int64_t split_map[3];
-    nn::Sequential net{nullptr};
-    vector<float> arg_softmax_map_arr;
-    torch::Tensor arg_softmax_map;
+    int64_t action_dim;
+    int64_t hidden_dim;
+    nn::Sequential net{nullptr};    
             
-    NetDDPRActorImpl(const NetDDPROptions &ops);    
-    torch::Tensor forward(torch::Tensor s, torch::Tensor contour_snapshot);    
+    NetPPOActorImpl(const NetPPOOptions &ops);
+    torch::Tensor dist(torch::Tensor s);
+    torch::Tensor forward(torch::Tensor s, torch::Tensor a);    
 };
-TORCH_MODULE(NetDDPRActor);
+TORCH_MODULE(NetPPOActor);
 #endif

@@ -19,6 +19,11 @@ typedef bitset<JOB_NUMBER+1> B;
 typedef vector<B> Vb;
 typedef std::pair<double, double> Pdd;
 
+// encodings
+#define STATE_ENCODING vector<float>
+#define ACTION_ENCODING float
+
+
 // typedef TIME_TYPE schedule_time;
 #define BASIC_MAX(a,b) ((a)>(b)?(a):(b))
 #define BASIC_MIN(a,b) ((a)<(b)?(a):(b))
@@ -26,6 +31,27 @@ typedef std::pair<double, double> Pdd;
 #define BASIC_SWAP(a,b) {a^=b;b^=a;a^=b;}
 #define assertm(msg, exp) assert(((void)msg, exp))
 
+// Option Class Argument Wrapper
+#define BBARG(type, name)\
+    type _##name;\
+    void name(type val) {_##name = val;}
+
+// Define Singleton Wrapper
+#define SINGLETON(type, name)\
+    static type* _##name;\
+    static const type& get_##name() {\
+        if (_##name == nullptr) {\
+            _##name = new type();\
+        }\
+        return *_##name;\
+    }\
+    static void destroy() {\
+        if (_##name != nullptr) {\
+            delete _##name;\
+            _##name = nullptr;\
+        }\
+    }    
+#define SINGLETON_INIT(type, classname, name) type* classname::_##name = nullptr;
 
 // exception class
 class NotImplemented : public std::logic_error

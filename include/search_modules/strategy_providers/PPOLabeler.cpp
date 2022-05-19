@@ -2,25 +2,20 @@
 
 namespace PPO{
 PPOLabelerOptions::PPOLabelerOptions(){
-    gamma=0.995;
-    lr_q=1e-6;
-    lr_pi=1e-6 * 0.3;
-    polyak=0.995;
-    num_epoch=300;
-    max_steps=20000;
-    update_start_epoch=50;
-    buffer_size=int64_t(1e6);
-    noise_scale=0.1;
-    epsilon = 0.5;
-    batch_size=100;
-    update_freq=10;
-    tail_updates=50;
-    max_num_contour=10;
-    rnn_hidden_size = 16;
-    rnn_num_layers = 1;
-    update_delay = 2;
-    entropy_lambda = 0.01;
-    operator_option=PPOLabeler::OperatorOptions::INFERENCE;
+    _gamma=0.995;
+    _lr_q=1e-6;
+    _lr_pi=1e-6 * 0.3;
+    _polyak=0.995;
+    _num_epoch=300;
+    _max_steps=20000;    
+    _buffer_size=int64_t(1e6);    
+    _tail_updates=50;
+    _max_num_contour=10;
+    _operator_option=PPOLabeler::OperatorOptions::INFERENCE;
+    _load_q_path = "";
+    _load_pi_path = "";
+    _q_optim_path = "";
+    _pi_optim_path = "";
 }
 
 PPOLabeler::PPOLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, string q_optim_path, string pi_optim_path, PPOLabelerOptions options)
@@ -84,57 +79,19 @@ PPOLabeler::PPOLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, 
 
 }
 
-// PPOLabeler::operator()(const OneRjSumCjNode &node) const
-// {
-//     // get state
-//     if(s != NULL)
-//         s_next = StateInput(node);
-//     else    
-//         s = StateInput(node);
-    
-//     // buffer data collection (s, label, r, done should be given value at the last time point)
-//     buffer.push(s, label, r, s_next, done);
-//     torch::Tensor tensor_in = torch::from_blob(s.flatten()).clone();    
-//     label = ddpg(tensor_in);    
-//     return label;
-// }
-void PPOLabeler::fill_option(const PPOLabelerOptions &options)
+PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
 {
-    gamma = options.gamma;
-    lr_q = options.lr_q;
-    lr_pi = options.lr_pi;
-    polyak = options.polyak;
-    noise_scale = options.noise_scale;
-    num_epoch = options.num_epoch;
-    max_steps = options.max_steps;
-    update_start_epoch = options.update_start_epoch;
-    buffer_size = options.buffer_size;
-    batch_size = options.batch_size;
-    update_freq = options.update_freq;
-    epsilon = options.epsilon;
-    tail_updates = options.tail_updates;
-    max_num_contour = options.max_num_contour;
-    rnn_hidden_size = options.rnn_hidden_size;
-    rnn_num_layers = options.rnn_num_layers;
-    update_delay = options.update_delay;
-    entropy_lambda = options.entropy_lambda;
+    if(this->epoch < )
 }
 
-
-// float PPOLabeler::operator()(StateInput input) 
-// {        
-//     vector<float> flatten = input.get_state_encoding();
-//     torch::Tensor tensor_in = torch::from_blob(flatten.data(), {1, int64_t(flatten.size())}).clone();    
-//     float label;
-//     // forward and get label
-//     {
-//         InferenceMode guard(true);
-//         label = net->pi->forward(tensor_in).item<float>();
-//     }
-//     return label;
-// }
-
 // Do training and buffering here, return the label if created, otherwise go throgh the network again
+void PPOLabeler::operator(vector<float> state_flat)
+{
+    torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
+    
+
+}
+
 ActorOut PPOLabeler::train(vector<float> state_flat, vector<float> contour_snapflat, int operator_option)
 {
     #if DEBUG_LEVEL >= 2
@@ -185,84 +142,6 @@ ActorOut PPOLabeler::train(vector<float> state_flat, vector<float> contour_snapf
     return std::make_tuple(prob, noise, softmax);
 }
 
-float PPOLabeler::label_decision(const ActorOut &in)
-{
-    const float &prob = std::get<0>(in);
-    const float &noise = std::get<1>(in);
-    const vector<float> &softmax = std::get<2>(in);
-    const float floor = vec_argmax(softmax);
-    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));    
-    return (prob > 0.5) ? floor : noise + floor;
-}
-
-float PPOLabeler::label_decision(ActorOut &in, bool explore, float epsilon)
-{        
-    if(explore != true)
-        throw("label_decision: this function is only for exploration, set the second argument to be true or use the overload with single argument instead.");        
-    float &prob = std::get<0>(in);
-    float &noise = std::get<1>(in);
-    vector<float> &softmax = std::get<2>(in);
-    float floor = vec_argmax(softmax);    
-    float label = (prob > 0.5) ? floor : noise + floor;    
-    assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
-    
-    // implement epsilon greedy
-    if((BB_RAND() % 100) / 100.0 < epsilon)
-    {
-        cout << "by model... " << endl;
-        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
-    }
-    else
-    {
-        // exlpore
-        softmax.assign(softmax.size(), 0.0);
-        softmax[(BB_RAND() % softmax.size())] = 1.0;
-        float floor = vec_argmax(softmax);                    
-        assertm("label_decision(): floor is out of range", (floor > 0) && (floor < action_range.second));
-        noise = (BB_RAND() % 100) / 100.0;
-        prob = (BB_RAND() % 100) / 100.0;
-        label = (prob > 0.5) ? floor : noise + floor;
-        cout << "epsilon greedy ..." << endl;
-        cout << "prob: " << prob << " noise: " << noise << " floor: " << floor << endl;        
-    }    
-
-    return label;
-}
-
-
-tuple<ActorOut, float> PPOLabeler::concept_label_decision(ActorOut &in, bool explore, float epsilon)
-{        
-    if(!explore)
-    {
-        const vector<float> &softmax = std::get<2>(in);
-        float label = vec_argmax(softmax);    
-        assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
-        return std::make_tuple(in, label);
-    }
-    else
-    {
-        vector<float> &softmax = std::get<2>(in);
-        // implement epsilon greedy
-        if((BB_RAND() % 100) / 100.0 < epsilon)
-        {
-            float label = vec_argmax(softmax);  
-            cout << "by model... " << endl;
-            cout << " label: " << label << endl;   
-            return std::make_tuple(in, label);     
-        }
-        else
-        {
-            // exlpore
-            softmax.assign(((int)softmax.size()), 0.0);
-            softmax[(BB_RAND() % ((int)softmax.size()))] = 1.0;
-            float label = vec_argmax(softmax);                    
-            assertm("label_decision(): label is out of range", (label > 0) && (label < action_range.second));
-            cout << "epsilon greedy ..." << endl;
-            cout << "label" << label << endl;      
-            return std::make_tuple(in, label);  
-        }    
-    }
-}
 
 
 float PPOLabeler::operator()(vector<float> flatten, vector<float> contour_snapflat, int operator_option)
