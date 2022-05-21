@@ -34,7 +34,8 @@ typedef std::pair<double, double> Pdd;
 // Option Class Argument Wrapper
 #define BBARG(type, name)\
     type _##name;\
-    void name(type val) {_##name = val;}
+    void name(type val) {_##name = val;}\
+    type& name() {return _##name;}
 
 // Define Singleton Wrapper
 #define SINGLETON(type, name)\

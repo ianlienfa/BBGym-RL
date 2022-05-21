@@ -8,6 +8,13 @@ namespace PPO
 {
 
 struct PPOLabelerOptions{
+
+    // network structure parameters
+    BBARG(int64_t, state_dim);
+    BBARG(int64_t, action_dim);
+    BBARG(int64_t, hidden_dim);
+
+    // hyper parameters
     BBARG(int64_t, num_epoch);
     BBARG(int64_t, steps_per_epoch);
     BBARG(float, gamma);
@@ -28,8 +35,7 @@ struct PPOLabelerOptions{
 
     BBARG(int64_t, max_steps);
     BBARG(int64_t, buffer_size);
-    BBARG(int64_t, tail_updates);
-    BBARG(int, operator_option);
+    BBARG(int64_t, tail_updates);    
     BBARG(int64_t, max_num_contour);
     PPOLabelerOptions();
 };
@@ -42,22 +48,24 @@ struct PPOLabeler: Labeler
     PPO::ReplayBuffer buffer{nullptr};
     std::shared_ptr<torch::optim::Adam> optimizer_q{nullptr}, optimizer_pi{nullptr};    
 
-    // Trackers tracks training state
-    enum LabelerState {RANDOM, TRAIN, INFERENCE, TESTING};
-    float last_action;    
+    // global trackers
     vector<float> q_loss_vec;
     vector<float> pi_loss_vec;
     vector<float> q_mean_loss;
     vector<float> pi_mean_loss;    
     vector<float> ewma_reward_vec;
-    int64_t step;
-    int64_t update_count;
-    int64_t epoch;    
+  
+    // Trackers tracks training state
+    enum LabelerState {TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING};    
+    int64_t _step;
+    int64_t _update_count;
+    int64_t _epoch;    
     
-    PPOLabeler(int64_t state_dim, int64_t action_dim, PPOLabelerOptions options = PPOLabelerOptions());        
+    PPOLabeler(PPOLabelerOptions options = PPOLabelerOptions());        
     float operator()(vector<float> flatten, int operator_option);
     void train();
     void eval();
+
     LabelerState get_labeler_state();
 
     torch::Tensor compute_q_loss(const PPO::SampleBatch &batch_data);

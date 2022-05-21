@@ -10,25 +10,19 @@ PPOLabelerOptions::PPOLabelerOptions(){
     _max_steps=20000;    
     _buffer_size=int64_t(1e6);    
     _tail_updates=50;
-    _max_num_contour=10;
-    _operator_option=PPOLabeler::OperatorOptions::INFERENCE;
+    _max_num_contour=10;    
     _load_q_path = "";
     _load_pi_path = "";
     _q_optim_path = "";
     _pi_optim_path = "";
 }
 
-PPOLabeler::PPOLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, string load_q_path, string load_pi_path, string q_optim_path, string pi_optim_path, PPOLabelerOptions options)
-: state_dim(state_dim), action_dim(action_dim), action_range(action_range)
+PPOLabeler::PPOLabeler(PPOLabelerOptions opt)
+: opt(opt)
 {       
-
     // Debug
-    cout << "state_dim: " << state_dim << endl;
-    cout << "action_dim: " << action_dim << endl;
-    cout << "action_range: " << action_range.first << " " << action_range.second << endl;
-
-    // parameters init
-    fill_option(options);
+    cout << "state_dim: " << opt.state_dim() << endl;
+    cout << "action_dim: " << opt.action_dim() << endl;
 
     // set up buffer
     buffer = std::make_shared<PPO::ReplayBufferImpl>(buffer_size);
@@ -81,14 +75,22 @@ PPOLabeler::PPOLabeler(int64_t state_dim, int64_t action_dim, Pdd action_range, 
 
 PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
 {
-    if(this->epoch < )
+    if()
+    {
+        if(_epoch < opt.num_epoch() && _step < opt.steps_per_epoch()){
+            return LabelerState::TRAIN_RUNNING;
+        }
+        else{
+            return LabelerState::TRAIN_EPOCH_END;
+        }
+    }
 }
 
 // Do training and buffering here, return the label if created, otherwise go throgh the network again
 void PPOLabeler::operator(vector<float> state_flat)
 {
     torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
-    
+
 
 }
 
