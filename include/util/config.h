@@ -6,6 +6,11 @@
 #define FIXED_JOB_SIZE 100
 #define CONTOUR_TYPE float
 #define RANDOM_SEED 1000
+const float node_reward = -1e-2;
+const float move_reward = -1e-3;
+const float neg_zero_reward = -1e-7;
+const float pos_zero_reward = 1e-7;
+
 // #define NDEBUG
 
 // exit codes

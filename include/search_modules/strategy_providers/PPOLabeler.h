@@ -10,41 +10,36 @@ namespace PPO
 struct PPOLabelerOptions{
 
     // network structure parameters
-    BBARG(int64_t, state_dim);
-    BBARG(int64_t, action_dim);
-    BBARG(int64_t, hidden_dim);
+    BBARG(int64_t, state_dim, 0);
+    BBARG(int64_t, action_dim, 0);
+    BBARG(int64_t, hidden_dim, 64);
 
     // hyper parameters
-    BBARG(int64_t, num_epoch);
-    BBARG(int64_t, steps_per_epoch);
-    BBARG(float, gamma);
-    BBARG(float, polyak);
-    BBARG(float, lr_q);
-    BBARG(float, lr_pi);
-    BBARG(float, clip_ratio);
-    BBARG(float, hidden_dim);
-    BBARG(float, train_pi_iter);
-    BBARG(float, train_q_iter);
-    BBARG(float, target_kl);
+    BBARG(int64_t, num_epoch, 300);
+    BBARG(int64_t, steps_per_epoch, 4000);
+    BBARG(int64_t, train_pi_iter, 80);
+    BBARG(int64_t, train_q_iter, 80);
+    BBARG(float, gamma, 0.99);
+    // BBARG(float, polyak);
+    BBARG(float, lr_q, 1e-3);
+    BBARG(float, lr_pi, 1e-3);
+    BBARG(float, clip_ratio, 0.2);
+    BBARG(float, target_kl, 0.01);
 
     // Not determined
-    BBARG(string, load_q_path);
-    BBARG(string, load_pi_path);
-    BBARG(string, q_optim_path);
-    BBARG(string, pi_optim_path);
+    BBARG(string, load_q_path, "");
+    BBARG(string, load_pi_path, "");
+    BBARG(string, q_optim_path, "");
+    BBARG(string, pi_optim_path, "");
 
-    BBARG(int64_t, max_steps);
-    BBARG(int64_t, buffer_size);
-    BBARG(int64_t, tail_updates);    
-    BBARG(int64_t, max_num_contour);
-    PPOLabelerOptions();
+    BBARG(int64_t, steps_per_epoch, 4000);
+    BBARG(int64_t, buffer_size, 4000);
 };
 
 struct PPOLabeler: Labeler
 { 
     PPOLabelerOptions opt;
-    NetPPO net{nullptr};
-    NetPPO net_tar{nullptr};    
+    NetPPO net{nullptr};    
     PPO::ReplayBuffer buffer{nullptr};
     std::shared_ptr<torch::optim::Adam> optimizer_q{nullptr}, optimizer_pi{nullptr};    
 
@@ -56,25 +51,24 @@ struct PPOLabeler: Labeler
     vector<float> ewma_reward_vec;
   
     // Trackers tracks training state
-    enum LabelerState {TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING};    
-    int64_t _step;
-    int64_t _update_count;
-    int64_t _epoch;    
-    
+    enum LabelerState {TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    
+    BBARG(int64_t, step, 0);
+    BBARG(int64_t, update_count, 0);
+    BBARG(int64_t, epoch, 0);
+        
+    // network training helpers
     PPOLabeler(PPOLabelerOptions options = PPOLabelerOptions());        
-    float operator()(vector<float> flatten, int operator_option);
-    void train();
-    void eval();
-
+    float operator()(vector<float> flatten);
+    void train(){labeler_state = LabelerState::TRAIN_RUNNING;}
+    void eval(){labeler_state = LabelerState::INFERENCE;}
     LabelerState get_labeler_state();
-
-    torch::Tensor compute_q_loss(const PPO::SampleBatch &batch_data);
-    torch::Tensor compute_pi_loss(const PPO::SampleBatch &batch_data);
+    tuple<torch::Tensor, PPO::ExtraInfo> compute_pi_loss(const PPO::Batch &batch_data);
+    torch::Tensor compute_q_loss(const PPO::Batch &batch_data);
     void update(const PPO::SampleBatch &batch_data);    
-
-    // vec_argmax is 1-based index, for contour_candidates
-    float vec_argmax(const vector<float> &v){return std::distance(v.begin(), std::max_element(v.begin(), v.end())) + 1;}
 };
+
+    // env wrapper: input state and labeler that performs the 4-head gaming-like action and output label at the end
+    float env_wrapper(OneRjSumCjGraph &graph, PPOLabeler &labeler, vector<float> state_flat);
 
 }; //namespace: PPO
 

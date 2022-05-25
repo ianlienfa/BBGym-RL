@@ -23,11 +23,8 @@ struct OneRjSumCjSearch: SearchMod
 #if LABELER == labeler_unify        
     std::shared_ptr<PlainLabeler> labeler;
 #elif LABELER == labeler_bynet
-    std::shared_ptr<DDPRLabeler> labeler;
-    OneRjSumCjSearch(std::shared_ptr<DDPRLabeler> labeler): labeler(labeler) {}
-    const float node_reward = -1e-2;
-    const float neg_zero_reward = -1e-7;
-    const float pos_zero_reward = 1e-7;
+    std::shared_ptr<PPO::PPOLabeler> labeler;
+    OneRjSumCjSearch(std::shared_ptr<PPO::PPOLabeler> labeler): labeler(labeler) {}
 #endif
     OneRjSumCjSearch();
     bool get_find_optimal();    

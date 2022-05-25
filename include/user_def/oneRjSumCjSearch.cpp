@@ -75,114 +75,31 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     (void) current_node;
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
-    #if DEBUG_LEVEL >=2        
-    cout << "searched_node_num: " << this->graph->searched_node_num << endl;
-    #endif
+
     // push the branched nodes into the contour
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
-        
-        // label and push
+                
         MEASURE(stateInput_measurer, "stateInput",
         StateInput stateInput(current_node, *it, *this->graph);
         );
         MEASURE(get_state_encoding_measurer, "get_state_encoding",
         vector<float> s = stateInput.get_state_encoding();  
         );
-        MEASURE(get_contour_snapshot_measurer, "get_contour_snapshot",
-        vector<float> contour_snap = this->graph->get_contour_snapshot(labeler->max_num_contour);      
-        );
-        bool inference = INF_MODE;
-        bool place, create, left, right;
-        float label;
-        ActorOut out;
-        if(!inference)
-        {     
-            if(labeler->epoch < labeler->update_start_epoch)
-            {                
-                MEASURE(train, "train",                
-                out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::RANDOM);
-                );
-                label = (*labeler).label_decision(out); // plain interpretation  
-                assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
-                #if TORCH_DEBUG == 1                        
-                if(std::isnan(label))
-                    throw std::runtime_error("Labeler returned NaN");
-                #endif                
-            }
-            else if(labeler->epoch < labeler->num_epoch)
-            {
-                // for tensor related data, pass by value would be better
-                MEASURE(train, "train",              
-                out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::TRAIN);
-                );
-                label = (*labeler).label_decision(out, true); 
-                assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
-                #if TORCH_DEBUG == 1                        
-                if(std::isnan(label))
-                    throw std::runtime_error("Labeler returned NaN");
-                #endif
-            }
-            else
-            {
-                // last epoch do one inference
-                cout << "INFERENCING ... " << endl;
-                out = (*labeler).train(s, contour_snap, DDPRLabeler::OperatorOptions::INFERENCE);
-                label = (*labeler).label_decision(out); // plain interpretation  
-                assertm("label_decision(): label is out of range", (label > 0) && (label < labeler->action_range.second));
-            }
-            
-            std::tie(place, create, left, right) = out; // copy for buffer use
-            assertm("prob not in range", 0.0 <= prob && prob <= 1.0);
-            assertm("noise not in range", -1.0 <= noise && noise <= 1.0);            
-            
-            vector<float> action_prep = {prob, noise};
-            action_prep.insert(action_prep.end(), softmax.begin(), softmax.end());
-            cout << "action_prep: " << endl << action_prep << endl;
+        torch::Tensor tensor_s = torch::from_blob(s.data(), {1, int64_t(s.size())}).clone();        
 
-            MEASURE(buffer_measurer, "buffer_measurer",
-            if(!labeler->buffer->isin_prep()) 
-            {     
-                labeler->buffer->enter_data_prep_section();
-                labeler->buffer->s_prep = s;
-                labeler->buffer->a_prep = action_prep;
-                labeler->buffer->contour_snapshot_prep = contour_snap;
-            }
-            else
-            {
-                // Finish the last data prep section
-                labeler->buffer->s_next_prep = s;   
-                labeler->buffer->contour_snapshot_next_prep = contour_snap;
-                // If the new node is search instead of branching nodes from same parent, reward = -1
-                labeler->buffer->reward_prep = node_reward;
-                labeler->buffer->done_prep = 0.0;
-                labeler->buffer->leave_data_prep_section();
-                labeler->buffer->submit();
-
-                // track reward
-                this->graph->accu_reward += labeler->buffer->reward_prep;
-                // cout << "current reward: " << labeler->buffer->reward_prep << endl;
-                
-                // start the new data prep section
-                labeler->buffer->enter_data_prep_section();
-                labeler->buffer->s_prep = s;
-                labeler->buffer->a_prep = action_prep;
-                labeler->buffer->contour_snapshot_prep = contour_snap;
-            }
-            );
-        }
-        else
+        // check if trajectory has finished
+        if(labeler->step() == labeler->opt.steps_per_epoch() - 1)
         {
-            label = (*labeler)(s, contour_snap, DDPRLabeler::OperatorOptions::INFERENCE);  
-        }        
-        // increase the step count
-        labeler->step++;        
+            // compute value of current state and call finish path
+            const auto &stepout = labeler->net->step(tensor_s);
+            labeler->buffer->finish_epoch(stepout.v);
+        }
+
+        // label and push
+        float label = (*labeler)(s);
 
         // Push the label(action) into contour : step()
         assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
-        
-        MEASURE(clip_insert_measurer, "clip_insert",
-        this->graph->clip_insert(labeler->max_num_contour, this->graph->contours, *it, label);
-        );
     }
 
     // locate the next contour
@@ -209,17 +126,13 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             this->graph->optimal_found = true;
             
             /* complete the incomplete data prep section */
-            // create a dummy stateInput only to call the labeler for a terminal state representation return            
-            StateInput dummy(current_node, current_node, *this->graph);
-            labeler->buffer->s_next_prep = dummy.get_state_encoding();            
-            labeler->buffer->contour_snapshot_next_prep = this->graph->get_contour_snapshot(labeler->max_num_contour);        
-            labeler->buffer->reward_prep = pos_zero_reward;
-            labeler->buffer->done_prep = 1.0;
-            labeler->buffer->leave_data_prep_section();
+            // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
+            labeler->buffer->prep.r() = pos_zero_reward;
             labeler->buffer->submit();
 
-            // track reward            
-            this->graph->accu_reward += labeler->buffer->reward_prep;
+            // track reward           
+            const auto &prep_reader = labeler->buffer->prep;
+            this->graph->accu_reward += prep_reader.r();
             // cout << "current reward: " << labeler->buffer->reward_prep << endl;
         }
         this->graph->contours.erase(current_iter);
@@ -229,9 +142,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     this->graph->current_contour_iter = next_iter;
     
     #if DEBUG_LEVEL >= 0
-    if(labeler->step % 1 == 0)
+    if(labeler->step() % 1 == 0)
     {
-        cout << "labeler.step: " << labeler->step << endl;
+        cout << "labeler.step: " << labeler->step() << endl;
         cout << "------------------" << endl;
         for(auto it = this->graph->contours.begin(); it != this->graph->contours.end(); ++it)
         {

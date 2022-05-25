@@ -29,21 +29,21 @@ std::string exec(const char* cmd) {
 
 void solveCallbackImpl(void* engine_ptr)
 {     
-    #if INF_MODE != 1
-    OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
-    auto &labeler = engine.searcher.labeler;
-    if(labeler->step % labeler->update_freq == 0 && labeler->buffer->get_size() > labeler->batch_size) 
-    { 
-        int buffer_size = labeler->buffer->get_size(); 
-        vector<int> v(labeler->batch_size);  
-        auto rand_in_range = [&](){            
-            return (BB_RAND()) % (buffer_size);
-        };
-        generate(v.begin(), v.end(), rand_in_range); 
-        RawBatch batch = labeler->buffer->sample(v);  
-        labeler->update(batch); 
-    } 
-    #endif
+    // #if INF_MODE != 1
+    // OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
+    // auto &labeler = engine.searcher.labeler;
+    // if(labeler->step % labeler->update_freq == 0 && labeler->buffer->get_size() > labeler->batch_size) 
+    // { 
+    //     int buffer_size = labeler->buffer->get_size(); 
+    //     vector<int> v(labeler->batch_size);  
+    //     auto rand_in_range = [&](){            
+    //         return (BB_RAND()) % (buffer_size);
+    //     };
+    //     generate(v.begin(), v.end(), rand_in_range); 
+    //     RawBatch batch = labeler->buffer->sample(v);  
+    //     labeler->update(batch); 
+    // } 
+    // #endif
 }
 
 void optimalFoundCallbackImpl(void* engine_ptr)
@@ -138,7 +138,6 @@ int main(int argc, char* argv[])
         }
     }
 
-
     OneRjSumCjPrune::prune_funcs = {
         prune__OneRjSumCj__LU_AND_SAL__Theorem1
     };
@@ -160,8 +159,8 @@ int main(int argc, char* argv[])
     if(!std::filesystem::exists(piOptimPath))
         piOptimPath = "";
 
-    std::shared_ptr<DDPRLabeler> labeler = 
-        std::make_shared<DDPRLabeler>(
+    std::shared_ptr<PPO::PPOLabeler> labeler = 
+        std::make_shared<PPO::PPOLabeler>(
             int64_t(StateInput(OneRjSumCjNode(), OneRjSumCjNode(), OneRjSumCjGraph()).get_state_encoding().size()), 
             6, // prob, noise, softmax(4)
             Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
@@ -176,14 +175,14 @@ int main(int argc, char* argv[])
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
     {              
         int rand_seed = RANDOM_SEED;
-        cerr << "Random seed: " << rand_seed << endl;
         torch::manual_seed(RANDOM_SEED);    
+        cerr << "Random seed: " << rand_seed << endl;
                       
         string filename(argv[2]);  
-        for(int epoch = 1; epoch <= labeler->num_epoch; epoch++)              
+        for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
             cerr << "epoch: " << epoch << endl;
-            labeler->epoch++;                    
+            labeler->epoch()++;                    
             if(parse_and_init_oneRjSumCj(filename))
             {
                 OneRjSumCjSearch searcher(labeler);
@@ -229,7 +228,7 @@ int main(int argc, char* argv[])
                 labeler->pi_mean_loss.clear();                
 
                 // stage save
-                if(labeler->num_epoch > 5 && epoch % (int(labeler->num_epoch / 5)) == 0)
+                if(labeler->opt.num_epoch() > 5 && epoch % (int(labeler->opt.num_epoch() / 5)) == 0)
                 {
                     string cmd = "cp ../saved_model/qNet.pt ../saved_model/qNet" + std::to_string(epoch) + ".pt";
                     exec(cmd.c_str());
@@ -243,78 +242,75 @@ int main(int argc, char* argv[])
             #endif
         }
     }
-    if(argc == 2)
-    {        
-        // read problem
-        #define INSTANCE_NUM 42
-        InputHandler inputHandler((string(argv[1])));
-        string filepath;
-        int instance_idx = INSTANCE_NUM;
-        cout << "instance number: " << instance_idx << endl;
+    // if(argc == 2)
+    // {        
+    //     // read problem
+    //     #define INSTANCE_NUM 42
+    //     InputHandler inputHandler((string(argv[1])));
+    //     string filepath;
+    //     int instance_idx = INSTANCE_NUM;
+    //     cout << "instance number: " << instance_idx << endl;
     
-        while(instance_idx--)
-        {
-            int step_size = rand() % 3;            
-            do
-            {
-                filepath = inputHandler.getNextFileName();  
-                if(filepath.empty())
-                    inputHandler.reset();
-            }while(step_size--);
-            if(parse_and_init_oneRjSumCj(filepath))
-            {
-                string cmd = "echo \"\" >> fileSearched.txt";
-                exec(cmd.c_str());
-                cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
-                exec(cmd.c_str());
-                OneRjSumCjSearch searcher(labeler);
-                OneRjSumCjBranch brancher;
-                OneRjSumCjPrune pruner;
-                LowerBound lowerbound;
-                OneRjSumCjGraph graph;
-                OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
-                graph = solver.solve(OneRjSumCjNode());  
+    //     while(instance_idx--)
+    //     {
+    //         int step_size = rand() % 3;            
+    //         do
+    //         {
+    //             filepath = inputHandler.getNextFileName();  
+    //             if(filepath.empty())
+    //                 inputHandler.reset();
+    //         }while(step_size--);
+    //         if(parse_and_init_oneRjSumCj(filepath))
+    //         {
+    //             string cmd = "echo \"\" >> fileSearched.txt";
+    //             exec(cmd.c_str());
+    //             cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
+    //             exec(cmd.c_str());
+    //             OneRjSumCjSearch searcher(labeler);
+    //             OneRjSumCjBranch brancher;
+    //             OneRjSumCjPrune pruner;
+    //             LowerBound lowerbound;
+    //             OneRjSumCjGraph graph;
+    //             OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
+    //             graph = solver.solve(OneRjSumCjNode());  
 
-                #if INF_MODE != 1
-                torch::save(labeler->net->q, "../saved_model/qNet.pt");
-                torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
-                torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
-                torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
-                #endif
+    //             #if INF_MODE != 1
+    //             torch::save(labeler->net->q, "../saved_model/qNet.pt");
+    //             torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
+    //             torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
+    //             torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+    //             #endif
 
-                // Create file if not exist 
-                if(!std::filesystem::exists("../saved_model/q_loss.txt"))
-                {
-                    std::ofstream outfile("../saved_model/q_loss.txt");
-                    outfile.close();
-                }
-                if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
-                {
-                    std::ofstream outfile("../saved_model/pi_loss.txt");
-                    outfile.close();
-                }
+    //             // Create file if not exist 
+    //             if(!std::filesystem::exists("../saved_model/q_loss.txt"))
+    //             {
+    //                 std::ofstream outfile("../saved_model/q_loss.txt");
+    //                 outfile.close();
+    //             }
+    //             if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
+    //             {
+    //                 std::ofstream outfile("../saved_model/pi_loss.txt");
+    //                 outfile.close();
+    //             }
 
-                std::ofstream outfile;
-                outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
-                for(auto it: labeler->q_loss_vec)
-                    outfile << it << ", ";
-                outfile.close();
+    //             std::ofstream outfile;
+    //             outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
+    //             for(auto it: labeler->q_loss_vec)
+    //                 outfile << it << ", ";
+    //             outfile.close();
 
-                outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
-                for(auto it: labeler->pi_loss_vec)
-                    outfile << it << ", ";    
-                outfile.close();
+    //             outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
+    //             for(auto it: labeler->pi_loss_vec)
+    //                 outfile << it << ", ";    
+    //             outfile.close();
 
-                // clean up loss_vec
-                labeler->q_loss_vec.clear();
-                labeler->pi_loss_vec.clear();
-            }                                          
-            labeler->epoch++;                    
-        }         
-    }
-
-
-
+    //             // clean up loss_vec
+    //             labeler->q_loss_vec.clear();
+    //             labeler->pi_loss_vec.clear();
+    //         }                                          
+    //         labeler->epoch++;                    
+    //     }         
+    // }
 
     /* For validation */
     // int min_obj = INT_MAX;

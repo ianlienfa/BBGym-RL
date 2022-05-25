@@ -9,11 +9,9 @@ using namespace torch;
 struct NetPPOOptions{
     int64_t state_dim;
     int64_t action_dim;
-    int64_t hidden_dim;
-    Pdd action_range;
+    int64_t hidden_dim;    
     string q_path = "";
     string pi_path = "";
-    int64_t max_num_contour = 100;
 };
 
 #endif

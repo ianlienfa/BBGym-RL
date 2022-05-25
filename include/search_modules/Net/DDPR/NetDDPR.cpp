@@ -83,6 +83,7 @@ void ReplayBufferImpl::submit()
         cout << "not safe to submit" << endl;
         exit(LOGIC_ERROR);
     }
+
 }
 
 

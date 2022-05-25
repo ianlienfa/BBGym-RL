@@ -21,8 +21,7 @@ typedef std::pair<double, double> Pdd;
 
 // encodings
 #define STATE_ENCODING vector<float>
-#define ACTION_ENCODING float
-
+#define ACTION_ENCODING int // 0: place, 1: insert + place, 2: left, 3: right
 
 // typedef TIME_TYPE schedule_time;
 #define BASIC_MAX(a,b) ((a)>(b)?(a):(b))
@@ -32,11 +31,28 @@ typedef std::pair<double, double> Pdd;
 #define assertm(msg, exp) assert(((void)msg, exp))
 
 // Option Class Argument Wrapper
-#define BBARG(type, name)\
-    type _##name;\
+#define BBARG(type, name, init_val)\
+    type _##name = (init_val);\
     void name(type val) {_##name = val;}\
     type& name() {return _##name;}
 
+// Define Tracker Variable Wrapper
+#define BB_TRACK_ARG(type, name, initval)\
+    type _##name = initval;\
+    bool name##_set = false;\
+    type const & name() const {\
+        return _##name;\
+    }\
+    type& name() {\
+        if(!name##_set){\
+            name##_set = true;\
+            return _##name;\
+        }\
+        else {\
+            assertm("Tracker Variable " #name " is already set!", false);\
+        }\
+    }
+    
 // Define Singleton Wrapper
 #define SINGLETON(type, name)\
     static type* _##name;\

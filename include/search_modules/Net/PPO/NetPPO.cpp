@@ -1,49 +1,42 @@
 #include "search_modules/Net/PPO/NetPPO.h"
 
 PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size) {
-
     this->gamma = 0.99;
     this->lambda = 0.95;
-
     this->max_size = max_size;
     this->idx = 0;    
     this->start_idx = 0;
     this->s_feature_size = 0;
     this->a_feature_size = 0;
-    this->enter_data_prep_sec = false;
     s.resize(max_size);
     a.resize(max_size);
     r.resize(max_size);
-    s_next.resize(max_size);
     adv.resize(max_size);    
     ret.resize(max_size);
     logp.resize(max_size);
+    this->reset();
 }
 
 bool PPO::ReplayBufferImpl::safe_to_submit()
 {
     // do checking
-    for(auto it: this->s_prep)
+    bool safe = prep.safe();
+    if(safe)
     {
-        assertm("state variable should not be zero", it != 0);
-        assertm("state variable having too small value", it > 1e-20);
+        for(auto it: this->prep._s)
+        {
+            assertm("state variable should not be zero", it != 0);
+            assertm("state variable having too small value", it > 1e-20);
+        }
+        assertm("state_vector should not be empty", (!this->s_prep.empty()));
+        assertm("state_next_vector should not be empty", (!this->s_next_prep.empty()));
+        assertm("action_vector should not be empty", (!this->a_prep.empty()));        
     }
-    for(auto it: this->s_next_prep)
-    {
-        assertm("state variable should not be zero", it != 0);
-        assertm("state variable having too small value", it > 1e-20);
-    }
-    assertm("done variable should be 0 or 1", (this->done_prep == 0.0 || this->done_prep == 1.0));
-    assertm("state_vector should not be empty", (!this->s_prep.empty()));
-    assertm("state_next_vector should not be empty", (!this->s_next_prep.empty()));
-    assertm("action_vector should not be empty", (!this->a_prep.empty()));        
-    return !enter_data_prep_sec;   
+    return safe;
 }        
 
 
-//                 s                a            r          s'                  //
-//typedef tuple<STATE_ENCODING, ACTION_ENCODING, float, STATE_ENCODING> PushBatch;//
-void PPO::ReplayBufferImpl::push(PPO::PushBatch &raw_batch)
+void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batch)
 {    
     if(idx >= max_size)
     {
@@ -53,12 +46,9 @@ void PPO::ReplayBufferImpl::push(PPO::PushBatch &raw_batch)
     if(!s_feature_size)
         s_feature_size = int(s.size());
     if(!a_feature_size)
-        a_feature_size = int(a.size());
-    // s and s_next have no strict relation on the sequence 
-    this->s[this->idx] = std::get<0>(raw_batch);
-    this->a[this->idx] = std::get<1>(raw_batch);
-    this->r[this->idx] = std::get<2>(raw_batch);
-    this->s_next[this->idx] = std::get<3>(raw_batch);
+        a_feature_size = int(a.size());    
+    std::tie(this->s[this->idx], this->a[this->idx], this->r[this->idx], this->val[this->idx], this->logp[this->idx]) 
+        = std::tie(raw_batch.s(), raw_batch.a(), raw_batch.r(), raw_batch.val(), raw_batch.logp());
     this->idx = (this->idx + 1) % max_size;    
 }
 
@@ -128,10 +118,20 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     vector<STATE_ENCODING> s = {this->s.begin() + start_idx, this->s.begin() + idx};
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
     Vf r = {this->r.begin() + start_idx, this->r.begin() + idx};
-    vector<STATE_ENCODING> s_next = {this->s_next.begin() + start_idx, this->s_next.begin() + idx};
     Vf adv = {this->adv.begin() + start_idx, this->adv.begin() + idx};
     Vf logp = {this->logp.begin() + start_idx, this->logp.begin() + idx};
-    return PPO::SampleBatch(s, a, r, s_next, adv, logp);
+    return PPO::SampleBatch({
+        .v_s = s,
+        .v_a = a,
+        .v_r = r,
+        .v_adv = adv,
+        .v_logp = logp
+    });
+}
+
+void PPO::ReplayBufferImpl::reset()
+{
+    prep = PrepArea();
 }
 
 void PPO::ReplayBufferImpl::submit()
@@ -146,15 +146,18 @@ void PPO::ReplayBufferImpl::submit()
     #endif
 
     if(safe_to_submit())
-    {        
-        cout << "a_prep: " << a_prep << endl;
+    {                
         this->push(PPO::PushBatch(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep));
+
     }
     else
     {
         cout << "not safe to submit" << endl;
         exit(LOGIC_ERROR);
     }
+
+    // reset temp prep vars
+    this->reset();
 }
 
 
@@ -379,17 +382,25 @@ NetPPOImpl::NetPPOImpl(NetPPOOptions opt)
     this->pi = register_module("PolicyNet", pi_net);
 }
 
-
-
-float NetPPOImpl::act(torch::Tensor s)
+StepOutput NetPPOImpl::step(torch::Tensor s)
 {
-    // torch::NoGradGuard no_grad;
-    // #if DEBUG_LEVEL >= 2
-    // for(const auto &p: this->q->parameters())
-    // {
-    //     cout << p.requires_grad() << endl;
-    // }
-    // #endif
-    // return this->pi->forward(s)[2].item<float>();
+    GRAD_TOGGLE(net->pi, false);
+    GRAD_TOGGLE(net->q, false);
+    
+    // sample from the softmax tensor
+    torch::Tensor pi = net->pi->dist(s);
+    int64_t a = torch::multinomial(pi, 1).item().toLong();
+    float logp = torch::log(pi[a]).item().toFloat();
+    float v = net->q->forward(s).item().toFloat();
+
+    GRAD_TOGGLE(net->pi, true);
+    GRAD_TOGGLE(net->q, true);
+
+    return StepOutput({
+        .a = a,
+        .v = v,
+        .logp = logp    
+    });
 }
+
 

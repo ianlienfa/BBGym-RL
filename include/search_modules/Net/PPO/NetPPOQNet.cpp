@@ -4,7 +4,6 @@ NetPPOQNetImpl::NetPPOQNetImpl(const NetPPOOptions &ops)
 {
     this->action_dim = ops.action_dim;
     this->state_dim = ops.state_dim;
-    this->action_range = ops.action_range;    
     this->hidden_dim = ops.hidden_dim;
     net = register_module("Sequential", nn::Sequential(
         nn::Linear(ops.state_dim, ops.hidden_dim),
