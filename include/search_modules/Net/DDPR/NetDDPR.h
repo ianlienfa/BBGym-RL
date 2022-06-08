@@ -20,7 +20,7 @@ struct StateInput
     int state_dim = 0;
     StateInput(const OneRjSumCjNode &node_parent, const OneRjSumCjNode &node, const OneRjSumCjGraph &graph) : node_parent(node_parent), node(node), graph(graph) {}
     vector<float> flatten_and_norm(const OneRjSumCjNode &node);
-    vector<float> get_state_encoding(bool get_terminal = false);
+    vector<float> get_state_encoding(int max_num_contour, bool get_terminal = false);
 };
 
 // the saved format should be elastic

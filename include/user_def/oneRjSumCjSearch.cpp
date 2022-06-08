@@ -32,6 +32,9 @@ OneRjSumCjGraph OneRjSumCjSearch::init(OneRjSumCjNode rootProblem) {
     contour_0.push(OneRjSumCjNode(B(0), Vi(), 0));
     graph.contours.insert(make_pair(0, contour_0));
     graph.current_contour_iter = graph.contours.begin();
+#elif(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
+    graph.contours.place(OneRjSumCjNode(B(0), Vi(), 0));   
+    graph.contours.set_max_size(labeler->opt.max_num_contour()); 
 #endif
 
 /* 
@@ -47,6 +50,7 @@ we can save them in a ordered map
     return graph;
 }
 
+
 #if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
 OneRjSumCjNode OneRjSumCjSearch::search_next() {
     // pop element from the current contour
@@ -57,6 +61,15 @@ OneRjSumCjNode OneRjSumCjSearch::search_next() {
     #endif
     OneRjSumCjNode current_element = this->graph->current_contour_iter->second.top();
     this->graph->current_contour_iter->second.extract();
+    return current_element;        
+}
+#elif(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
+OneRjSumCjNode OneRjSumCjSearch::search_next() {
+    // pop element from the current contour
+    #if DEBUG_LEVEL >=2         
+        
+    #endif    
+    OneRjSumCjNode current_element = this->graph->contours.pop_from_current();
     return current_element;        
 }
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)
@@ -83,7 +96,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         StateInput stateInput(current_node, *it, *this->graph);
         );
         MEASURE(get_state_encoding_measurer, "get_state_encoding",
-        vector<float> s = stateInput.get_state_encoding();  
+        vector<float> s = stateInput.get_state_encoding(this->labeler->opt.max_num_contour());  
         );
         torch::Tensor tensor_s = torch::from_blob(s.data(), {1, int64_t(s.size())}).clone();        
 
@@ -96,10 +109,15 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         }
 
         // label and push
-        float label = (*labeler)(s);
+        float label = (*labeler)(s, (*this->graph));
 
         // Push the label(action) into contour : step()
         assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
+        
+        MEASURE(clip_insert_measurer, "clip_insert",
+        this->graph->clip_insert(labeler->opt.max_num_contour(), this->graph->contours, *it, label);
+        );
+
     }
 
     // locate the next contour
@@ -152,6 +170,83 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         }
         cout << "current_iter: " << this->graph->current_contour_iter->first << endl;
     }
+    #endif
+    if(this->graph->avg_reward){ 
+        this->graph->avg_reward = this->graph->avg_reward * 0.9 + this->graph->accu_reward * 0.1;
+    }
+    else{
+        this->graph->avg_reward = this->graph->accu_reward;
+    }
+
+    std::ofstream outfile;
+    outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
+    outfile << this->graph->avg_reward << ", ";  
+    outfile.close();
+
+    return branched_nodes;
+}
+#elif(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
+vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_node, vector<OneRjSumCjNode> branched_nodes) {
+    using namespace PPO;
+
+    (void) current_node;
+    // update node count
+    this->graph->searched_node_num += branched_nodes.size();
+
+    // push the branched nodes into the contour
+    for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
+                
+        MEASURE(stateInput_measurer, "stateInput",
+        StateInput stateInput(current_node, *it, *this->graph);
+        );
+        MEASURE(get_state_encoding_measurer, "get_state_encoding",
+        vector<float> s = stateInput.get_state_encoding(this->labeler->opt.max_num_contour());  
+        );
+        torch::Tensor tensor_s = torch::from_blob(s.data(), {1, int64_t(s.size())}).clone();        
+
+        // check if trajectory has finished
+        if(labeler->step() == labeler->opt.steps_per_epoch() - 1)
+        {
+            // compute value of current state and call finish path
+            const auto &stepout = labeler->net->step(tensor_s);
+            labeler->buffer->finish_epoch(stepout.v);
+        }
+
+        // label and push
+        int64_t label = (*labeler)(current_node, s, (*this->graph));
+
+        // Push the label(action) into contour : step()
+        assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
+        
+        // remove clip insert, should be done in the operator
+    }
+
+    // locate the next contour
+    graph->contours.step_forward();
+
+    // clean current contour if needed
+    if(graph->contours.current_iter->empty())
+    {        
+        if(this->graph->contours.size() <= 1) /* early leaving from the environment */
+        {
+            // only one contour left and the contour is empty, we need to stop
+            this->graph->optimal_found = true;
+            
+            /* complete the incomplete data prep section */
+            // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
+            labeler->buffer->prep.r() = pos_zero_reward;
+            labeler->buffer->submit();
+            labeler->buffer->finish_epoch(0); // end the exploration
+
+            // track reward           
+            const auto &prep_reader = labeler->buffer->prep;
+            this->graph->accu_reward += prep_reader.r();
+        }
+        this->graph->contours.erase_contour();
+    }
+        
+    #if DEBUG_LEVEL >= 0
+    
     #endif
     if(this->graph->avg_reward){ 
         this->graph->avg_reward = this->graph->avg_reward * 0.9 + this->graph->accu_reward * 0.1;
@@ -233,6 +328,10 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
 
 
 #if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+bool OneRjSumCjSearch::is_incumbent(const OneRjSumCjNode &current_node) {
+    return ((((int)current_node.seq.size()) == OneRjSumCjNode::jobs_num));
+}
+#elif(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
 bool OneRjSumCjSearch::is_incumbent(const OneRjSumCjNode &current_node) {
     return ((((int)current_node.seq.size()) == OneRjSumCjNode::jobs_num));
 }

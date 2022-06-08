@@ -8,6 +8,7 @@
 #define RANDOM_SEED 1000
 const float node_reward = -1e-2;
 const float move_reward = -1e-3;
+const float move_reward_slope = 3;
 const float neg_zero_reward = -1e-7;
 const float pos_zero_reward = 1e-7;
 
@@ -25,12 +26,13 @@ const float pos_zero_reward = 1e-7;
 #define QOptimPath "../saved_model/optimizer_q.pt"
 #define INF_MODE 0
 #define MEASURE_MODE 0
-#define NDEBUG
+// #define NDEBUG 
 
 
 /* Available Search Options Definitions */
 #define searchOneRjSumCj_CBFS 0
 #define searchOneRjSumCj_LU_AND_SAL 1
+#define searchOneRjSumCj_CBFS_LIST 2
 
 /* Available Branch Options Definitions */
 #define branchOneRjSumCj_PLAIN 0
@@ -58,11 +60,12 @@ const float pos_zero_reward = 1e-7;
 #define bundle_OneRjSumCj_LU_AND_SAL 1
 #define bundle_OneRjSumCj_CBFS 2
 #define bundle_OneRjSumCj_CBFS_Net 3
+#define bundle_OneRjSumCj_CBFS_LIST 4
 
 /* ==================== Simple Strategy Choices ========================== */
 
 /* Simple Strategy Choices */
-#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS_Net
+#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS_LIST
 
 
 /* ======================================================================= */
@@ -84,6 +87,14 @@ const float pos_zero_reward = 1e-7;
 
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_CBFS_Net
     #define SEARCH_STRATEGY searchOneRjSumCj_CBFS
+    #define BRANCH_STRATEGY branchOneRjSumCj_LU_AND_SAL
+    #define PRUNE_STRATEGY  pruneOneRjSumCj_plain
+    #define LOWER_BOUND lowerbound_oneRjSumCj_LU_AND_SAL
+    #define LABELER labeler_bynet
+#endif
+
+#if SEARCH_BUNDLE == bundle_OneRjSumCj_CBFS_LIST
+    #define SEARCH_STRATEGY searchOneRjSumCj_CBFS_LIST
     #define BRANCH_STRATEGY branchOneRjSumCj_LU_AND_SAL
     #define PRUNE_STRATEGY  pruneOneRjSumCj_plain
     #define LOWER_BOUND lowerbound_oneRjSumCj_LU_AND_SAL

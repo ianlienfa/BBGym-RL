@@ -18,7 +18,7 @@ namespace PPO {
 
 enum ACTIONS {
     PLACE,
-    INSERT_PLACE,
+    PLACE_INSERT,
     LEFT,
     RIGHT
 };
@@ -27,14 +27,16 @@ struct PushBatch{
     STATE_ENCODING s;
     ACTION_ENCODING a;
     float r;
+    float val;
+    float logp;
 };
 
 struct SampleBatch{
-    vector<STATE_ENCODING> v_s;
-    vector<ACTION_ENCODING> v_a;
+    vector<float> v_s;
+    vector<float> v_a;
     vector<float> v_r;
     vector<float> v_adv;
-    vector<float> v_logp;
+    vector<float> v_logp;    
 };
 
 struct Batch{
@@ -66,7 +68,8 @@ struct StateInput
     int state_dim = 0;
     StateInput(const OneRjSumCjNode &node_parent, const OneRjSumCjNode &node, const OneRjSumCjGraph &graph) : node_parent(node_parent), node(node), graph(graph) {}
     vector<float> flatten_and_norm(const OneRjSumCjNode &node);
-    vector<float> get_state_encoding(bool get_terminal = false);
+    vector<float> get_state_encoding(int max_num_contour, bool get_terminal = false);
+    static vector<float> get_state_encoding_fast(vector<float> &state_encoding, ::OneRjSumCjGraph &graph);
 };
 
 /*
@@ -90,10 +93,11 @@ public:
         BB_TRACK_ARG(float, r, numeric_limits<float>::min());
         BB_TRACK_ARG(float, val, numeric_limits<float>::min());
         BB_TRACK_ARG(float, logp, numeric_limits<float>::min());
-        // BB_TRACK_ARG(float, adv, numeric_limits<float>::min());
-        // BB_TRACK_ARG(float, ret, numeric_limits<float>::min());
         bool safe(){
             return s_set && a_set && r_set && val_set && logp_set;
+        }
+        bool empty(){
+            return (!s_set) && (!a_set) && (!r_set) && (!val_set) && (!logp_set);
         }
     } prep;
 
@@ -103,7 +107,8 @@ public:
     int a_feature_size;
     int start_idx;
     int idx;
-
+    int batch_size;
+    
     // hyperparam
     float gamma;
     float lambda;
@@ -113,13 +118,13 @@ public:
     void submit();
     vector<float> & vector_norm(vector<float> &vec, int start, int end);
 
-    ReplayBufferImpl(int max_size);    
+    ReplayBufferImpl(int max_size, int batch_size);    
     int get_size(){return idx - start_idx;}
     void push(const PPO::ReplayBufferImpl::PrepArea &raw_batch);
     void finish_epoch(float end_val = 0.0);
-    void reset();
-    PPO::SampleBatch get();            
-    tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> raw_batch);
+    void reset();    
+    PPO::SampleBatch get();
+    Batch getBatchTensor(SampleBatch &raw_batch);
     tuple<int64_t, float, float /*a, v, logp*/> step(torch::Tensor s);
 };
 typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;
@@ -128,7 +133,6 @@ typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;
 struct NetPPOImpl: nn::Cloneable<NetPPOImpl>
 {
     NetPPOOptions opt;
-    
     NetPPOActor pi{nullptr};
     NetPPOQNet q{nullptr};
     // sample()
@@ -136,6 +140,7 @@ struct NetPPOImpl: nn::Cloneable<NetPPOImpl>
     NetPPOImpl(NetPPOOptions options);
     float act(torch::Tensor s);
     StepOutput step(torch::Tensor s);
+
     void reset() override
     {
         pi = register_module("PolicyNet", NetPPOActor(opt));    

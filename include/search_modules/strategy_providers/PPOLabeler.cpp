@@ -1,16 +1,14 @@
 #include "search_modules/strategy_providers/PPOLabeler.h"
-
 namespace PPO{
-
-PPOLabeler::PPOLabeler(PPOLabelerOptions opt)
-: opt(opt)
+PPOLabeler::PPOLabeler(PPO::PPOLabelerOptions options) :
+    opt(options)
 {       
     // Debug
     cout << "state_dim: " << opt.state_dim() << endl;
     cout << "action_dim: " << opt.action_dim() << endl;
 
     // set up buffer
-    buffer = std::make_shared<PPO::ReplayBufferImpl>(opt.buffer_size());
+    buffer = std::make_shared<PPO::ReplayBufferImpl>(opt.buffer_size(), opt.max_num_contour());
 
     // set up MLP    
     net = std::make_shared<NetPPOImpl>(NetPPOOptions({
@@ -63,37 +61,50 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
     }
 }
 
+STATE_ENCODING PPOLabeler::get_state()
+{
+    
+}
+
 // Do training and buffering here, return the label if created, otherwise go throgh the network again
-float PPOLabeler::operator()(vector<float> state_flat)
-{    
+int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat, ::OneRjSumCjGraph& graph)
+{        
     // get current labeler_state
+    CONTOUR_TYPE label;
     PPOLabeler::LabelerState labeler_state_ = this->get_labeler_state();
 
-    if(labeler_state == LabelerState::INFERENCE)
-        return 0;
-    if(labeler_state == LabelerState::TRAIN_EPOCH_END)
-        return 0;
-    
+    // get current state
     torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
 
     // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
-    buffer->prep.r() = node_reward;        
+    if(!buffer->prep.empty()) // if not the first round, for the first round, ignore the r
+    {
+        buffer->prep.r() = node_reward;      
+    }
     if(this->buffer->safe_to_submit())
     {
         this->buffer->submit();            
     }
-    else
+    
+    if(labeler_state == LabelerState::TRAIN_EPOCH_END)
     {
-        assertm("unsafe submission", false);
+        // step == step_per_epoch, time out
+        PPO::StepOutput out = net->step(tensor_s);
+        auto &val = out.v;
+        buffer->finish_epoch(val);
     }
-
-    if(labeler_state == LabelerState::TRAIN_RUNNING)
+    else if(labeler_state == LabelerState::TRAIN_RUNNING)
     {        
         PPO::StepOutput out = net->step(tensor_s);
-        auto &[action, val, logp] = std::tie(out.a, out.v, out.logp);
+        auto &action = out.a;
+        auto &val = out.v;
+        auto &logp = out.logp;
 
         // update buffer () -> (s, a, '', v, logp)
-        std::tie(buffer->prep.s(), buffer->prep.a(), buffer->prep.val(), buffer->prep.logp()) = std::tie(state_flat, action, val, logp);
+        buffer->prep.s() = state_flat;
+        buffer->prep.a() = action;
+        buffer->prep.val() = val;
+        buffer->prep.logp() = logp;
 
         // increase step
         this->step()++;
@@ -101,7 +112,7 @@ float PPOLabeler::operator()(vector<float> state_flat)
         while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
         {        
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
-            buffer->prep.r() = move_reward;
+            buffer->prep.r() = graph.contours.get_picker_reward();
             if(buffer->safe_to_submit())
             {
                 buffer->submit();
@@ -109,23 +120,23 @@ float PPOLabeler::operator()(vector<float> state_flat)
 
             // update contour pointer 
             if(action == PPO::ACTIONS::LEFT)
-                this->action_left();
+                graph.contours.left();
             else if(action == PPO::ACTIONS::RIGHT)
-                this->action_right();
+                graph.contours.right();
             else
             {
                 assertm("Invalid action", false);
             }
 
             // get state
-            STATE_ENCODING state_flat = this->get_state();
-            torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
+            STATE_ENCODING tweaked_state = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
+            torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
 
-            PPO::StepOutput out = net->step(tensor_s);
+            PPO::StepOutput out = net->step(tensor_s);            
             std::tie(action, val, logp) = std::tie(out.a, out.v, out.logp);
 
             // update buffer () -> (s, a, '', v, logp) 
-            std::tie(buffer->prep.s(), buffer->prep.a(), buffer->prep.val(), buffer->prep.logp()) = std::tie(state_flat, action, val, logp);
+            std::tie(buffer->prep.s(), buffer->prep.a(), buffer->prep.val(), buffer->prep.logp()) = std::tie(tweaked_state, action, val, logp);
 
             // increase step
             this->step()++;
@@ -135,37 +146,42 @@ float PPOLabeler::operator()(vector<float> state_flat)
         /* */
         assertm("Logical invalid action", action == PPO::ACTIONS::PLACE || action == PPO::ACTIONS::PLACE_INSERT);
 
-        // execute action
-        if(action == PPO::ACTIONS::PLACE)
-            this->action_place();
-        else if(action == PPO::ACTIONS::PLACE_INSERT)
-            this->action_place_insert();
-        else
-        {
-            assertm("Invalid action", false);
-        }
-
-        // interpret current state to label
-        label = this->interpret_state();
 
         /* */
         /* ==== ACTION be PLACE or PLACE_INSERT END ==== */
-
-        return label;
+        // execute action
+        if(action == PPO::ACTIONS::PLACE)
+        {
+            label = graph.contours.place(node);
+            return label;
+        }
+        else if(action == PPO::ACTIONS::PLACE_INSERT)
+        {
+            label = graph.contours.insert_and_place(node);
+            return label;
+        }
+        else
+        {
+            assertm("Invalid action", false);            
+        }             
+        return 0;
 
     }
     else if(labeler_state == LabelerState::INFERENCE)
     {
         // increase step
         PPO::StepOutput out = net->step(tensor_s);
-        auto &[action, val, logp] = std::tie(out.a, out.v, out.logp);
+        auto &action = out.a;
+        auto &val = out.v;
+        auto &logp = out.logp;
+
         while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
         {
             // update contour pointer 
             if(action == PPO::ACTIONS::LEFT)
-                this->action_left();
+                graph.contours.left();
             else if(action == PPO::ACTIONS::RIGHT)
-                this->action_right();
+                graph.contours.right();
             else
             {
                 assertm("Invalid action", false);
@@ -179,18 +195,26 @@ float PPOLabeler::operator()(vector<float> state_flat)
             out = net->step(tensor_s);
             std::tie(action, val, logp) = std::tie(out.a, out.v, out.logp);
         }
+        
+        // execute action
         if(action == PPO::ACTIONS::PLACE)
-            this->action_place();
+        {
+            label = graph.contours.place(node);
+            return label;
+        }
         else if(action == PPO::ACTIONS::PLACE_INSERT)
-            this->action_place_insert();
+        {
+            label = graph.contours.insert_and_place(node);
+            return label;
+        }
         else
         {
-            assertm("Invalid action", false);
-        }
-        float label = this->interpret_state();
-        return label;
+            assertm("Invalid action", false);            
+        }             
+        return 0;
     }
-
+    assertm("Error control path", false);
+    return 0;
 }
 
 //                 s                a            r                s'            adv,        logp          //    
@@ -237,7 +261,7 @@ torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
     return v_loss;
 }
 
-void PPOLabeler::update(const PPO::SampleBatch &batch_data)
+void PPOLabeler::update(PPO::SampleBatch &batch_data)
 {       
     using std::cout, std::endl; 
     const int mean_size = 1;

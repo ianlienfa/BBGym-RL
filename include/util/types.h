@@ -31,9 +31,9 @@ typedef std::pair<double, double> Pdd;
 #define assertm(msg, exp) assert(((void)msg, exp))
 
 // Option Class Argument Wrapper
-#define BBARG(type, name, init_val)\
+#define BBARG(parent, type, name, init_val)\
     type _##name = (init_val);\
-    void name(type val) {_##name = val;}\
+    parent& name(type val) {_##name = val; return *this;}\
     type& name() {return _##name;}
 
 // Define Tracker Variable Wrapper
@@ -50,6 +50,7 @@ typedef std::pair<double, double> Pdd;
         }\
         else {\
             assertm("Tracker Variable " #name " is already set!", false);\
+            return _##name;\
         }\
     }
     

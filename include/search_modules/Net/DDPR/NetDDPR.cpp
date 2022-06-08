@@ -88,27 +88,27 @@ void ReplayBufferImpl::submit()
 
 
 
-vector<float> StateInput::get_state_encoding(bool get_terminal)
-{    
-    vector<float> state_encoding;
+// vector<float> StateInput::get_state_encoding(bool get_terminal)
+// {    
+//     vector<float> state_encoding;
 
-    // for terminal state
-    if(get_terminal)
-    {
-        assertm("entered get_terminal, why?", 1);
-        state_encoding.assign(state_dim, 0.0);
-        return state_encoding;
-    }
+//     // for terminal state
+//     if(get_terminal)
+//     {
+//         assertm("entered get_terminal, why?", 1);
+//         state_encoding.assign(state_dim, 0.0);
+//         return state_encoding;
+//     }
 
-    vector<float> current_node_state = flatten_and_norm(this->node);
-    // vector<float> parent_node_state = flatten_and_norm(this->node_parent);
-    state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
-    // state_encoding.insert(state_encoding.end(), make_move_iterator(parent_node_state.begin()), make_move_iterator(parent_node_state.end()));
+//     vector<float> current_node_state = flatten_and_norm(this->node);
+//     // vector<float> parent_node_state = flatten_and_norm(this->node_parent);
+//     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
+//     // state_encoding.insert(state_encoding.end(), make_move_iterator(parent_node_state.begin()), make_move_iterator(parent_node_state.end()));
 
-    // initialize the state encoding dimension
-    if(state_dim == 0) state_dim = state_encoding.size();    
-    return state_encoding;
-}
+//     // initialize the state encoding dimension
+//     if(state_dim == 0) state_dim = state_encoding.size();    
+//     return state_encoding;
+// }
 
 vector<float> StateInput::flatten_and_norm(const OneRjSumCjNode &node)
 {   

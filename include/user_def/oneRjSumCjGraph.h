@@ -5,7 +5,9 @@
 #include <iomanip>
 #include <queue>
 #include <map>
+#include <tuple>
 #include <limits>
+#include <memory>
 using std::vector;
 using std::map;
 using std::cerr;
@@ -14,7 +16,9 @@ using std::numeric_limits;
 #include "BB_engine/searchGraph.h"
 #include "util/types.h"
 #include "util/PriorityQueue.h"
+#include "util/PlacementList.h"
 #include "util/config.h"
+#include "user_def/oneRjSumCjNode.h"
 // #if (Labeling_Strategy == RL_DDPR)
 //     #include "search_modules/Net/DDPR/NetDDPR.h"
 // #endif
@@ -33,6 +37,8 @@ struct OneRjSumCjGraph: SearchGraph
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)
     vector<deque<OneRjSumCjNode>> contours;
     int current_level;
+#elif (SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
+    PlacementList<OneRjSumCjNode, int64_t> contours;
 #endif
 
     // dynamic during search
@@ -65,26 +71,49 @@ struct OneRjSumCjGraph: SearchGraph
 #if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
         contours = map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>();
         current_contour_iter = contours.begin();
+#elif (SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
+        contours.init(OneRjSumCjNode::cmpr);        
 #endif
         min_seq = Vi();
         min_obj = numeric_limits<double>::max();        
     }
-#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)    
-    vector<float> get_contour_snapshot(int max_num_contour)
+
+#if(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
+    vector<float> get_contour_snapshot(int max_num_contour) const
+    {
+        return contours.get_snapshot();
+    }    
+#elif (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)    
+    vector<float> get_contour_snapshot(int max_num_contour) const
     {
         const float norm_factor = 1e3;
         vector<float> contour_snapshot;
         assertm("contour size exceeds max_num_contour", max_num_contour >= contours.size());
         contour_snapshot.assign(max_num_contour, -1e-11);      
         int i = 0;  
-        for(auto iter = contours.begin(); iter != contours.end(); iter++){
-            if((!iter->second.empty()) && (iter->first != 0.0)){
-                contour_snapshot[i] = ((float)(iter->second.size())) * iter->first / norm_factor;
+        for(const auto &iter: contours){
+            if((!iter.second.empty()) && (iter.first != 0.0)){
+                contour_snapshot[i] = ((float)(iter.second.size())) * iter.first / norm_factor;
                 assertm("snapshot with zero value", contour_snapshot[i] != 0.0);
                 i++;
             }    
         }        
         return contour_snapshot;
+    }
+    // return the contour configuration (labels) and the current iter
+    std::tuple<std::unique_ptr<vector<int>>, int> get_contour_config(int max_num_contour) const
+    {
+        std::unique_ptr<vector<int>> contour_config_ptr = std::make_unique<vector<int>>();
+        vector<int> &contour_config = *contour_config_ptr;
+        assertm("contour size exceeds max_num_contour", max_num_contour >= contours.size());        
+        int current_contour_pointer = 0;  
+        for(auto iter = contours.begin(); iter != contours.end(); iter++){
+            contour_config.push_back(iter->first);
+            if(iter == current_contour_iter){
+                current_contour_pointer = contour_config.size() - 1;
+            }
+        }        
+        return make_tuple(std::move(contour_config_ptr), current_contour_pointer);
     }
     // clip inserting for rnn, with max_num_contour
     void clip_insert(int max_num_contour, map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &contour, OneRjSumCjNode &node, float label)

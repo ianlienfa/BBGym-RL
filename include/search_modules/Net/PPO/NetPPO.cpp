@@ -1,9 +1,10 @@
 #include "search_modules/Net/PPO/NetPPO.h"
 
-PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size) {
+PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size, int batch_size) {
     this->gamma = 0.99;
     this->lambda = 0.95;
     this->max_size = max_size;
+    this->batch_size = batch_size;
     this->idx = 0;    
     this->start_idx = 0;
     this->s_feature_size = 0;
@@ -28,9 +29,10 @@ bool PPO::ReplayBufferImpl::safe_to_submit()
             assertm("state variable should not be zero", it != 0);
             assertm("state variable having too small value", it > 1e-20);
         }
-        assertm("state_vector should not be empty", (!this->s_prep.empty()));
-        assertm("state_next_vector should not be empty", (!this->s_next_prep.empty()));
-        assertm("action_vector should not be empty", (!this->a_prep.empty()));        
+    }
+    else
+    {
+        assertm("prep should be safe", false);
     }
     return safe;
 }        
@@ -117,12 +119,28 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     adv = vector_norm(adv, start_idx, idx);
     vector<STATE_ENCODING> s = {this->s.begin() + start_idx, this->s.begin() + idx};
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
+
+    // flatten s and a
+    vector<float> s_flat(s_feature_size * batch_size);
+    vector<float> a_flat(a_feature_size * batch_size);
+    for(int i = 0; i < batch_size; i++)
+    {
+        for(int j = 0; j < s_feature_size; j++)
+        {
+            s_flat[i * s_feature_size + j] = s[i][j];
+        }
+    }
+    for(int i = 0; i < batch_size; i++)
+    {
+        a_flat[i] = (float)a[i];
+    }
+
     Vf r = {this->r.begin() + start_idx, this->r.begin() + idx};
     Vf adv = {this->adv.begin() + start_idx, this->adv.begin() + idx};
     Vf logp = {this->logp.begin() + start_idx, this->logp.begin() + idx};
     return PPO::SampleBatch({
-        .v_s = s,
-        .v_a = a,
+        .v_s = s_flat,
+        .v_a = a_flat,
         .v_r = r,
         .v_adv = adv,
         .v_logp = logp
@@ -147,8 +165,7 @@ void PPO::ReplayBufferImpl::submit()
 
     if(safe_to_submit())
     {                
-        this->push(PPO::PushBatch(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep));
-
+        this->push(this->prep);
     }
     else
     {
@@ -161,56 +178,69 @@ void PPO::ReplayBufferImpl::submit()
 }
 
 
-// vector<float> PPO::StateInput::get_state_encoding(bool get_terminal)
-// {    
-//     vector<float> state_encoding;
+vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_terminal)
+{    
+    vector<float> state_encoding;
+    const float norm_factor = 1e3;
 
-//     // for terminal state
-//     if(get_terminal)
-//     {
-//         assertm("entered get_terminal, why?", 1);
-//         state_encoding.assign(state_dim, 0.0);
-//         return state_encoding;
-//     }
+    // for terminal state
+    if(get_terminal)
+    {
+        assertm("entered get_terminal, why?", 1);
+        state_encoding.assign(state_dim, 0.0);
+        return state_encoding;
+    }
 
-//     vector<float> current_node_state = flatten_and_norm(this->node);
-//     // vector<float> parent_node_state = flatten_and_norm(this->node_parent);
-//     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
-//     // state_encoding.insert(state_encoding.end(), make_move_iterator(parent_node_state.begin()), make_move_iterator(parent_node_state.end()));
+    vector<float> current_node_state = flatten_and_norm(this->node);
+    state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
+    vector<float> contour_snap = this->graph.get_contour_snapshot(max_num_contour);
+    state_encoding.insert(state_encoding.end(), make_move_iterator(contour_snap.begin()), make_move_iterator(contour_snap.end()));
+    const float current_picker_step = this->graph.contours.picker_steps / norm_factor;
+    state_encoding.push_back(current_picker_step);
+    const float current_contour_pointer = this->graph.contours.current_pos / norm_factor;
+    state_encoding.push_back(current_contour_pointer);
 
-//     // initialize the state encoding dimension
-//     if(state_dim == 0) state_dim = state_encoding.size();    
-//     return state_encoding;
-// }
+    // initialize the state encoding dimension
+    if(state_dim == 0) state_dim = state_encoding.size();    
+    return state_encoding;
+}
 
-// vector<float> PPO::StateInput::flatten_and_norm(const OneRjSumCjNode &node)
-// {   
-//     float state_processed_rate = 0.0,
-//         norm_lb = 0.0,
-//         norm_weighted_completion_time = 0.0,
-//         norm_current_feasible_solution = 0.0
-//     ;
-//     const float epsilon = 1e-6;
-//     vector<float> node_state_encoding;
+vector<float> PPO::StateInput::get_state_encoding_fast(vector<float> &state_encoding, ::OneRjSumCjGraph &graph)
+{
+    vector<float> state_encoding_copy = state_encoding;
+    auto current_contour_pointer = graph.contours.current_pos;
+    state_encoding.back() = current_contour_pointer;        
+    return state_encoding;
+}
+
+vector<float> PPO::StateInput::flatten_and_norm(const OneRjSumCjNode &node)
+{   
+    float state_processed_rate = 0.0,
+        norm_lb = 0.0,
+        norm_weighted_completion_time = 0.0,
+        norm_current_feasible_solution = 0.0
+    ;
+    const float epsilon = 1e-6;
+    vector<float> node_state_encoding;
     
-//     // state_processed_rate
-//     state_processed_rate = ((float)(node.seq.size())+epsilon) / (float) OneRjSumCjNode::jobs_num;
-//     node_state_encoding.push_back(state_processed_rate);
+    // state_processed_rate
+    state_processed_rate = ((float)(node.seq.size())+epsilon) / (float) OneRjSumCjNode::jobs_num;
+    node_state_encoding.push_back(state_processed_rate);
 
-//     // norm_lb    
-//     norm_lb = (node.lb + epsilon) / (float) OneRjSumCjNode::worst_upperbound;    
-//     node_state_encoding.push_back(norm_lb);
+    // norm_lb    
+    norm_lb = (node.lb + epsilon) / (float) OneRjSumCjNode::worst_upperbound;    
+    node_state_encoding.push_back(norm_lb);
 
-//     // norm_weighted_completion_timeπ
-//     norm_weighted_completion_time = (node.weighted_completion_time+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
-//     node_state_encoding.push_back(norm_weighted_completion_time);
+    // norm_weighted_completion_timeπ
+    norm_weighted_completion_time = (node.weighted_completion_time+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
+    node_state_encoding.push_back(norm_weighted_completion_time);
 
-//     // norm_feasible_solution
-//     norm_current_feasible_solution = (graph.min_obj+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
-//     node_state_encoding.push_back(norm_current_feasible_solution);
+    // norm_feasible_solution
+    norm_current_feasible_solution = (graph.min_obj+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
+    node_state_encoding.push_back(norm_current_feasible_solution);
 
-//     return node_state_encoding;
-// }
+    return node_state_encoding;
+}
 
 // tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> PPO::ReplayBufferImpl::sample(vector<int> indecies)
 // {
@@ -288,27 +318,15 @@ void PPO::ReplayBufferImpl::submit()
 //     return make_tuple(s_flat, action_flat, r, s_next_flat, done, contour_snapflat, contour_snapflat_next);
 // }
 
-tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> PPO::ReplayBufferImpl::getBatchTensor(tuple<vector<float>, vector<float>, vector<float>, vector<float>, vector<bool>, vector<float>, vector<float>> raw_batch)
+PPO::Batch PPO::ReplayBufferImpl::getBatchTensor(PPO::SampleBatch &raw_batch)
 {
     using std::get, std::make_tuple;
-    
-    vector<float> s_flat;
-    vector<float> s_next_flat;
-    vector<float> a;
-    vector<float> r;
-    vector<bool> done;
-    vector<float> contour_snapflat;
-    vector<float> contour_snapflat_next;
-
-
-    s_flat = get<0>(raw_batch);
-    a = get<1>(raw_batch);
-    r = get<2>(raw_batch);
-    s_next_flat = get<3>(raw_batch);
-    done = get<4>(raw_batch);
-    contour_snapflat = get<5>(raw_batch);
-    contour_snapflat_next = get<6>(raw_batch);
-
+        
+    vector<float>& s_flat = raw_batch.v_s;
+    vector<float>& a_flat = raw_batch.v_a;
+    vector<float>& r_flat = raw_batch.v_r;
+    vector<float>& adv_flat = raw_batch.v_adv;
+    vector<float>& logp_flat = raw_batch.v_logp;    
     
     // do checking
     for(auto it: s_flat)
@@ -316,55 +334,31 @@ tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor,
         assertm("state variable should not be zero", it != 0);
         assertm("state variable having too small value", it > 1e-20);
     }
-    for(auto it: s_next_flat)
-    {
-        assertm("state variable should not be zero", it != 0);
-        assertm("state variable having too small value", it > 1e-20);
-    }
-    for(auto it: done)
-    {
-        assertm("done variable should be 0 or 1", (it == 0.0 || it == 1.0));
-    }
 
-    int batch_size = done.size();
     int state_feature_size = this->s[0].size();
-    int action_feature_size = this->a[0].size();
-    int contour_snapshot_feature_size = this->contour_snapshot[0].size();
-    assertm("state feature size should be same", this->s[0].size() == this->s_next[0].size());
-    assertm("contour feature size should be same", this->contour_snapshot[0].size() == this->contour_snapshot_next[0].size());    
+    int action_feature_size = 1;    // one int as its action feature
 
     // turn arrays to Tensor
     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    Tensor a_tensor = torch::from_blob(a.data(), {batch_size, action_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    Tensor r_tensor = torch::from_blob(r.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    Tensor s_next_tensor = torch::from_blob(s_next_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    bool cArr_done[batch_size];
-    for(int i = 0; i < batch_size; i++)
-        cArr_done[i] = done[i];    
-    Tensor done_tensor = torch::from_blob(cArr_done, {batch_size, 1}, torch::TensorOptions().dtype(torch::kBool)).clone();
-    Tensor contour_snapshot_tensor = torch::from_blob(contour_snapflat.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    Tensor contour_snapshot_next_tensor = torch::from_blob(contour_snapflat_next.data(), {batch_size, contour_snapshot_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
-    return make_tuple(s_tensor, a_tensor, r_tensor, s_next_tensor, done_tensor, contour_snapshot_tensor, contour_snapshot_next_tensor);
+    Tensor a_tensor = torch::from_blob(a_flat.data(), {batch_size, action_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor r_tensor = torch::from_blob(r_flat.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor adv_tensor = torch::from_blob(adv_flat.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    Tensor logp_tensor = torch::from_blob(logp_flat.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+    return PPO::Batch({
+        .s = s_tensor,
+        .a = a_tensor,
+        .r = r_tensor,
+        .adv = adv_tensor,
+        .logp = logp_tensor
+    });
 }
 
-tuple<int64_t, float, float /*a, v, logp*/> NetPPOImpl::step(torch::Tensor s)
-{    
-    torch::NoGradGuard no_grad;
-    int64_t a = 0;
-    float v = 0, logp = 0;
-    torch::Tensor pi = this->pi->dist(s);
-    a = torch::multinomial(pi, 1).item().toLong();
-    v = this->q->forward(s).item().toFloat();
-}
 
-NetPPOImpl::NetPPOImpl(NetPPOOptions opt)
+PPO::NetPPOImpl::NetPPOImpl(NetPPOOptions opt)
 {
     this->opt = opt;        
     assertm("state_dim should be greater than 0", opt.state_dim > 0);
-    assertm("action_dim should be greater than 0", opt.action_dim > 0);
-    assertm("max_num_contour should be greater than 0", opt.max_num_contour > 0);
-    assertm("rnn_hidden_size should be greater than 0", opt.rnn_hidden_size > 0);
-    assertm("rnn_num_layers should be greater than 0", opt.rnn_num_layers > 0);
+    assertm("action_dim should be greater than 0", opt.action_dim > 0);    
     NetPPOQNet q_net(opt);
     NetPPOActor pi_net(opt);    
 
@@ -382,19 +376,20 @@ NetPPOImpl::NetPPOImpl(NetPPOOptions opt)
     this->pi = register_module("PolicyNet", pi_net);
 }
 
-StepOutput NetPPOImpl::step(torch::Tensor s)
+PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s)
 {
-    GRAD_TOGGLE(net->pi, false);
-    GRAD_TOGGLE(net->q, false);
+    GRAD_TOGGLE(this->pi, false);
+    GRAD_TOGGLE(this->q, false);
     
     // sample from the softmax tensor
-    torch::Tensor pi = net->pi->dist(s);
+    torch::Tensor pi = this->pi->dist(s);
     int64_t a = torch::multinomial(pi, 1).item().toLong();
+    assertm("action should be in range", ((a >= 0) && (a < opt.action_dim)));
     float logp = torch::log(pi[a]).item().toFloat();
-    float v = net->q->forward(s).item().toFloat();
+    float v = this->q->forward(s).item().toFloat();
 
-    GRAD_TOGGLE(net->pi, true);
-    GRAD_TOGGLE(net->q, true);
+    GRAD_TOGGLE(this->pi, true);
+    GRAD_TOGGLE(this->q, true);
 
     return StepOutput({
         .a = a,

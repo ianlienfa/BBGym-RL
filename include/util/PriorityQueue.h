@@ -24,9 +24,9 @@ private:
     bool (*cmpr)(const T& t1, const T &t2);
     void swap(T &t1, T &t2){T tmp = t1; t1 = t2; t2 = tmp;}
     void heapify(int i);
-    inline int left(int i){return i * 2;}
-    inline int right(int i){return i * 2 + 1;}
-    inline int parent(int i){return i / 2;}
+    inline int left(int i) const {return i * 2;}
+    inline int right(int i) const {return i * 2 + 1;}
+    inline int parent(int i) const {return i / 2;}
     void sizeInit(vector<T> v){
         arr.resize(v.size()+1);
         copy(v.begin(), v.end(), arr.begin()+1);    // make arr 0-based
@@ -52,10 +52,10 @@ public:
     void construct_heap();
     void push(T t);
     T extract();
-    void bst_print();
-    int size(){return sz;}
+    void bst_print() const;
+    int size() const {return sz;}
     T top(){return arr[1];}
-    bool empty(){return (sz < 1);}
+    bool empty() const {return (sz < 1);}
 };
 
 template<class T>
@@ -120,7 +120,7 @@ void PriorityQueue<T>::construct_heap() {
 }
 
 template<class T>
-void PriorityQueue<T>::bst_print() {
+void PriorityQueue<T>::bst_print() const {
     deque<int> q;
     if(sz < 1)
         return;
@@ -144,7 +144,7 @@ void PriorityQueue<T>::bst_print() {
             cout << arr[i] << ", ";
         }
         s = next_s;
-        cout << endl;
+        // cout << endl;
     }
 }
 #endif //PRIORITYQUEUE_H

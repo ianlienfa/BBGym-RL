@@ -26,63 +26,20 @@ std::string exec(const char* cmd) {
     SOLVE_CALLBACK() is called at each search-branch-prune iteration,
     we call network update at some steps.
 */    
-
 void solveCallbackImpl(void* engine_ptr)
 {     
-    // #if INF_MODE != 1
-    // OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
-    // auto &labeler = engine.searcher.labeler;
-    // if(labeler->step % labeler->update_freq == 0 && labeler->buffer->get_size() > labeler->batch_size) 
-    // { 
-    //     int buffer_size = labeler->buffer->get_size(); 
-    //     vector<int> v(labeler->batch_size);  
-    //     auto rand_in_range = [&](){            
-    //         return (BB_RAND()) % (buffer_size);
-    //     };
-    //     generate(v.begin(), v.end(), rand_in_range); 
-    //     RawBatch batch = labeler->buffer->sample(v);  
-    //     labeler->update(batch); 
-    // } 
-    // #endif
+    
 }
 
 void optimalFoundCallbackImpl(void* engine_ptr)
 {
-    // #if INF_MODE != 1
-    // cout << "One last update" << endl;
-    // OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
-    // auto &labeler = engine.searcher.labeler;
-    // if(engine.graph.optimal_found != true)
-    //     throw std::runtime_error("Optimal not found but optimal Found callback called!");
-
-    // // ensure the last done operation is updated
-    // int buffer_size = labeler->buffer->get_size(); 
-    // int batch_size = (buffer_size < labeler->batch_size) ? buffer_size : labeler->batch_size;
-    // cout << "buffer_size: " << buffer_size << " batch_size: " << batch_size << endl;
-    // if(buffer_size) 
-    // { 
-    //     vector<int> v(batch_size);  
-    //     for(int i = buffer_size - batch_size; i < buffer_size; i++)
-    //         v[i - (buffer_size - batch_size)] = i;        
-    //     RawBatch batch = labeler->buffer->sample(v);         
-    //     labeler->update(batch); 
-    // } 
-    
-    // cout << "--------Doing Tail updates-------" << endl;
-    // int tail_updates = labeler->tail_updates;
-    // while(tail_updates--)
-    // {
-    //     vector<int> v(batch_size);  
-    //     auto rand_in_range = [=](){
-    //         return (int(std::rand())) % (int(buffer_size));
-    //     };
-    //     generate(v.begin(), v.end(), rand_in_range); 
-    //     RawBatch batch = labeler->buffer->sample(v);         
-    //     labeler->update(batch); 
-    // }
-    // cout << "--------Tail updates done-------" << endl;
-    // // do some more randome updates
-    // #endif
+    OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
+    auto &labeler = engine.searcher.labeler;
+    if(labeler->get_labeler_state() == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING)
+    {
+        PPO::SampleBatch batch = labeler->buffer->get();
+        labeler->update(batch);
+    }
 }
 
 int main(int argc, char* argv[])
@@ -161,15 +118,11 @@ int main(int argc, char* argv[])
 
     std::shared_ptr<PPO::PPOLabeler> labeler = 
         std::make_shared<PPO::PPOLabeler>(
-            int64_t(StateInput(OneRjSumCjNode(), OneRjSumCjNode(), OneRjSumCjGraph()).get_state_encoding().size()), 
-            6, // prob, noise, softmax(4)
-            Pdd(-5, 5) /* The output is default at (0, 1), the label will be extend to (-5, 5), 
-                            note that the -5 and 5 should not be a feasible output, 
-                            this is to preserve the extendibility of labeling */
-            ,qNetPath
-            ,piNetPath
-            ,qOptimPath
-            ,piOptimPath
+            PPO::PPOLabelerOptions()
+                .load_q_path(qNetPath)
+                .load_pi_path(piNetPath)
+                .q_optim_path(qOptimPath)
+                .pi_optim_path(piOptimPath)            
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))

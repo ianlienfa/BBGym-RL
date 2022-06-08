@@ -99,9 +99,9 @@ target_link_libraries(
     "${TORCH_LIBRARIES}" TorchUtil # Torch 
     "${Python3_LIBRARIES}" # Python3
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
-    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
+    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler NetPPOActor NetPPOQNet NetPPO PPOLabeler# Net
     oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
-    LowerBound PriorityQueue JobWithReleaseDate # Util
+    LowerBound PriorityQueue JobWithReleaseDate PlacementList# Util
 )
 
 add_executable(load src/load.cpp)
@@ -112,7 +112,7 @@ target_link_libraries(
     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
     oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
     oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
-    LowerBound PriorityQueue JobWithReleaseDate # Util
+    LowerBound PriorityQueue JobWithReleaseDate PlacementList # Util
 )
 
 ######################  SELF-DEFINED COMMANDS  ########################

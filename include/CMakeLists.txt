@@ -54,6 +54,12 @@ add_library(
 )
 
 add_library(
+    PlacementList
+    util/PlacementList.h
+    util/PlacementList.cpp
+)
+
+add_library(
     types
     util/types.h
     util/types.cpp
