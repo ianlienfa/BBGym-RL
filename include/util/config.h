@@ -1,3 +1,4 @@
+
 #ifndef CONFIG_H
 #define CONFIG_H
 
@@ -26,6 +27,7 @@ const float pos_zero_reward = 1e-7;
 #define QOptimPath "../saved_model/optimizer_q.pt"
 #define INF_MODE 0
 #define MEASURE_MODE 0
+#define LAYER_WEIGHT_PRINT 0
 // #define NDEBUG 
 
 

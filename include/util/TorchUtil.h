@@ -1,6 +1,6 @@
 #ifndef TORCHUTIL_H
 #define TORCHUTIL_H
-
+#include "util/config.h"
 #include <torch/torch.h>
 
 void layer_weight_print(const torch::nn::Module &net);

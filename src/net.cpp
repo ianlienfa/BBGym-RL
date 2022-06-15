@@ -116,13 +116,18 @@ int main(int argc, char* argv[])
     if(!std::filesystem::exists(piOptimPath))
         piOptimPath = "";
 
+    const int64_t max_num_contour = 10;
+    
     std::shared_ptr<PPO::PPOLabeler> labeler = 
         std::make_shared<PPO::PPOLabeler>(
-            PPO::PPOLabelerOptions()
+            PPO::PPOLabelerOptions()                
+                .state_dim(int64_t(PPO::StateInput(OneRjSumCjNode(), OneRjSumCjNode(), OneRjSumCjGraph().set_max_size(max_num_contour)).get_state_encoding(max_num_contour).size()))
+                .action_dim(4)
                 .load_q_path(qNetPath)
                 .load_pi_path(piNetPath)
                 .q_optim_path(qOptimPath)
-                .pi_optim_path(piOptimPath)            
+                .pi_optim_path(piOptimPath)
+                .max_num_contour(max_num_contour)            
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))

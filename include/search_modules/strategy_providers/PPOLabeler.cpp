@@ -13,7 +13,8 @@ PPOLabeler::PPOLabeler(PPO::PPOLabelerOptions options) :
     // set up MLP    
     net = std::make_shared<NetPPOImpl>(NetPPOOptions({
         .state_dim = opt.state_dim(),
-        .action_dim = opt.action_dim(),        
+        .action_dim = opt.action_dim(),    
+        .hidden_dim = opt.hidden_dim(),    
         .q_path = opt.load_q_path(),
         .pi_path = opt.load_pi_path()
     }));
@@ -61,10 +62,6 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
     }
 }
 
-STATE_ENCODING PPOLabeler::get_state()
-{
-    
-}
 
 // Do training and buffering here, return the label if created, otherwise go throgh the network again
 int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat, ::OneRjSumCjGraph& graph)
@@ -99,10 +96,11 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         auto &action = out.a;
         auto &val = out.v;
         auto &logp = out.logp;
+        auto &encoded_a = out.encoded_a;
 
         // update buffer () -> (s, a, '', v, logp)
         buffer->prep.s() = state_flat;
-        buffer->prep.a() = action;
+        buffer->prep.a() = encoded_a;
         buffer->prep.val() = val;
         buffer->prep.logp() = logp;
 
@@ -133,10 +131,10 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
 
             PPO::StepOutput out = net->step(tensor_s);            
-            std::tie(action, val, logp) = std::tie(out.a, out.v, out.logp);
+            std::tie(action, encoded_a, val, logp) = std::tie(out.a, out.encoded_a, out.v, out.logp);
 
             // update buffer () -> (s, a, '', v, logp) 
-            std::tie(buffer->prep.s(), buffer->prep.a(), buffer->prep.val(), buffer->prep.logp()) = std::tie(tweaked_state, action, val, logp);
+            std::tie(buffer->prep.s(), buffer->prep.a(), buffer->prep.val(), buffer->prep.logp()) = std::tie(tweaked_state, encoded_a, val, logp);
 
             // increase step
             this->step()++;
@@ -188,7 +186,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             }
 
             // get state
-            STATE_ENCODING state_flat = this->get_state();
+            STATE_ENCODING state_flat = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
             torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
 
             // keep going        
@@ -231,11 +229,15 @@ tuple<torch::Tensor, PPO::ExtraInfo> PPOLabeler::compute_pi_loss(const PPO::Batc
     torch::Tensor importance_weight = torch::exp(logp - logp_old);
     torch::Tensor clip_adv = torch::clamp(importance_weight, 1-opt.clip_ratio(), 1+opt.clip_ratio()) * adv;
     torch::Tensor loss = -torch::min(importance_weight * adv, clip_adv).mean();
+    cout << "loss: " << loss << endl;
 
     // ExtraInfo
+    cout << "logp_old: " << logp_old << endl;
+    cout << "logp: " << logp << endl;
     torch::Tensor approx_kl = (logp_old - logp).mean();
-    torch::Tensor entropy /*= (torch::exp(logp) + torch::exp(-logp)).mean()*/;
-    torch::Tensor clipfrac = (torch::logical_or(importance_weight.gt(1+opt.clip_ratio()), importance_weight.lt(1-opt.clip_ratio()))).mean();
+    cout << "approx_kl: " << approx_kl << endl;
+    torch::Tensor entropy = (torch::exp(logp) + torch::exp(-logp)).mean();
+    torch::Tensor clipfrac = (torch::logical_or(importance_weight.gt(1+opt.clip_ratio()), importance_weight.lt(1-opt.clip_ratio()))).toType(kFloat32).mean(0);
     PPO::ExtraInfo extra_info = {
         .approx_kl = approx_kl.item<float>(),
         .entropy = entropy.item<float>(),

@@ -45,6 +45,13 @@ struct Batch{
     torch::Tensor r;
     torch::Tensor adv;
     torch::Tensor logp;
+    void print(){
+        cout << "s_tensor: " << s << endl;
+        cout << "a_tensor: " << a << endl;
+        cout << "r_tensor: " << r << endl;
+        cout << "adv_tensor: " << adv << endl;
+        cout << "logp_tensor: " << logp << endl;
+    }
 };
 
 /* extra info */
@@ -55,6 +62,7 @@ struct ExtraInfo {
 };
 
 struct StepOutput{
+    ACTION_ENCODING encoded_a;
     int64_t a;
     float v;
     float logp;
@@ -62,6 +70,9 @@ struct StepOutput{
 
 struct StateInput
 {
+    constexpr static const float norm_factor = 1e3;
+    constexpr static const float zero_epsilon = 1e-11;
+
     const OneRjSumCjNode &node_parent;   
     const OneRjSumCjNode &node;   
     const OneRjSumCjGraph &graph;
@@ -78,6 +89,7 @@ The Replay Buffer for PPO does not mix up different epochs
 struct ReplayBufferImpl
 {
 public:
+    const float neg_epsilon = -1e-11;
     vector<STATE_ENCODING> s;
     vector<ACTION_ENCODING> a;
     vector<float> r;    
@@ -89,7 +101,7 @@ public:
     // prep
     struct PrepArea{
         BB_TRACK_ARG(STATE_ENCODING, s, STATE_ENCODING());
-        BB_TRACK_ARG(ACTION_ENCODING, a, numeric_limits<ACTION_ENCODING>::min());
+        BB_TRACK_ARG(ACTION_ENCODING, a, ACTION_ENCODING());
         BB_TRACK_ARG(float, r, numeric_limits<float>::min());
         BB_TRACK_ARG(float, val, numeric_limits<float>::min());
         BB_TRACK_ARG(float, logp, numeric_limits<float>::min());
@@ -107,7 +119,7 @@ public:
     int a_feature_size;
     int start_idx;
     int idx;
-    int batch_size;
+    // int batch_size;
     
     // hyperparam
     float gamma;
@@ -140,6 +152,14 @@ struct NetPPOImpl: nn::Cloneable<NetPPOImpl>
     NetPPOImpl(NetPPOOptions options);
     float act(torch::Tensor s);
     StepOutput step(torch::Tensor s);
+    vector<float> to_one_hot(int64_t a){
+        vector<float> v;
+        for(int i = 0; i < opt.action_dim; i++)
+        {
+            (a == i) ? v.push_back(1): v.push_back(0);
+        }
+        return v;
+    }
 
     void reset() override
     {

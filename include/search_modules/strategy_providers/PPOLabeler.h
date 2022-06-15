@@ -66,7 +66,7 @@ public:
     void train(){labeler_state = LabelerState::TRAIN_RUNNING;}
     void eval(){labeler_state = LabelerState::INFERENCE;}
     LabelerState get_labeler_state();
-    STATE_ENCODING get_state();
+    // STATE_ENCODING get_state();
     tuple<torch::Tensor, PPO::ExtraInfo> compute_pi_loss(const PPO::Batch &batch_data);
     torch::Tensor compute_q_loss(const PPO::Batch &batch_data);
     void update(PPO::SampleBatch &batch_data); 

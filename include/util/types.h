@@ -21,7 +21,7 @@ typedef std::pair<double, double> Pdd;
 
 // encodings
 #define STATE_ENCODING vector<float>
-#define ACTION_ENCODING int // 0: place, 1: insert + place, 2: left, 3: right
+#define ACTION_ENCODING vector<float> // 0001: place, 0010: insert + place, 0100: left, 1000: right
 
 // typedef TIME_TYPE schedule_time;
 #define BASIC_MAX(a,b) ((a)>(b)?(a):(b))
@@ -110,8 +110,13 @@ struct Measurer {
     #define MEASURE(name, msg, command) command
 #endif
 
-// #define BB_RAND() (std::uniform_int_distribution<int64_t> dist(0, std::numeric_limits<int64_t>::max); dist(mt))
-// #define BB_RANGED_RAND(min, max) (std::uniform_int_distribution<int64_t> dist((min), (max)); dist(mt))
+#define GAME_TRACKER 1
+#if GAME_TRACKER == 1
+    #define GAME_TRACK(name, command) cout << "==========" << endl << name << "() is called, " << "picker pos: " << picker_pos << endl; print(); command cout << "---------- " << endl; print(); cout << name <<  " done" << endl << "==========" << endl; 
+#else
+    #define GAME_TRACK(name, command) command
+#endif
+
 
 extern std::mt19937 _bbgym_mt;
 extern std::uniform_int_distribution<int> _bbgym_dist;

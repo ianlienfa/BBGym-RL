@@ -4,7 +4,7 @@ PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size, int batch_size) {
     this->gamma = 0.99;
     this->lambda = 0.95;
     this->max_size = max_size;
-    this->batch_size = batch_size;
+    // this->batch_size = batch_size;
     this->idx = 0;    
     this->start_idx = 0;
     this->s_feature_size = 0;
@@ -12,6 +12,7 @@ PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size, int batch_size) {
     s.resize(max_size);
     a.resize(max_size);
     r.resize(max_size);
+    val.resize(max_size);
     adv.resize(max_size);    
     ret.resize(max_size);
     logp.resize(max_size);
@@ -23,16 +24,12 @@ bool PPO::ReplayBufferImpl::safe_to_submit()
     // do checking
     bool safe = prep.safe();
     if(safe)
-    {
+    {    
         for(auto it: this->prep._s)
         {
-            assertm("state variable should not be zero", it != 0);
-            assertm("state variable having too small value", it > 1e-20);
+            assertm("state variable should not be zero", it != 0);            
+            assertm("state variable having too small value", it > 1e-20 || -it > 1e-20);
         }
-    }
-    else
-    {
-        assertm("prep should be safe", false);
     }
     return safe;
 }        
@@ -49,8 +46,11 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
         s_feature_size = int(s.size());
     if(!a_feature_size)
         a_feature_size = int(a.size());    
-    std::tie(this->s[this->idx], this->a[this->idx], this->r[this->idx], this->val[this->idx], this->logp[this->idx]) 
-        = std::tie(raw_batch.s(), raw_batch.a(), raw_batch.r(), raw_batch.val(), raw_batch.logp());
+    this->s[this->idx] = raw_batch.s();
+    this->a[this->idx] = raw_batch.a();
+    this->r[this->idx] = raw_batch.r();
+    this->val[this->idx] = raw_batch.val();
+    this->logp[this->idx] = raw_batch.logp();
     this->idx = (this->idx + 1) % max_size;    
 }
 
@@ -59,7 +59,7 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
 // and see if the value is reasonable
 void PPO::ReplayBufferImpl::finish_epoch(float end_val)
 {
-    if(!safe_to_submit())
+    if(!((safe_to_submit()) || (this->prep.empty())))
     {
         cout << "calling finish_epoch when it is not safe to submit" << endl;
         assert(false);
@@ -121,23 +121,28 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
 
     // flatten s and a
-    vector<float> s_flat(s_feature_size * batch_size);
-    vector<float> a_flat(a_feature_size * batch_size);
-    for(int i = 0; i < batch_size; i++)
+    int traj_size = s.size();
+    assertm("traj_size should be greater than 0", traj_size > 0 && traj_size == a.size());
+    vector<float> s_flat;
+    vector<float> a_flat;
+    for(auto it: s)
     {
-        for(int j = 0; j < s_feature_size; j++)
-        {
-            s_flat[i * s_feature_size + j] = s[i][j];
-        }
+        s_flat.insert(s_flat.end(), make_move_iterator(it.begin()), make_move_iterator(it.end()));
     }
-    for(int i = 0; i < batch_size; i++)
+    for(auto it: a)
     {
-        a_flat[i] = (float)a[i];
+        a_flat.insert(a_flat.end(), make_move_iterator(it.begin()), make_move_iterator(it.end()));
     }
 
     Vf r = {this->r.begin() + start_idx, this->r.begin() + idx};
     Vf adv = {this->adv.begin() + start_idx, this->adv.begin() + idx};
     Vf logp = {this->logp.begin() + start_idx, this->logp.begin() + idx};
+
+    cout << "s size: " << s.size() << " s: " << s << endl; 
+    cout << "a size: " << a.size() << " a:  " << a << endl; 
+    cout << " r size: " << r.size() << " r: " << r << endl;
+    cout << " adv size: " << adv.size() << " adv: " << adv << endl;
+    cout << " logp size: " << logp.size() << " logp: " << logp  << endl;
     return PPO::SampleBatch({
         .v_s = s_flat,
         .v_a = a_flat,
@@ -181,7 +186,6 @@ void PPO::ReplayBufferImpl::submit()
 vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_terminal)
 {    
     vector<float> state_encoding;
-    const float norm_factor = 1e3;
 
     // for terminal state
     if(get_terminal)
@@ -193,11 +197,11 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
 
     vector<float> current_node_state = flatten_and_norm(this->node);
     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
-    vector<float> contour_snap = this->graph.get_contour_snapshot(max_num_contour);
+    vector<float> contour_snap = this->graph.get_contour_snapshot();
     state_encoding.insert(state_encoding.end(), make_move_iterator(contour_snap.begin()), make_move_iterator(contour_snap.end()));
-    const float current_picker_step = this->graph.contours.picker_steps / norm_factor;
+    const float current_picker_step = this->graph.contours.picker_steps / norm_factor + zero_epsilon;
     state_encoding.push_back(current_picker_step);
-    const float current_contour_pointer = this->graph.contours.current_pos / norm_factor;
+    const float current_contour_pointer = this->graph.contours.current_pos / norm_factor + zero_epsilon;
     state_encoding.push_back(current_contour_pointer);
 
     // initialize the state encoding dimension
@@ -208,7 +212,7 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
 vector<float> PPO::StateInput::get_state_encoding_fast(vector<float> &state_encoding, ::OneRjSumCjGraph &graph)
 {
     vector<float> state_encoding_copy = state_encoding;
-    auto current_contour_pointer = graph.contours.current_pos;
+    auto current_contour_pointer = graph.contours.current_pos / norm_factor + zero_epsilon;
     state_encoding.back() = current_contour_pointer;        
     return state_encoding;
 }
@@ -329,21 +333,30 @@ PPO::Batch PPO::ReplayBufferImpl::getBatchTensor(PPO::SampleBatch &raw_batch)
     vector<float>& logp_flat = raw_batch.v_logp;    
     
     // do checking
+    
     for(auto it: s_flat)
-    {
-        assertm("state variable should not be zero", it != 0);
-        assertm("state variable having too small value", it > 1e-20);
+    {        
+        if(it == 0 || !(it > 1e-20 || it < -1e-20))
+            cout << "state variable " << s_flat << "it: " << it << endl;
+        assertm("state variable should not be zero", it != 0);                            
+        assertm("state variable having too small value", (it > 1e-20 || it < -1e-20));
     }
 
-    int state_feature_size = this->s[0].size();
-    int action_feature_size = 1;    // one int as its action feature
+    int64_t state_feature_size = (int64_t)(this->s[0].size());
+    int64_t action_feature_size = (int64_t)(this->a[0].size());    // one int as its action feature
 
+    int64_t batch_size = r_flat.size();   
+    
+    // assertm("batch size should be identical", batch_size == (s_flat_sz / s_feature_size));
+    // assertm("batch size should be identical", batch_size == (a_flat_sz / a_feature_size));
+    assertm("batch size should be identical", (r_flat.size() == adv_flat.size() && r_flat.size() == logp_flat.size()));
     // turn arrays to Tensor
     Tensor s_tensor = torch::from_blob(s_flat.data(), {batch_size, state_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor a_tensor = torch::from_blob(a_flat.data(), {batch_size, action_feature_size}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor r_tensor = torch::from_blob(r_flat.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor adv_tensor = torch::from_blob(adv_flat.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
     Tensor logp_tensor = torch::from_blob(logp_flat.data(), {batch_size, 1}, torch::TensorOptions().dtype(torch::kFloat32)).clone();
+
     return PPO::Batch({
         .s = s_tensor,
         .a = a_tensor,
@@ -384,15 +397,17 @@ PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s)
     // sample from the softmax tensor
     torch::Tensor pi = this->pi->dist(s);
     int64_t a = torch::multinomial(pi, 1).item().toLong();
+    auto encoded_a = to_one_hot(a);
     assertm("action should be in range", ((a >= 0) && (a < opt.action_dim)));
-    float logp = torch::log(pi[a]).item().toFloat();
+    float logp = torch::log(pi[0][a]).item().toFloat();
     float v = this->q->forward(s).item().toFloat();
 
     GRAD_TOGGLE(this->pi, true);
     GRAD_TOGGLE(this->q, true);
 
     return StepOutput({
-        .a = a,
+        .encoded_a = encoded_a,
+        .a = a,        
         .v = v,
         .logp = logp    
     });

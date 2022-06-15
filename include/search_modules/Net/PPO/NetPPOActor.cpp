@@ -6,6 +6,7 @@ NetPPOActorImpl::NetPPOActorImpl(const NetPPOOptions& ops)
     this->action_dim = ops.action_dim;
     this->hidden_dim = ops.hidden_dim;
     
+    
     net = register_module("Sequential", 
         nn::Sequential(
             nn::Linear(state_dim, hidden_dim),
@@ -43,8 +44,19 @@ torch::Tensor NetPPOActorImpl::dist(torch::Tensor s)
 // Pass back only Q(s, a) for now
 torch::Tensor NetPPOActorImpl::forward(torch::Tensor s, torch::Tensor a)
 {                
+    cout << "state_dim: " << this->state_dim << endl;
+    cout << "s.sizes()" << s.sizes() << endl;
     torch::Tensor softmax = net->forward(s);
-    int64_t action = a.item().toLong(); // will this lead to problem?
-    assert(action >= 0 && action < action_dim);
-    return softmax[action].log();    
+    torch::Tensor idx = a.argmax(1);
+    idx = idx.unsqueeze(1);
+    torch::Tensor softmax_val = torch::gather(softmax, 1, idx);
+
+    // for debug
+    std::vector<int64_t> action(idx.data_ptr<int64_t>(), idx.data_ptr<int64_t>() + idx.numel());
+    for(int i = 0; i < action.size(); i++)
+    {
+        assertm("action not ok", action[i] >= 0 && action[i] < action_dim);
+    } //
+
+    return softmax_val.log();    
 }

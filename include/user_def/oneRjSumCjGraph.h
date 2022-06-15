@@ -79,10 +79,14 @@ struct OneRjSumCjGraph: SearchGraph
     }
 
 #if(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
-    vector<float> get_contour_snapshot(int max_num_contour) const
+    vector<float> get_contour_snapshot() const
     {
         return contours.get_snapshot();
     }    
+    OneRjSumCjGraph& set_max_size(int max_num_contour){
+        contours.set_max_size(max_num_contour);
+        return *this;
+    }
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)    
     vector<float> get_contour_snapshot(int max_num_contour) const
     {

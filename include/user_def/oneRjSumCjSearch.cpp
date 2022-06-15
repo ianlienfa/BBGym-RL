@@ -33,8 +33,8 @@ OneRjSumCjGraph OneRjSumCjSearch::init(OneRjSumCjNode rootProblem) {
     graph.contours.insert(make_pair(0, contour_0));
     graph.current_contour_iter = graph.contours.begin();
 #elif(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
-    graph.contours.place(OneRjSumCjNode(B(0), Vi(), 0));   
     graph.contours.set_max_size(labeler->opt.max_num_contour()); 
+    graph.contours.place(OneRjSumCjNode(B(0), Vi(), 0));       
 #endif
 
 /* 
@@ -193,15 +193,21 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
 
+    int debug_ct = 0;
     // push the branched nodes into the contour
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
-                
+        debug_ct++;
         MEASURE(stateInput_measurer, "stateInput",
         StateInput stateInput(current_node, *it, *this->graph);
         );
         MEASURE(get_state_encoding_measurer, "get_state_encoding",
         vector<float> s = stateInput.get_state_encoding(this->labeler->opt.max_num_contour());  
         );
+            
+        
+        if(debug_ct >= 10)
+            assertm("stop here", false);
+
         torch::Tensor tensor_s = torch::from_blob(s.data(), {1, int64_t(s.size())}).clone();        
 
         // check if trajectory has finished
@@ -212,11 +218,8 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             labeler->buffer->finish_epoch(stepout.v);
         }
 
-        // label and push
-        int64_t label = (*labeler)(current_node, s, (*this->graph));
-
-        // Push the label(action) into contour : step()
-        assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
+        // label and push        
+        int64_t label = (*labeler)((*it), s, (*this->graph));
         
         // remove clip insert, should be done in the operator
     }
