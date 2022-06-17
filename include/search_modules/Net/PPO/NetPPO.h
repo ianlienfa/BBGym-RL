@@ -133,7 +133,7 @@ public:
     ReplayBufferImpl(int max_size, int batch_size);    
     int get_size(){return idx - start_idx;}
     void push(const PPO::ReplayBufferImpl::PrepArea &raw_batch);
-    void finish_epoch(float end_val = 0.0);
+    float finish_epoch(float end_val = 0.0);
     void reset();    
     PPO::SampleBatch get();
     Batch getBatchTensor(SampleBatch &raw_batch);

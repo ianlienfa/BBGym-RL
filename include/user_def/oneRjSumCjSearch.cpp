@@ -192,22 +192,15 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     (void) current_node;
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
-
-    int debug_ct = 0;
+    
     // push the branched nodes into the contour
-    for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
-        debug_ct++;
+    for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){        
         MEASURE(stateInput_measurer, "stateInput",
         StateInput stateInput(current_node, *it, *this->graph);
         );
         MEASURE(get_state_encoding_measurer, "get_state_encoding",
         vector<float> s = stateInput.get_state_encoding(this->labeler->opt.max_num_contour());  
-        );
-            
-        
-        if(debug_ct >= 10)
-            assertm("stop here", false);
-
+        );        
         torch::Tensor tensor_s = torch::from_blob(s.data(), {1, int64_t(s.size())}).clone();        
 
         // check if trajectory has finished
@@ -215,7 +208,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         {
             // compute value of current state and call finish path
             const auto &stepout = labeler->net->step(tensor_s);
-            labeler->buffer->finish_epoch(stepout.v);
+            this->graph->accu_reward = labeler->buffer->finish_epoch(stepout.v);
         }
 
         // label and push        
@@ -223,9 +216,6 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         
         // remove clip insert, should be done in the operator
     }
-
-    // locate the next contour
-    graph->contours.step_forward();
 
     // clean current contour if needed
     if(graph->contours.current_iter->empty())
@@ -239,14 +229,14 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
             labeler->buffer->prep.r() = pos_zero_reward;
             labeler->buffer->submit();
-            labeler->buffer->finish_epoch(0); // end the exploration
-
-            // track reward           
-            const auto &prep_reader = labeler->buffer->prep;
-            this->graph->accu_reward += prep_reader.r();
+            this->graph->accu_reward = labeler->buffer->finish_epoch(0); // end the exploration
         }
         this->graph->contours.erase_contour();
     }
+
+    // locate the next contour
+    if(!graph->contours.empty())
+        graph->contours.step_forward();
         
     #if DEBUG_LEVEL >= 0
     

@@ -36,16 +36,15 @@ NetPPOActorImpl::NetPPOActorImpl(const NetPPOOptions& ops)
 
 // Pass back only Q(s, a) for now
 torch::Tensor NetPPOActorImpl::dist(torch::Tensor s)
-{                
-    torch::Tensor softmax = net->forward(s);    
+{     
+    torch::NoGradGuard no_grad;
+    auto softmax = net->forward(s);    
     return softmax;
 }
 
 // Pass back only Q(s, a) for now
 torch::Tensor NetPPOActorImpl::forward(torch::Tensor s, torch::Tensor a)
 {                
-    cout << "state_dim: " << this->state_dim << endl;
-    cout << "s.sizes()" << s.sizes() << endl;
     torch::Tensor softmax = net->forward(s);
     torch::Tensor idx = a.argmax(1);
     idx = idx.unsqueeze(1);

@@ -38,6 +38,8 @@ void optimalFoundCallbackImpl(void* engine_ptr)
     if(labeler->get_labeler_state() == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING)
     {
         PPO::SampleBatch batch = labeler->buffer->get();
+        auto accu_r = std::accumulate(batch.v_r.begin(), batch.v_r.end(), 0.0);
+        // engine.graph.accu_reward = accu_r;
         labeler->update(batch);
     }
 }
@@ -127,7 +129,8 @@ int main(int argc, char* argv[])
                 .load_pi_path(piNetPath)
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
-                .max_num_contour(max_num_contour)            
+                .max_num_contour(max_num_contour)     
+                .num_epoch(100)       
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
@@ -140,7 +143,11 @@ int main(int argc, char* argv[])
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
             cerr << "epoch: " << epoch << endl;
-            labeler->epoch()++;                    
+            labeler->epoch()++;   
+            if(epoch == labeler->opt.num_epoch())
+            {
+                labeler->eval();
+            }
             if(parse_and_init_oneRjSumCj(filename))
             {
                 OneRjSumCjSearch searcher(labeler);
@@ -172,18 +179,18 @@ int main(int argc, char* argv[])
 
                 std::ofstream outfile;
                 outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
-                for(auto it: labeler->q_mean_loss)
+                for(auto it: labeler->q_loss_vec)
                     outfile << it << ", ";
                 outfile.close();
 
                 outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
-                for(auto it: labeler->pi_mean_loss)
+                for(auto it: labeler->pi_loss_vec)
                     outfile << it << ", ";    
                 outfile.close();
 
                 // clean up loss_vec
-                labeler->q_mean_loss.clear();
-                labeler->pi_mean_loss.clear();                
+                labeler->q_loss_vec.clear();
+                labeler->pi_loss_vec.clear();                
 
                 // stage save
                 if(labeler->opt.num_epoch() > 5 && epoch % (int(labeler->opt.num_epoch() / 5)) == 0)

@@ -112,7 +112,7 @@ struct Measurer {
 
 #define GAME_TRACKER 1
 #if GAME_TRACKER == 1
-    #define GAME_TRACK(name, command) cout << "==========" << endl << name << "() is called, " << "picker pos: " << picker_pos << endl; print(); command cout << "---------- " << endl; print(); cout << name <<  " done" << endl << "==========" << endl; 
+    #define GAME_TRACK(name, command) cout << "==========" << endl << name << "() is called, " << "picker pos: " << picker_pos << "current pos: " << current_pos << endl; print(); command cout << "---------- " << endl; print(); cout << name <<  " done" << endl << "==========" << endl; 
 #else
     #define GAME_TRACK(name, command) command
 #endif

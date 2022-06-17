@@ -3,6 +3,7 @@
 #include <iostream>
 #include <torch/torch.h>
 #include "util/types.h"
+#include "util/TorchUtil.h"
 #include "search_modules/Net/PPO/PPO.h"
 using namespace torch;
 using std::cout; using std::endl;

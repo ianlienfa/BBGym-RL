@@ -52,7 +52,7 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
         return LabelerState::INFERENCE;
     }
     // Training 
-    if(_epoch < opt.num_epoch() && _step < opt.steps_per_epoch()){
+    if(_epoch <= opt.num_epoch() && _step < opt.steps_per_epoch()){
         labeler_state = LabelerState::TRAIN_RUNNING;
         return LabelerState::TRAIN_RUNNING;
     }
@@ -186,8 +186,8 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             }
 
             // get state
-            STATE_ENCODING state_flat = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
-            torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
+            STATE_ENCODING tweaked_state = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
+            torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
 
             // keep going        
             out = net->step(tensor_s);
@@ -226,16 +226,19 @@ tuple<torch::Tensor, PPO::ExtraInfo> PPOLabeler::compute_pi_loss(const PPO::Batc
     const torch::Tensor &logp_old = batch_data.logp;
 
     torch::Tensor logp = net->pi->forward(s, a);
+    if(logp.isnan().any().item<bool>())
+    {        
+        cerr << "s: " << s << endl;
+        cerr << "a: " << a << endl;    
+        cerr << "logp_old: " << logp_old << std::endl;
+        assertm("logp is nan", false);
+    }
     torch::Tensor importance_weight = torch::exp(logp - logp_old);
     torch::Tensor clip_adv = torch::clamp(importance_weight, 1-opt.clip_ratio(), 1+opt.clip_ratio()) * adv;
     torch::Tensor loss = -torch::min(importance_weight * adv, clip_adv).mean();
-    cout << "loss: " << loss << endl;
 
     // ExtraInfo
-    cout << "logp_old: " << logp_old << endl;
-    cout << "logp: " << logp << endl;
     torch::Tensor approx_kl = (logp_old - logp).mean();
-    cout << "approx_kl: " << approx_kl << endl;
     torch::Tensor entropy = (torch::exp(logp) + torch::exp(-logp)).mean();
     torch::Tensor clipfrac = (torch::logical_or(importance_weight.gt(1+opt.clip_ratio()), importance_weight.lt(1-opt.clip_ratio()))).toType(kFloat32).mean(0);
     PPO::ExtraInfo extra_info = {
@@ -274,7 +277,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
     layer_weight_print(*(net->pi));
     cout << "-------------" << endl << endl;
     #endif
-    
+
     PPO::Batch batch = buffer->getBatchTensor(batch_data);
 
     // prepare loss for history

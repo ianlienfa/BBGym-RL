@@ -57,14 +57,14 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
 
 // To debug this: check the boundary of the value[idx] rew[idx] and adv[idx] 
 // and see if the value is reasonable
-void PPO::ReplayBufferImpl::finish_epoch(float end_val)
+// remember to fill the accu reward when calling this function
+float PPO::ReplayBufferImpl::finish_epoch(float end_val)
 {
     if(!((safe_to_submit()) || (this->prep.empty())))
     {
         cout << "calling finish_epoch when it is not safe to submit" << endl;
         assert(false);
     }
-
     // first compute the value with the endval
     for(int i = start_idx; i < idx; i++)
     {
@@ -85,6 +85,9 @@ void PPO::ReplayBufferImpl::finish_epoch(float end_val)
     {
         r[i] = r[i] + this->gamma * r[i + 1];
     }
+
+    // return accumulated discounted reward
+    return r[start_idx];
 }
 
 // Debug: print mean and std
@@ -109,6 +112,7 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
     {
         adv[i] = (adv[i] - adv_mean) / adv_std;
     }    
+    cout << "adv after norm: " << adv << endl;
     return adv;
 }
 
@@ -116,7 +120,7 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
 PPO::SampleBatch PPO::ReplayBufferImpl::get()
 {
     typedef vector<float> Vf;
-    adv = vector_norm(adv, start_idx, idx);
+    this->adv = vector_norm(this->adv, start_idx, idx);
     vector<STATE_ENCODING> s = {this->s.begin() + start_idx, this->s.begin() + idx};
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
 
@@ -143,6 +147,11 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     cout << " r size: " << r.size() << " r: " << r << endl;
     cout << " adv size: " << adv.size() << " adv: " << adv << endl;
     cout << " logp size: " << logp.size() << " logp: " << logp  << endl;
+
+    // reset
+    this->idx = 0;
+    this->start_idx = 0;
+
     return PPO::SampleBatch({
         .v_s = s_flat,
         .v_a = a_flat,
@@ -395,11 +404,17 @@ PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s)
     GRAD_TOGGLE(this->q, false);
     
     // sample from the softmax tensor
-    torch::Tensor pi = this->pi->dist(s);
-    int64_t a = torch::multinomial(pi, 1).item().toLong();
+    torch::Tensor dist_out = this->pi->dist(s);
+    if(dist_out.isnan().any().item<bool>())
+    {
+        cerr << "s: " << s << endl;
+        cerr << "dist_out output dist in step(): " << dist_out << endl;
+        assertm("dist_out output dist is nan", false);
+    }
+    int64_t a = torch::multinomial(dist_out, 1).item().toLong();
     auto encoded_a = to_one_hot(a);
     assertm("action should be in range", ((a >= 0) && (a < opt.action_dim)));
-    float logp = torch::log(pi[0][a]).item().toFloat();
+    float logp = torch::log(dist_out[0][a]).item().toFloat();
     float v = this->q->forward(s).item().toFloat();
 
     GRAD_TOGGLE(this->pi, true);

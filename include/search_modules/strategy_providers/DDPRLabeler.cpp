@@ -464,7 +464,9 @@ void DDPRLabeler::update(const RawBatch &batch_data)
         if(update_count % mean_size == 0)
         {
             float mean_pi = std::accumulate(pi_loss_vec.begin(), pi_loss_vec.end(), 0.0) / mean_size;
-            pi_loss_vec.clear();
+            cerr << "pi_loss_vec: " << pi_loss_vec << endl;
+            cerr << "pi_mean_loss: " << mean_pi << endl;
+            pi_loss_vec.clear();            
             pi_mean_loss.push_back(mean_pi);
         }
     }

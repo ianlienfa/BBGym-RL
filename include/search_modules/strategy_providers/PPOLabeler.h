@@ -20,8 +20,8 @@ struct PPOLabelerOptions{
     BBARG(PPOLabelerOptions, int64_t, train_q_iter, 80);
     BBARG(PPOLabelerOptions, float, gamma, 0.99);
     // BBARG(float, polyak);
-    BBARG(PPOLabelerOptions, float, lr_q, 1e-3);
-    BBARG(PPOLabelerOptions, float, lr_pi, 1e-3);
+    BBARG(PPOLabelerOptions, float, lr_q, 1e-6);
+    BBARG(PPOLabelerOptions, float, lr_pi, 1e-7);
     BBARG(PPOLabelerOptions, float, clip_ratio, 0.2);
     BBARG(PPOLabelerOptions, float, target_kl, 0.01);
 

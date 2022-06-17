@@ -38,6 +38,8 @@ public:
     void picker_step_reset()
     {
         picker_steps = 0;
+        picker_iter = current_iter;
+        picker_pos = current_pos;
     } 
 
     float get_picker_reward()
@@ -127,8 +129,9 @@ public:
             assertm("comparator not set, call init() before calling place", false);
         }
         picker_iter->push(element);
+        auto placed_pos = picker_pos;
         picker_step_reset();
-        return picker_pos;
+        return placed_pos;
     }
     
     Len place(T element){
@@ -148,7 +151,7 @@ public:
             assertm("contour list is empty, undefined behavior", false);
 
         // if current contour is empty, directly place it in
-        if(picker_iter->empty())
+        if(picker_iter->empty()) // happens when intended to place in the contour that the parent is poped from
         {
             picker_iter->push(element);            
             return current_pos;
@@ -156,6 +159,7 @@ public:
 
         // Increase contour
         if(picker_iter == (--lst.end())){
+            cout << "insert: place at end" << endl;
             // check the max size, only increase if it is not reached
             if(picker_iter->size() != max_size){
                 lst.push_back(PriorityQueue<T>(cmpr));
@@ -165,16 +169,17 @@ public:
         }
         else
         {
-            lst.emplace(picker_iter, PriorityQueue<T>(cmpr));
             picker_iter++;
             picker_pos++;
+            picker_iter = lst.emplace(picker_iter, PriorityQueue<T>(cmpr));                        
         }
 
         // push element
-        picker_pos = _place(std::move(element));
+        cout << "pushing element: " << element << endl;
+        auto placed_pos = _place(std::move(element));
         picker_step_reset();
         );
-        return picker_pos;
+        return placed_pos;
     }
 
     Len erase_contour()
@@ -206,6 +211,7 @@ public:
 
     Len step_forward()
     {
+        GAME_TRACK("step_forward",     
         if(this->empty())
             assertm("contour already empty", false);
         assertm("current_iter should not be at end", current_iter != lst.end());
@@ -216,6 +222,8 @@ public:
             current_iter = lst.begin();
             current_pos = 0;
         }
+        picker_step_reset();
+        );
         return current_pos;
     }
 
