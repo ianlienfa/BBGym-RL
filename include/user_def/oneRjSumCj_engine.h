@@ -53,7 +53,7 @@ struct OneRjSumCj_engine
 
 
 void print_config();
-void post_print_config(const OneRjSumCjGraph &graph);
+void post_print_config(const OneRjSumCj_engine &engine);
 
 
 #endif

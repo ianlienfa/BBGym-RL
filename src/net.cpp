@@ -31,17 +31,42 @@ void solveCallbackImpl(void* engine_ptr)
     
 }
 
-void optimalFoundCallbackImpl(void* engine_ptr)
+void updateCallbackImpl(void* engine_ptr)
 {
+    // update
     OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
     auto &labeler = engine.searcher.labeler;
     if(labeler->get_labeler_state() == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING)
     {
         PPO::SampleBatch batch = labeler->buffer->get();
-        auto accu_r = std::accumulate(batch.v_r.begin(), batch.v_r.end(), 0.0);
-        // engine.graph.accu_reward = accu_r;
         labeler->update(batch);
     }
+
+    // step reset
+    engine.searcher.labeler->step() = 0;
+
+    // reward tracking
+    if(engine.searcher.labeler->avg_reward){ 
+        engine.searcher.labeler->avg_reward = engine.searcher.labeler->avg_reward * 0.9 + engine.searcher.labeler->accu_reward * 0.1;
+    }
+    else{        
+        engine.searcher.labeler->avg_reward = engine.searcher.labeler->accu_reward;
+    }
+
+    std::ofstream outfile;
+    outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
+    outfile << engine.searcher.labeler->avg_reward << ", ";  
+    outfile.close();
+}
+
+void earlyStoppingCallbackImpl(void* engine_ptr)
+{
+    updateCallbackImpl(engine_ptr);
+}
+
+void optimalFoundCallbackImpl(void* engine_ptr)
+{
+    updateCallbackImpl(engine_ptr);
 }
 
 int main(int argc, char* argv[])
@@ -116,10 +141,10 @@ int main(int argc, char* argv[])
     if(!std::filesystem::exists(qOptimPath))
         qOptimPath = "";
     if(!std::filesystem::exists(piOptimPath))
-        piOptimPath = "";
-
-    const int64_t max_num_contour = 10;
+        piOptimPath = "";    
     
+    const int64_t max_num_contour = 2;
+
     std::shared_ptr<PPO::PPOLabeler> labeler = 
         std::make_shared<PPO::PPOLabeler>(
             PPO::PPOLabelerOptions()                
@@ -130,7 +155,7 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(100)       
+                .num_epoch(5000)       
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))

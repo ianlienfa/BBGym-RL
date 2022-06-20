@@ -150,7 +150,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
 
             // track reward           
             const auto &prep_reader = labeler->buffer->prep;
-            this->graph->accu_reward += prep_reader.r();
+            this->labeler->accu_reward += prep_reader.r();
             // cout << "current reward: " << labeler->buffer->reward_prep << endl;
         }
         this->graph->contours.erase(current_iter);
@@ -171,16 +171,16 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         cout << "current_iter: " << this->graph->current_contour_iter->first << endl;
     }
     #endif
-    if(this->graph->avg_reward){ 
-        this->graph->avg_reward = this->graph->avg_reward * 0.9 + this->graph->accu_reward * 0.1;
+    if(this->labeler->avg_reward){ 
+        this->labeler->avg_reward = this->labeler->avg_reward * 0.9 + this->labeler->accu_reward * 0.1;
     }
     else{
-        this->graph->avg_reward = this->graph->accu_reward;
+        this->labeler->avg_reward = this->labeler->accu_reward;
     }
 
     std::ofstream outfile;
     outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
-    outfile << this->graph->avg_reward << ", ";  
+    outfile << this->labeler->avg_reward << ", ";  
     outfile.close();
 
     return branched_nodes;
@@ -203,18 +203,14 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         );        
         torch::Tensor tensor_s = torch::from_blob(s.data(), {1, int64_t(s.size())}).clone();        
 
-        // check if trajectory has finished
-        if(labeler->step() == labeler->opt.steps_per_epoch() - 1)
-        {
-            // compute value of current state and call finish path
-            const auto &stepout = labeler->net->step(tensor_s);
-            this->graph->accu_reward = labeler->buffer->finish_epoch(stepout.v);
-        }
-
         // label and push        
         int64_t label = (*labeler)((*it), s, (*this->graph));
-        
-        // remove clip insert, should be done in the operator
+
+        // take care of early leaving from the environment
+        if(labeler->labeler_state == PPOLabeler::LabelerState::TRAIN_EPOCH_END)
+        {
+            return branched_nodes;
+        }   
     }
 
     // clean current contour if needed
@@ -227,9 +223,12 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             
             /* complete the incomplete data prep section */
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
-            labeler->buffer->prep.r() = pos_zero_reward;
-            labeler->buffer->submit();
-            this->graph->accu_reward = labeler->buffer->finish_epoch(0); // end the exploration
+            if(labeler->labeler_state == PPOLabeler::LabelerState::TRAIN_RUNNING)
+            {
+                labeler->buffer->prep.r() = pos_zero_reward;
+                labeler->buffer->submit();            
+                this->labeler->accu_reward = labeler->buffer->finish_epoch(0); // end the exploration
+            }
         }
         this->graph->contours.erase_contour();
     }
@@ -237,21 +236,6 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     // locate the next contour
     if(!graph->contours.empty())
         graph->contours.step_forward();
-        
-    #if DEBUG_LEVEL >= 0
-    
-    #endif
-    if(this->graph->avg_reward){ 
-        this->graph->avg_reward = this->graph->avg_reward * 0.9 + this->graph->accu_reward * 0.1;
-    }
-    else{
-        this->graph->avg_reward = this->graph->accu_reward;
-    }
-
-    std::ofstream outfile;
-    outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
-    outfile << this->graph->avg_reward << ", ";  
-    outfile.close();
 
     return branched_nodes;
 }

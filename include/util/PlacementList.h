@@ -158,24 +158,37 @@ public:
         }
 
         // Increase contour
-        if(picker_iter == (--lst.end())){
-            cout << "insert: place at end" << endl;
-            // check the max size, only increase if it is not reached
-            if(picker_iter->size() != max_size){
+        if(lst.size() < max_size){
+            if(picker_iter == (--lst.end())){
+                cout << "insert: place at end" << endl;
+                // check the max size, only increase if it is not reached
+                
                 lst.push_back(PriorityQueue<T>(cmpr));
                 picker_iter = (--lst.end());
-                picker_pos = lst.size() - 1;
+                picker_pos = lst.size() - 1;            
+            }
+            else
+            {
+                picker_iter++;
+                picker_pos++;
+                if(current_pos >= picker_pos) // inserted in front of current_iter, current_iter should be pushed right
+                {
+                    current_pos++;
+                }            
+                picker_iter = lst.emplace(picker_iter, PriorityQueue<T>(cmpr));                                    
             }
         }
         else
         {
-            picker_iter++;
-            picker_pos++;
-            picker_iter = lst.emplace(picker_iter, PriorityQueue<T>(cmpr));                        
+            #if GAME_TRACKER == 1
+            cout << "insert: max size reached, inserting into current position" << endl;                
+            #endif
         }
 
         // push element
+        #if GAME_TRACKER == 1
         cout << "pushing element: " << element << endl;
+        #endif
         auto placed_pos = _place(std::move(element));
         picker_step_reset();
         );
@@ -262,7 +275,7 @@ public:
             assertm("max_size not set, call set_max_size() before calling get_snapshot()", false);
         }
         const float norm_factor = 1e3;
-        vector<float> contour_snapshot;
+        vector<float> contour_snapshot;        
         assertm("contour size exceeds max_num_contour", max_size >= lst.size());
         contour_snapshot.assign(max_size, -1e-11);      
         int i = 0;  

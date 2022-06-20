@@ -79,9 +79,8 @@ void ReplayBufferImpl::submit()
         this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep, this->contour_snapshot_prep, this->contour_snapshot_next_prep);
     }
     else
-    {
-        cout << "not safe to submit" << endl;
-        exit(LOGIC_ERROR);
+    {        
+        assertm("not safe to submit", false);
     }
 
 }

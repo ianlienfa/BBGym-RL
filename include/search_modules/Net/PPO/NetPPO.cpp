@@ -31,6 +31,12 @@ bool PPO::ReplayBufferImpl::safe_to_submit()
             assertm("state variable having too small value", it > 1e-20 || -it > 1e-20);
         }
     }
+    else
+    {
+        #if TORCH_DEBUG >= -1
+        cout << "not safe, s: " << prep._s << ", a: " << prep._a << ", r: " << prep._r << ", val: " << prep._val << ", logp: " << prep._logp << endl;
+        #endif
+    }
     return safe;
 }        
 
@@ -62,9 +68,9 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
 {
     if(!((safe_to_submit()) || (this->prep.empty())))
     {
-        cout << "calling finish_epoch when it is not safe to submit" << endl;
-        assert(false);
+        assertm("calling finish_epoch when it is not safe to submit", false);
     }
+
     // first compute the value with the endval
     for(int i = start_idx; i < idx; i++)
     {
@@ -112,7 +118,9 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
     {
         adv[i] = (adv[i] - adv_mean) / adv_std;
     }    
+    #if TORCH_DEBUG >= -1
     cout << "adv after norm: " << adv << endl;
+    #endif
     return adv;
 }
 
@@ -142,11 +150,13 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     Vf adv = {this->adv.begin() + start_idx, this->adv.begin() + idx};
     Vf logp = {this->logp.begin() + start_idx, this->logp.begin() + idx};
 
+    #if TORCH_DEBUG >= -1
     cout << "s size: " << s.size() << " s: " << s << endl; 
     cout << "a size: " << a.size() << " a:  " << a << endl; 
     cout << " r size: " << r.size() << " r: " << r << endl;
     cout << " adv size: " << adv.size() << " adv: " << adv << endl;
     cout << " logp size: " << logp.size() << " logp: " << logp  << endl;
+    #endif
 
     // reset
     this->idx = 0;
@@ -183,8 +193,7 @@ void PPO::ReplayBufferImpl::submit()
     }
     else
     {
-        cout << "not safe to submit" << endl;
-        exit(LOGIC_ERROR);
+        assertm("not safe to submit", false);
     }
 
     // reset temp prep vars
@@ -208,8 +217,8 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
     vector<float> contour_snap = this->graph.get_contour_snapshot();
     state_encoding.insert(state_encoding.end(), make_move_iterator(contour_snap.begin()), make_move_iterator(contour_snap.end()));
-    const float current_picker_step = this->graph.contours.picker_steps / norm_factor + zero_epsilon;
-    state_encoding.push_back(current_picker_step);
+    const float current_picker_pos = this->graph.contours.picker_pos / norm_factor + zero_epsilon;
+    state_encoding.push_back(current_picker_pos);
     const float current_contour_pointer = this->graph.contours.current_pos / norm_factor + zero_epsilon;
     state_encoding.push_back(current_contour_pointer);
 

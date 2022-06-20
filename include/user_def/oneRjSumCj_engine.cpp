@@ -80,10 +80,22 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
         MEASURE(update_graph_measurer, "update_graph",
         searcher.update_graph(this->graph.current_node, branched_nodes);
         );
+
+        if(searcher.labeler->labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
+        {
+            break;    
+        }
     }
 
-    OPTIMAL_FOUND_CALLBACK(this);
-    POST_SOLVE_PRINT_CONFIG(graph);
+    if(searcher.labeler->labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
+    {
+        EARLY_STOPPING_CALLBACK(this);     
+    }
+    else // optimal solution found
+    {
+        OPTIMAL_FOUND_CALLBACK(this);
+        POST_SOLVE_PRINT_CONFIG(*this);
+    }
     return graph;
 }
 
@@ -159,8 +171,9 @@ void print_config(){
     #endif
 }
 
-void post_print_config(const OneRjSumCjGraph &graph)
+void post_print_config(const OneRjSumCj_engine &engine)
 {
+    auto &graph = engine.graph;
     cout << endl;
     cout << "--------------- Search Result ---------------" << endl;
     cout << "instance: " << OneRjSumCjNode::instance_name << endl;
@@ -170,8 +183,8 @@ void post_print_config(const OneRjSumCjGraph &graph)
     for(auto it = graph.min_seq.begin(); it != graph.min_seq.end(); it++)
         cout << *it << " ";
     cout << endl;
-    cout << "accu_reward: " << graph.accu_reward << endl;
-    cout << "avg_reward: " << graph.avg_reward << endl;
+    cout << "accu_reward: " << engine.searcher.labeler->accu_reward << endl;
+    cout << "avg_reward: " << engine.searcher.labeler->avg_reward << endl;
     cout << "=============== Search Ended ===============" << endl;
     cout << endl << endl;
 }

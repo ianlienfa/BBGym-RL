@@ -121,7 +121,7 @@ const float pos_zero_reward = 1e-7;
 #endif 
 
 #ifndef POST_SOLVE_PRINT_CONFIG
-    #define POST_SOLVE_PRINT_CONFIG(graph)  post_print_config(graph)
+    #define POST_SOLVE_PRINT_CONFIG(engine)  post_print_config(engine)
 #endif 
 
 #ifndef SOLVE_CALLBACK    
@@ -134,9 +134,14 @@ const float pos_zero_reward = 1e-7;
     #define OPTIMAL_FOUND_CALLBACK(engine) optimalFoundCallbackImpl(engine)
 #endif
 
+#ifndef EARLY_STOPPING_CALLBACK    
+    extern void earlyStoppingCallbackImpl( void* );
+    #define EARLY_STOPPING_CALLBACK(engine) earlyStoppingCallbackImpl(engine)
+#endif
+
 /* debugging */
 #define DEBUG_LEVEL 0
-#define TORCH_DEBUG -1
+#define TORCH_DEBUG -2
 
 /* validations (some extra checking is done if validation level is high) */
 #define VALIDATION_LEVEL validation_level_HIGH

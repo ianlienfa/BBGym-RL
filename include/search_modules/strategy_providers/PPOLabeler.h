@@ -49,9 +49,11 @@ public:
     vector<float> q_mean_loss;
     vector<float> pi_mean_loss;    
     vector<float> ewma_reward_vec;
+    float accu_reward = 0;
+    float avg_reward = 0;
   
     // Trackers tracks training state
-    enum LabelerState {TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    
+    enum LabelerState {UNDEFINED, TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    
     BBARG(PPOLabeler, int64_t, step, 0);
     BBARG(PPOLabeler, int64_t, update_count, 0);
     BBARG(PPOLabeler, int64_t, epoch, 0);

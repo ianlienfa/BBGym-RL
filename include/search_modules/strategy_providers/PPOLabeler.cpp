@@ -57,6 +57,7 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
         return LabelerState::TRAIN_RUNNING;
     }
     else{
+        cout << "Train epoch end assigned: _epoch / num_epoch: " << _epoch << " / " << opt.num_epoch() << " _step / steps_per_epoch : " << _step << " / " << opt.steps_per_epoch() << endl;
         labeler_state = LabelerState::TRAIN_EPOCH_END;
         return LabelerState::TRAIN_EPOCH_END;
     }
@@ -68,7 +69,29 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
 {        
     // get current labeler_state
     CONTOUR_TYPE label;
-    PPOLabeler::LabelerState labeler_state_ = this->get_labeler_state();
+    static PPOLabeler::LabelerState labeler_state_ = PPOLabeler::LabelerState::UNDEFINED;
+    PPOLabeler::LabelerState current_labeler_state = this->get_labeler_state();
+    if(labeler_state_ != current_labeler_state)
+    {
+        switch (current_labeler_state)    
+        {
+            case LabelerState::TRAIN_EPOCH_END:
+                cerr << "TRAIN_EPOCH_END entered" << endl;
+                break;
+            case LabelerState::TRAIN_RUNNING:
+                cerr << "TRAIN_RUNNING entered" << endl;
+                break;
+            case LabelerState::INFERENCE:
+                cerr << "INFERENCE entered" << endl;
+                break;
+            
+            default:
+                cerr << "Undefined state entered" << endl;
+                assert(false);
+                break;
+        }
+    }
+    labeler_state_ = current_labeler_state;
 
     // get current state
     torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
@@ -82,15 +105,18 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
     {
         this->buffer->submit();            
     }
-    
-    if(labeler_state == LabelerState::TRAIN_EPOCH_END)
+
+
+    if(labeler_state_ == LabelerState::TRAIN_EPOCH_END)
     {
+        cout << "Train epoch end operator called" << endl;
         // step == step_per_epoch, time out
         PPO::StepOutput out = net->step(tensor_s);
         auto &val = out.v;
         buffer->finish_epoch(val);
+        return 0;
     }
-    else if(labeler_state == LabelerState::TRAIN_RUNNING)
+    else if(labeler_state_ == LabelerState::TRAIN_RUNNING)
     {        
         PPO::StepOutput out = net->step(tensor_s);
         auto &action = out.a;
@@ -165,7 +191,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         return 0;
 
     }
-    else if(labeler_state == LabelerState::INFERENCE)
+    else if(labeler_state_ == LabelerState::INFERENCE)
     {
         // increase step
         PPO::StepOutput out = net->step(tensor_s);
@@ -263,6 +289,14 @@ torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
     const torch::Tensor &r = batch_data.r;
     torch::Tensor v = net->q->forward(s);
     torch::Tensor v_loss = (r - v).pow(2).mean();
+    if(v_loss.item<float>() > 2)
+    {
+        cerr << "s: " << s << endl;
+        cerr << "r: " << r << endl;
+        cerr << "v: " << v << endl;
+        cerr << "v_loss: " << v_loss.item<float>() << endl;
+    }
+    assertm("v_loss too big", v_loss.item<float>() < 0.14);
     return v_loss;
 }
 
