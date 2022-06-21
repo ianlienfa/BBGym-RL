@@ -172,10 +172,11 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(200) 
+                .num_epoch(15000) 
                 .entropy_lambda(1)                
                 .lr_pi(1e-5*0.3)      
                 .lr_q(1e-4*0.3)
+                .steps_per_epoch(10000)
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
@@ -208,6 +209,13 @@ int main(int argc, char* argv[])
                 torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
                 torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
                 torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+                if(epoch % 500 == 0)
+                {
+                    torch::save(labeler->net->q, "../saved_model/qNet_" + std::to_string(epoch) + ".pt");
+                    torch::save(labeler->net->pi, "../saved_model/piNet_" + std::to_string(epoch) + ".pt");
+                    torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q_" + std::to_string(epoch) + ".pt");
+                    torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi_" + std::to_string(epoch) + ".pt"); 
+                }
                 #endif
 
                 // Create file if not exist 
