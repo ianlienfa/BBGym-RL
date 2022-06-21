@@ -70,12 +70,14 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
     {
         assertm("calling finish_epoch when it is not safe to submit", false);
     }
-
     // first compute the value with the endval
     for(int i = start_idx; i < idx; i++)
     {
         adv[i] = 0.0;
     }
+
+    // cout << "bf finish_epoch, r: " << r << endl;
+
     adv[idx - 1] = r[idx - 1] + this->gamma * end_val - val[idx - 1];
     r[idx - 1] = gamma * end_val + r[idx - 1];
 
@@ -93,6 +95,10 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
     }
 
     // return accumulated discounted reward
+    // cout << "after finish_epoch, r: " << r << endl;
+    // turn on epoch done
+    epoch_done = true;
+
     return r[start_idx];
 }
 
@@ -127,6 +133,10 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
 // return by constructing new array
 PPO::SampleBatch PPO::ReplayBufferImpl::get()
 {
+    if(!epoch_done)
+        assertm("calling get when epoch is not done", false);
+    else
+        epoch_done = false;
     typedef vector<float> Vf;
     this->adv = vector_norm(this->adv, start_idx, idx);
     vector<STATE_ENCODING> s = {this->s.begin() + start_idx, this->s.begin() + idx};
@@ -155,7 +165,7 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     cout << "a size: " << a.size() << " a:  " << a << endl; 
     cout << " r size: " << r.size() << " r: " << r << endl;
     cout << " adv size: " << adv.size() << " adv: " << adv << endl;
-    cout << " logp size: " << logp.size() << " logp: " << logp  << endl;
+    cout << " logp size: " << logp.size() << " logp: " << logp  << endl;    
     #endif
 
     // reset
@@ -212,15 +222,26 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
         state_encoding.assign(state_dim, 0.0);
         return state_encoding;
     }
-
+    
+    // node state
     vector<float> current_node_state = flatten_and_norm(this->node);
     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
+
+    // contour state
     vector<float> contour_snap = this->graph.get_contour_snapshot();
     state_encoding.insert(state_encoding.end(), make_move_iterator(contour_snap.begin()), make_move_iterator(contour_snap.end()));
-    const float current_picker_pos = this->graph.contours.picker_pos / norm_factor + zero_epsilon;
-    state_encoding.push_back(current_picker_pos);
+
+    // current_pointer
     const float current_contour_pointer = this->graph.contours.current_pos / norm_factor + zero_epsilon;
     state_encoding.push_back(current_contour_pointer);
+
+    // picker steps
+    const float picker_steps = (float(this->graph.contours.picker_steps)) / norm_factor + zero_epsilon;
+    state_encoding.push_back(picker_steps);
+
+    // picker_pointer
+    const float current_picker_pos = this->graph.contours.picker_pos / norm_factor + zero_epsilon;
+    state_encoding.push_back(current_picker_pos);
 
     // initialize the state encoding dimension
     if(state_dim == 0) state_dim = state_encoding.size();    
@@ -229,9 +250,16 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
 
 vector<float> PPO::StateInput::get_state_encoding_fast(vector<float> &state_encoding, ::OneRjSumCjGraph &graph)
 {
+    auto idx_end = state_encoding.size() - 1;
+
+    // picker steps
+    const float picker_steps = (float(graph.contours.picker_steps)) / norm_factor + zero_epsilon;
+    state_encoding[idx_end - 1] = picker_steps;
+
+    // picker pointer
     vector<float> state_encoding_copy = state_encoding;
-    auto current_contour_pointer = graph.contours.current_pos / norm_factor + zero_epsilon;
-    state_encoding.back() = current_contour_pointer;        
+    auto current_picker_pos = graph.contours.picker_pos / norm_factor + zero_epsilon;
+    state_encoding[idx_end] = current_picker_pos;
     return state_encoding;
 }
 
@@ -407,7 +435,7 @@ PPO::NetPPOImpl::NetPPOImpl(NetPPOOptions opt)
     this->pi = register_module("PolicyNet", pi_net);
 }
 
-PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s)
+PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s, bool deterministic)
 {
     GRAD_TOGGLE(this->pi, false);
     GRAD_TOGGLE(this->q, false);
@@ -420,7 +448,17 @@ PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s)
         cerr << "dist_out output dist in step(): " << dist_out << endl;
         assertm("dist_out output dist is nan", false);
     }
-    int64_t a = torch::multinomial(dist_out, 1).item().toLong();
+    int64_t a;    
+    if(deterministic)
+        a = torch::argmax(dist_out).item<int64_t>();
+    else
+        a = torch::multinomial(dist_out, 1).item().toLong();
+
+    if(deterministic)
+    {
+        cout << "dist_out: " << dist_out << endl;
+        cout << "a: " << a << endl;
+    }
     auto encoded_a = to_one_hot(a);
     assertm("action should be in range", ((a >= 0) && (a < opt.action_dim)));
     float logp = torch::log(dist_out[0][a]).item().toFloat();

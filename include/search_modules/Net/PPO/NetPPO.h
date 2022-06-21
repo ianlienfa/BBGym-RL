@@ -119,6 +119,7 @@ public:
     int a_feature_size;
     int start_idx;
     int idx;
+    bool epoch_done = false;
     // int batch_size;
     
     // hyperparam
@@ -151,7 +152,7 @@ struct NetPPOImpl: nn::Cloneable<NetPPOImpl>
 
     NetPPOImpl(NetPPOOptions options);
     float act(torch::Tensor s);
-    StepOutput step(torch::Tensor s);
+    StepOutput step(torch::Tensor s, bool deterministic = false);
     vector<float> to_one_hot(int64_t a){
         vector<float> v;
         for(int i = 0; i < opt.action_dim; i++)

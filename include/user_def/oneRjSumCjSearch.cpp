@@ -225,7 +225,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
             if(labeler->labeler_state == PPOLabeler::LabelerState::TRAIN_RUNNING)
             {
-                labeler->buffer->prep.r() = pos_zero_reward;
+                labeler->buffer->prep.r() = neg_zero_reward + node_reward * this->graph->searched_node_num;
                 labeler->buffer->submit();            
                 this->labeler->accu_reward = labeler->buffer->finish_epoch(0); // end the exploration
             }

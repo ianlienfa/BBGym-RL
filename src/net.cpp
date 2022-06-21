@@ -36,7 +36,8 @@ void updateCallbackImpl(void* engine_ptr)
     // update
     OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
     auto &labeler = engine.searcher.labeler;
-    if(labeler->get_labeler_state() == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING)
+    auto current_labeler_state = labeler->get_labeler_state();
+    if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING)
     {
         PPO::SampleBatch batch = labeler->buffer->get();
         labeler->update(batch);
@@ -46,17 +47,33 @@ void updateCallbackImpl(void* engine_ptr)
     engine.searcher.labeler->step() = 0;
 
     // reward tracking
-    if(engine.searcher.labeler->avg_reward){ 
-        engine.searcher.labeler->avg_reward = engine.searcher.labeler->avg_reward * 0.9 + engine.searcher.labeler->accu_reward * 0.1;
+    if(current_labeler_state == PPO::PPOLabeler::LabelerState::INFERENCE)
+    {
+        if(engine.searcher.labeler->avg_inf_reward){ 
+            engine.searcher.labeler->avg_inf_reward = engine.searcher.labeler->avg_inf_reward * 0.9 + engine.searcher.labeler->accu_reward * 0.1;
+        }
+        else{        
+            engine.searcher.labeler->avg_inf_reward = engine.searcher.labeler->accu_reward;
+        }
+        std::ofstream outfile;
+        outfile.open("../saved_model/inf_rewards.txt", std::ios_base::app);  
+        outfile << engine.searcher.labeler->avg_inf_reward << ", ";  
+        outfile.close();
     }
-    else{        
-        engine.searcher.labeler->avg_reward = engine.searcher.labeler->accu_reward;
+    else
+    {
+        if(engine.searcher.labeler->avg_reward){ 
+            engine.searcher.labeler->avg_reward = engine.searcher.labeler->avg_reward * 0.9 + engine.searcher.labeler->accu_reward * 0.1;
+        }
+        else{        
+            engine.searcher.labeler->avg_reward = engine.searcher.labeler->accu_reward;
+        }
+        std::ofstream outfile;
+        outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
+        outfile << engine.searcher.labeler->avg_reward << ", ";  
+        outfile.close();
     }
 
-    std::ofstream outfile;
-    outfile.open("../saved_model/rewards.txt", std::ios_base::app);  
-    outfile << engine.searcher.labeler->avg_reward << ", ";  
-    outfile.close();
 }
 
 void earlyStoppingCallbackImpl(void* engine_ptr)
@@ -143,7 +160,7 @@ int main(int argc, char* argv[])
     if(!std::filesystem::exists(piOptimPath))
         piOptimPath = "";    
     
-    const int64_t max_num_contour = 2;
+    const int64_t max_num_contour = 10;
 
     std::shared_ptr<PPO::PPOLabeler> labeler = 
         std::make_shared<PPO::PPOLabeler>(
@@ -155,7 +172,10 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(5000)       
+                .num_epoch(200) 
+                .entropy_lambda(1)                
+                .lr_pi(1e-5*0.3)      
+                .lr_q(1e-4*0.3)
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))

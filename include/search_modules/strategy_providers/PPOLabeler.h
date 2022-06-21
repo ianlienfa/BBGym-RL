@@ -15,15 +15,16 @@ struct PPOLabelerOptions{
 
     // hyper parameters
     BBARG(PPOLabelerOptions, int64_t, num_epoch, 300);
+    BBARG(PPOLabelerOptions, int64_t, inference_start_epoch, 280);
     BBARG(PPOLabelerOptions, int64_t, steps_per_epoch, 4000);
     BBARG(PPOLabelerOptions, int64_t, train_pi_iter, 80);
     BBARG(PPOLabelerOptions, int64_t, train_q_iter, 80);
     BBARG(PPOLabelerOptions, float, gamma, 0.99);
-    // BBARG(float, polyak);
+    BBARG(PPOLabelerOptions, float, entropy_lambda, 0.1);
     BBARG(PPOLabelerOptions, float, lr_q, 1e-6);
     BBARG(PPOLabelerOptions, float, lr_pi, 1e-7);
     BBARG(PPOLabelerOptions, float, clip_ratio, 0.2);
-    BBARG(PPOLabelerOptions, float, target_kl, 0.01);
+    BBARG(PPOLabelerOptions, float, target_kl, 0.001);
 
     // Not determined
     BBARG(PPOLabelerOptions, string, load_q_path, "");
@@ -51,6 +52,7 @@ public:
     vector<float> ewma_reward_vec;
     float accu_reward = 0;
     float avg_reward = 0;
+    float avg_inf_reward = 0;
   
     // Trackers tracks training state
     enum LabelerState {UNDEFINED, TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    

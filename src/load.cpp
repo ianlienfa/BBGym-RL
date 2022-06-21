@@ -9,10 +9,15 @@ using std::vector, std::string, std::cout, std::endl;
 
 int main()
 {
-    using std::list;
-    list<int> li = {1, 2, 3};
-    list<int>::iterator it = li.begin();    
-    li.emplace(it, 4);
-    for(auto it: li)
-        cout << it << " ";
+    torch::Tensor dist = torch::tensor({0.1, 0.2, 0.6, 0.1});
+    vector<int> indices(4, 0);
+    for(int i = 0; i < 1000; i++)
+    {
+        int64_t a = torch::multinomial(dist, 1).item<int64_t>();        
+        indices[a]++;
+    }
+    for(auto it: indices)
+        it = it/1000;
+    cout << indices << endl;
+    
 }

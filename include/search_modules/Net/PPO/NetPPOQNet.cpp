@@ -16,6 +16,8 @@ NetPPOQNetImpl::NetPPOQNetImpl(const NetPPOOptions &ops)
         nn::ReLU(),
         nn::Linear(ops.hidden_dim, ops.hidden_dim),
         nn::ReLU(),
+        nn::Linear(ops.hidden_dim, ops.hidden_dim),
+        nn::ReLU(),
         nn::Linear(ops.hidden_dim, 1)
     ));
 

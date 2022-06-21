@@ -8,7 +8,8 @@
 #define CONTOUR_TYPE float
 #define RANDOM_SEED 1000
 const float node_reward = -1e-2;
-const float move_reward = -1e-3;
+const float move_reward = -1e-4;
+const float move_reward_min = -1;
 const float move_reward_slope = 3;
 const float neg_zero_reward = -1e-7;
 const float pos_zero_reward = 1e-7;
@@ -27,7 +28,7 @@ const float pos_zero_reward = 1e-7;
 #define QOptimPath "../saved_model/optimizer_q.pt"
 #define INF_MODE 0
 #define MEASURE_MODE 0
-#define LAYER_WEIGHT_PRINT 0
+#define LAYER_WEIGHT_PRINT 1
 // #define NDEBUG 
 
 

@@ -19,6 +19,9 @@ PPOLabeler::PPOLabeler(PPO::PPOLabelerOptions options) :
         .pi_path = opt.load_pi_path()
     }));
 
+    // set undeterministic
+    at::globalContext().setDeterministicCuDNN(true);
+
     #if TORCH_DEBUG >= -1
     cout << "weight of original net: " << endl;
     for(auto &param : net->named_parameters())
@@ -154,6 +157,9 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
 
             // get state
             STATE_ENCODING tweaked_state = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
+            #if GAME_TRACKER == 1
+            cout << "state encoding: " << tweaked_state << endl;
+            #endif
             torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
 
             PPO::StepOutput out = net->step(tensor_s);            
@@ -194,7 +200,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
     else if(labeler_state_ == LabelerState::INFERENCE)
     {
         // increase step
-        PPO::StepOutput out = net->step(tensor_s);
+        PPO::StepOutput out = net->step(tensor_s, true /*deterministic*/);
         auto &action = out.a;
         auto &val = out.v;
         auto &logp = out.logp;
@@ -280,6 +286,9 @@ tuple<torch::Tensor, PPO::ExtraInfo> PPOLabeler::compute_pi_loss(const PPO::Batc
         cout << "loss: " << loss.item<float>() << endl;
         throw("the loss is too large"); 
     }
+
+    // add entropy to loss!
+    loss = loss + entropy * opt.entropy_lambda();
     return std::make_tuple(loss, extra_info);
 }
 
@@ -289,14 +298,15 @@ torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
     const torch::Tensor &r = batch_data.r;
     torch::Tensor v = net->q->forward(s);
     torch::Tensor v_loss = (r - v).pow(2).mean();
-    if(v_loss.item<float>() > 2)
+    if(v_loss.item<float>() > 1e4)
     {
+        layer_weight_print(*(net->q));
         cerr << "s: " << s << endl;
         cerr << "r: " << r << endl;
         cerr << "v: " << v << endl;
         cerr << "v_loss: " << v_loss.item<float>() << endl;
     }
-    assertm("v_loss too big", v_loss.item<float>() < 0.14);
+    assertm("v_loss too big", v_loss.item<float>() < 1e4);
     return v_loss;
 }
 
@@ -330,7 +340,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
         torch::Tensor pi_loss;
         PPO::ExtraInfo info;
         std::tie(pi_loss, info) = compute_pi_loss(batch);
-        float approx_kl = info.approx_kl;
+        float approx_kl = info.approx_kl;        
         if(approx_kl > 1.5 * opt.target_kl())
         {
             cerr << "Early stopping at step " << this->_step << "due to reaching max kl." << endl;
