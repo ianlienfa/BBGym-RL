@@ -9,6 +9,7 @@
 #define RANDOM_SEED 1000
 const float node_reward = -1e-2;
 const float move_reward = -1e-4;
+const float move_encouragement_reward = 1e-5;
 const float move_reward_min = -1;
 const float move_reward_slope = 3;
 const float neg_zero_reward = -1e-7;

@@ -45,7 +45,7 @@ public:
     float get_picker_reward()
     {
         const auto& move_reward_base = move_reward;
-        return (picker_steps < 10) ? move_reward_base : std::max(move_reward_base * float(pow(2.0, picker_steps - 10)), move_reward_min); // increase negative reward exponentially
+        return (picker_steps < 10) ? move_encouragement_reward : std::max(move_reward_base * float(pow(2.0, picker_steps - 10)), move_reward_min); // increase negative reward exponentially
     }
 
     Len size() const{
