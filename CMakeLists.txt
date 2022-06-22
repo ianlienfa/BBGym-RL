@@ -31,12 +31,12 @@ if(MACOSX)
 endif()
 
 # Google Test related variables
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/af29db7ec28d6df1c7f0f745186884091e602e07.zip
-)
-FetchContent_MakeAvailable(googletest)
+# include(FetchContent)
+# FetchContent_Declare(
+#   googletest
+#   URL https://github.com/google/googletest/archive/af29db7ec28d6df1c7f0f745186884091e602e07.zip
+# )
+# FetchContent_MakeAvailable(googletest)
 ######################  PACKAGE DEPENDENCIES  ########################
 # PACKAGES 
 find_package(Torch REQUIRED)  # Torch
@@ -130,17 +130,17 @@ add_custom_target(cls
 )
 
 
-enable_testing()
-add_executable(Gtest src/Gtest.cpp)
-target_link_libraries(
-    Gtest    # target 
-    "${TORCH_LIBRARIES}" TorchUtil # Torch 
-    "${Python3_LIBRARIES}" # Python3
-    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
-    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
-    oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
-    LowerBound PriorityQueue JobWithReleaseDate # Util
-    gtest_main # Google Test
-)
-include(GoogleTest)
-gtest_discover_tests(Gtest)
+# enable_testing()
+# add_executable(Gtest src/Gtest.cpp)
+# target_link_libraries(
+#     Gtest    # target 
+#     "${TORCH_LIBRARIES}" TorchUtil # Torch 
+#     "${Python3_LIBRARIES}" # Python3
+#     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
+#     oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler # Net
+#     oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+#     LowerBound PriorityQueue JobWithReleaseDate # Util
+#     gtest_main # Google Test
+# )
+# include(GoogleTest)
+# gtest_discover_tests(Gtest)
