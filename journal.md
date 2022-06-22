@@ -6846,7 +6846,27 @@ avg_reward: -0.410124
 
 // The performance largely improved after the entropy and node emphasize term added!!!! end
 
+// 綜合training
+--------------- Search Result ---------------
+instance: ../case/case0/kdypnmpsxl.in
+number of searched nodes: 3477
+min_obj = 201608
+min_seq = 14 27 17 8 23 16 20 28 24 4 5 21 13 18 15 11 12 1 10 9 29 7 26 22 19 6 2 25 3 
+accu_reward: 2.95311e-07
+avg_reward: 0.0865618
+=============== Search Ended ===============
 
+// 原
+root@98591bd75ac2:/BBGym/build# ./main < ../case/case0/kdypnmpsxl.in 
+=============== Search Started ===============
+Working on instance: 
+Instance size = 29
+
+--------------- Search Result ---------------
+number of searched nodes: 3515
+min_obj = 200691
+min_seq = 14 27 17 8 23 28 20 13 4 5 24 21 18 15 11 29 7 9 10 12 1 16 22 26 19 6 2 25 3 
+=============== Search Ended ===============
 
 // kdyp...
 

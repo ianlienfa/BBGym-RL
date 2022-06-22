@@ -102,7 +102,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
     // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
     if(!buffer->prep.empty()) // if not the first round, for the first round, ignore the r
     {
-        buffer->prep.r() = node_reward;      
+        buffer->prep.r() = graph.get_node_reward();      
     }
     if(this->buffer->safe_to_submit())
     {
@@ -257,12 +257,14 @@ tuple<torch::Tensor, PPO::ExtraInfo> PPOLabeler::compute_pi_loss(const PPO::Batc
     const torch::Tensor &adv = batch_data.adv;
     const torch::Tensor &logp_old = batch_data.logp;
 
+    // layer_weight_print(*(net->pi));
     torch::Tensor logp = net->pi->forward(s, a);
     if(logp.isnan().any().item<bool>())
     {        
         cerr << "s: " << s << endl;
         cerr << "a: " << a << endl;    
         cerr << "logp_old: " << logp_old << std::endl;
+        cerr << "logp: " << logp << std::endl;
         assertm("logp is nan", false);
     }
     torch::Tensor importance_weight = torch::exp(logp - logp_old);
@@ -298,7 +300,7 @@ torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
     const torch::Tensor &r = batch_data.r;
     torch::Tensor v = net->q->forward(s);
     torch::Tensor v_loss = (r - v).pow(2).mean();
-    if(v_loss.item<float>() > 1e4)
+    if(v_loss.item<float>() > 1e8)
     {
         layer_weight_print(*(net->q));
         cerr << "s: " << s << endl;
@@ -306,7 +308,7 @@ torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
         cerr << "v: " << v << endl;
         cerr << "v_loss: " << v_loss.item<float>() << endl;
     }
-    assertm("v_loss too big", v_loss.item<float>() < 1e4);
+    assertm("v_loss too big", v_loss.item<float>() < 1e8);
     return v_loss;
 }
 
@@ -331,6 +333,10 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
     v_loss_old = compute_q_loss(batch);
     float pi_loss_old_val = pi_loss_old.item<float>();
     float v_loss_old_val = v_loss_old.item<float>();
+
+    cout << "pi_loss_old: " << pi_loss_old_val << endl;
+    cout << "v_loss_old: " << v_loss_old_val << endl;
+
     q_loss_vec.push_back(v_loss_old_val);
     pi_loss_vec.push_back(pi_loss_old_val);
     
@@ -340,6 +346,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
         torch::Tensor pi_loss;
         PPO::ExtraInfo info;
         std::tie(pi_loss, info) = compute_pi_loss(batch);
+        // cout << "pi_loss: " << pi_loss.item<float>() << endl;
         float approx_kl = info.approx_kl;        
         if(approx_kl > 1.5 * opt.target_kl())
         {
@@ -354,6 +361,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
     {
         optimizer_q->zero_grad();
         torch::Tensor v_loss = compute_q_loss(batch);
+        cout << "v_loss: " << v_loss.item<float>() << endl;
         v_loss.backward();
         optimizer_q->step();
     }    

@@ -15,6 +15,7 @@ struct PPOLabelerOptions{
 
     // hyper parameters
     BBARG(PPOLabelerOptions, int64_t, num_epoch, 300);
+    BBARG(PPOLabelerOptions, int64_t, epoch_per_instance, 10);
     BBARG(PPOLabelerOptions, int64_t, inference_start_epoch, 280);
     BBARG(PPOLabelerOptions, int64_t, steps_per_epoch, 4000);
     BBARG(PPOLabelerOptions, int64_t, train_pi_iter, 80);
@@ -32,7 +33,7 @@ struct PPOLabelerOptions{
     BBARG(PPOLabelerOptions, string, q_optim_path, "");
     BBARG(PPOLabelerOptions, string, pi_optim_path, "");
 
-    BBARG(PPOLabelerOptions, int64_t, buffer_size, 4000);
+    BBARG(PPOLabelerOptions, int64_t, buffer_size, 5000);
     BBARG(PPOLabelerOptions, int64_t, max_num_contour, 100);
 };
 

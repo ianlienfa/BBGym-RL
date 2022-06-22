@@ -74,7 +74,7 @@ struct OneRjSumCjGraph: SearchGraph
         min_obj = numeric_limits<double>::max();        
     }
 
-#if(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
+#if(SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)    
     vector<float> get_contour_snapshot() const
     {
         return contours.get_snapshot();
@@ -82,6 +82,10 @@ struct OneRjSumCjGraph: SearchGraph
     OneRjSumCjGraph& set_max_size(int max_num_contour){
         contours.set_max_size(max_num_contour);
         return *this;
+    }    
+    float get_node_reward() const
+    {
+        return node_reward / std::pow(float(jobs_num), 5.0);
     }
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)    
     vector<float> get_contour_snapshot(int max_num_contour) const

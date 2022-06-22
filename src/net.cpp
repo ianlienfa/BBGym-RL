@@ -172,11 +172,14 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(15000) 
+                .num_epoch(20) 
+                .epoch_per_instance(10)
+                .inference_start_epoch(10)
                 .entropy_lambda(1)                
                 .lr_pi(1e-5*0.3)      
-                .lr_q(1e-4*0.3)
+                .lr_q(1e-4*0.3)                
                 .steps_per_epoch(10000)
+                .buffer_size(5000)
         );
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
@@ -260,75 +263,104 @@ int main(int argc, char* argv[])
             #endif
         }
     }
-    // if(argc == 2)
-    // {        
-    //     // read problem
-    //     #define INSTANCE_NUM 42
-    //     InputHandler inputHandler((string(argv[1])));
-    //     string filepath;
-    //     int instance_idx = INSTANCE_NUM;
-    //     cout << "instance number: " << instance_idx << endl;
-    
-    //     while(instance_idx--)
-    //     {
-    //         int step_size = rand() % 3;            
-    //         do
-    //         {
-    //             filepath = inputHandler.getNextFileName();  
-    //             if(filepath.empty())
-    //                 inputHandler.reset();
-    //         }while(step_size--);
-    //         if(parse_and_init_oneRjSumCj(filepath))
-    //         {
-    //             string cmd = "echo \"\" >> fileSearched.txt";
-    //             exec(cmd.c_str());
-    //             cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
-    //             exec(cmd.c_str());
-    //             OneRjSumCjSearch searcher(labeler);
-    //             OneRjSumCjBranch brancher;
-    //             OneRjSumCjPrune pruner;
-    //             LowerBound lowerbound;
-    //             OneRjSumCjGraph graph;
-    //             OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
-    //             graph = solver.solve(OneRjSumCjNode());  
+    else if (argc >= 3 && !(strcmp(argv[1], "-d")))
+    {        
+        int rand_seed = RANDOM_SEED;
+        torch::manual_seed(RANDOM_SEED);    
+        cerr << "Random seed: " << rand_seed << endl;
+        
+        // read problem
+        InputHandler inputHandler((string(argv[2])));
+        InputHandler inputHandler_test((string(argv[2])) + "/test");
+        string filepath;
+                      
+        for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
+        {                
 
-    //             #if INF_MODE != 1
-    //             torch::save(labeler->net->q, "../saved_model/qNet.pt");
-    //             torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
-    //             torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
-    //             torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
-    //             #endif
+            if(epoch == labeler->opt.inference_start_epoch())
+            {
+                labeler->eval();
+            }        
+            if((epoch % labeler->opt.epoch_per_instance() == 0 || epoch == 1) && epoch < labeler->opt.inference_start_epoch())
+            {                
+                int step_size = 1;            
+                do
+                {
+                    filepath = inputHandler.getNextFileName();  
+                    if(filepath.empty())
+                        inputHandler.reset();
+                }while(step_size--);
+            }
+            else if(epoch >= labeler->opt.inference_start_epoch())
+            {
+                int step_size = 1;  
+                do
+                {
+                    filepath = inputHandler_test.getNextFileName();  
+                    if(filepath.empty())
+                        inputHandler_test.reset(); 
+                } while (step_size--);                               
+            }
 
-    //             // Create file if not exist 
-    //             if(!std::filesystem::exists("../saved_model/q_loss.txt"))
-    //             {
-    //                 std::ofstream outfile("../saved_model/q_loss.txt");
-    //                 outfile.close();
-    //             }
-    //             if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
-    //             {
-    //                 std::ofstream outfile("../saved_model/pi_loss.txt");
-    //                 outfile.close();
-    //             }
+            if(parse_and_init_oneRjSumCj(filepath))
+            {
+                cerr << "epoch: " << epoch << " / " << labeler->opt.num_epoch() << " : " << filepath << endl;
+                string cmd = "echo \"\" >> fileSearched.txt";
+                exec(cmd.c_str());
+                cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
+                exec(cmd.c_str());
+                OneRjSumCjSearch searcher(labeler);
+                OneRjSumCjBranch brancher;
+                OneRjSumCjPrune pruner;
+                LowerBound lowerbound;
+                OneRjSumCjGraph graph;
+                OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
+                graph = solver.solve(OneRjSumCjNode());  
 
-    //             std::ofstream outfile;
-    //             outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
-    //             for(auto it: labeler->q_loss_vec)
-    //                 outfile << it << ", ";
-    //             outfile.close();
+                #if INF_MODE != 1
+                torch::save(labeler->net->q, "../saved_model/qNet.pt");
+                torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
+                torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
+                torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
+                if(epoch % 100 == 0)
+                {
+                    torch::save(labeler->net->q, "../saved_model/qNet_" + std::to_string(epoch) + ".pt");
+                    torch::save(labeler->net->pi, "../saved_model/piNet_" + std::to_string(epoch) + ".pt");
+                    torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q_" + std::to_string(epoch) + ".pt");
+                    torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi_" + std::to_string(epoch) + ".pt"); 
+                }
+                #endif
 
-    //             outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
-    //             for(auto it: labeler->pi_loss_vec)
-    //                 outfile << it << ", ";    
-    //             outfile.close();
+                // Create file if not exist 
+                if(!std::filesystem::exists("../saved_model/q_loss.txt"))
+                {
+                    std::ofstream outfile("../saved_model/q_loss.txt");
+                    outfile.close();
+                }
+                if(!std::filesystem::exists("../saved_model/pi_loss.txt"))
+                {
+                    std::ofstream outfile("../saved_model/pi_loss.txt");
+                    outfile.close();
+                }
 
-    //             // clean up loss_vec
-    //             labeler->q_loss_vec.clear();
-    //             labeler->pi_loss_vec.clear();
-    //         }                                          
-    //         labeler->epoch++;                    
-    //     }         
-    // }
+                std::ofstream outfile;
+                outfile.open("../saved_model/q_loss.txt", std::ios_base::app);    
+                for(auto it: labeler->q_loss_vec)
+                    outfile << it << ", ";
+                outfile.close();
+
+                outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
+                for(auto it: labeler->pi_loss_vec)
+                    outfile << it << ", ";    
+                outfile.close();
+
+                // clean up loss_vec
+                labeler->q_loss_vec.clear();
+                labeler->pi_loss_vec.clear();
+            }
+            labeler->epoch()++;   
+        }         
+    }
 
     /* For validation */
     // int min_obj = INT_MAX;

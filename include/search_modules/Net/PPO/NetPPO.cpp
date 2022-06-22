@@ -137,6 +137,7 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
         assertm("calling get when epoch is not done", false);
     else
         epoch_done = false;
+    cerr << "start_idx: " << start_idx << ", idx: " << idx << ", idx - start_idx : " << idx - start_idx << endl;
     typedef vector<float> Vf;
     this->adv = vector_norm(this->adv, start_idx, idx);
     vector<STATE_ENCODING> s = {this->s.begin() + start_idx, this->s.begin() + idx};
