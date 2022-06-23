@@ -9,6 +9,7 @@
 #include <limits>
 #include "util/config.h"
 #include <cassert>
+#include <chrono>
 using std::vector;
 using std::bitset;
 
