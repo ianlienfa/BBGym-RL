@@ -29,21 +29,21 @@ std::string exec(const char* cmd) {
 
 void solveCallbackImpl(void* engine_ptr)
 {     
-    #if INF_MODE != 1
-    OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
-    auto &labeler = engine.searcher.labeler;
-    if(labeler->step % labeler->update_freq == 0 && labeler->buffer->get_size() > labeler->batch_size) 
-    { 
-        int buffer_size = labeler->buffer->get_size(); 
-        vector<int> v(labeler->batch_size);  
-        auto rand_in_range = [&](){            
-            return (BB_RAND()) % (buffer_size);
-        };
-        generate(v.begin(), v.end(), rand_in_range); 
-        RawBatch batch = labeler->buffer->sample(v);  
-        labeler->update(batch); 
-    } 
-    #endif
+    // #if INF_MODE != 1
+    // OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
+    // auto &labeler = engine.searcher.labeler;
+    // if(labeler->step % labeler->update_freq == 0 && labeler->buffer->get_size() > labeler->batch_size) 
+    // { 
+    //     int buffer_size = labeler->buffer->get_size(); 
+    //     vector<int> v(labeler->batch_size);  
+    //     auto rand_in_range = [&](){            
+    //         return (BB_RAND()) % (buffer_size);
+    //     };
+    //     generate(v.begin(), v.end(), rand_in_range); 
+    //     RawBatch batch = labeler->buffer->sample(v);  
+    //     labeler->update(batch); 
+    // } 
+    // #endif
 }
 
 void optimalFoundCallbackImpl(void* engine_ptr)

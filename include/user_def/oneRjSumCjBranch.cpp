@@ -67,10 +67,10 @@ vector<OneRjSumCjNode> OneRjSumCjBranch::branch(const OneRjSumCjNode &current_no
     {
         if(V_j[i].earliest_start_time >= min_Cj)
         {
-            V_j.pop_back();
             #if (DEBUG_LEVEL >= 2)
             cout << "PrePruned job " << V_j[i] << " by collary 1" << endl;
             #endif
+            V_j.pop_back();
         }
     }
   

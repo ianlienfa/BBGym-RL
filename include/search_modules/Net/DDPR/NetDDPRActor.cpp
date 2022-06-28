@@ -59,7 +59,9 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     // cout << "contour snapshot input" << endl << contour_snapshot << endl;
 
     s = torch::cat({s, contour_snapshot}, 1); 
+    #if TORCH_DEBUG >= -1
     cout << "s after cat: " << s << endl;   
+    #endif
     torch::Tensor linear_output = net->forward(s);
 
     #if TORCH_DEBUG >= -1
@@ -81,9 +83,8 @@ torch::Tensor NetDDPRActorImpl::forward(torch::Tensor s, torch::Tensor contour_s
     cout << "label_in_num" << endl << label_in_num << endl;
     cout << "prob: " << endl << prob << endl;
     #endif    
-    torch::Tensor output = torch::hstack({prob, label_in_num, label_softmax});
-    cout << "output" << endl << output << endl;
-    #if TORCH_DEBUG >= 0
+    torch::Tensor output = torch::hstack({prob, label_in_num, label_softmax});    
+    #if TORCH_DEBUG >= -1
     cout << "output" << endl << output << endl;
     #endif
     

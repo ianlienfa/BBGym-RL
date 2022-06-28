@@ -61,7 +61,7 @@ struct OneRjSumCjNode: ProblemNode
     void get_processing_time();
 
     // static functions        
-    static bool cmpr(const OneRjSumCjNode &e1, const OneRjSumCjNode &e2){return e1.earliest_start_time < e2.earliest_start_time;}
+    static bool cmpr(const OneRjSumCjNode &e1, const OneRjSumCjNode &e2){return (e1.earliest_start_time == e2.earliest_start_time) ? (e1.seq.back() < e2.seq.back()) : (e1.earliest_start_time < e2.earliest_start_time);}
     static pair<int, int> getObj(const vector<int> &seq); // return wjcj, cj
     static OneRjSumCjNode getInitESTSeq(); // return est, seq
     inline int get_earliest_st_time(int job_id) const;    

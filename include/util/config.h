@@ -26,6 +26,7 @@
 /* Available Search Options Definitions */
 #define searchOneRjSumCj_CBFS 0
 #define searchOneRjSumCj_LU_AND_SAL 1
+#define searchOneRjSumCj_CBFS_pure 2
 
 /* Available Branch Options Definitions */
 #define branchOneRjSumCj_PLAIN 0
@@ -57,7 +58,7 @@
 /* ==================== Simple Strategy Choices ========================== */
 
 /* Simple Strategy Choices */
-#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS_Net
+#define SEARCH_BUNDLE bundle_OneRjSumCj_CBFS
 
 
 /* ======================================================================= */
@@ -70,11 +71,11 @@
 #endif
 
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_CBFS
-    #define SEARCH_STRATEGY searchOneRjSumCj_CBFS
+    #define SEARCH_STRATEGY searchOneRjSumCj_CBFS_pure
     #define BRANCH_STRATEGY branchOneRjSumCj_LU_AND_SAL
     #define PRUNE_STRATEGY  pruneOneRjSumCj_plain
     #define LOWER_BOUND lowerbound_oneRjSumCj_LU_AND_SAL
-    #define LABELER labeler_unify
+    #define LABELER labeler_bylevel
 #endif
 
 #if SEARCH_BUNDLE == bundle_OneRjSumCj_CBFS_Net
@@ -117,8 +118,9 @@
 #endif
 
 /* debugging */
-#define DEBUG_LEVEL 0
-#define TORCH_DEBUG -1
+#define DEBUG_LEVEL 2
+#define TORCH_DEBUG -2
+#define LAYER_WEIGHT_DEBUG -1
 
 /* validations (some extra checking is done if validation level is high) */
 #define VALIDATION_LEVEL validation_level_HIGH

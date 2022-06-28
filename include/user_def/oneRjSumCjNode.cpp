@@ -94,8 +94,13 @@ OneRjSumCjNode OneRjSumCjNode::getInitESTSeq() {
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++)
         ESTseq.push_back(make_pair(i, OneRjSumCjNode::release_time[i]));
     sort(ESTseq.begin(), ESTseq.end(), [](const pair<int, int> &a, const pair<int, int> &b) {
-        return a.second < b.second;
+        return (a.second == b.second) ? (a.first < b.first) : (a.second < b.second);
     });
+    for(auto it = ESTseq.begin(); it != ESTseq.end(); it++)
+    {
+        cout << "<" << it->first << ", " << it->second  << "> ";
+    }
+    cout << endl;
     for(size_t i = 0; i < ESTseq.size(); i++)
         node.seq.push_back(ESTseq[i].first);
     pair<int, int> incumbent = getObj(node.seq);

@@ -20,8 +20,9 @@ struct OneRjSumCjSearch: SearchMod
 {
     OneRjSumCjGraph *graph;
 
-#if LABELER == labeler_unify        
+#if (LABELER == labeler_unify || LABELER == labeler_bylevel)    
     std::shared_ptr<PlainLabeler> labeler;
+    OneRjSumCjSearch(std::shared_ptr<PlainLabeler> labeler): labeler(labeler) {}
 #elif LABELER == labeler_bynet
     std::shared_ptr<DDPRLabeler> labeler;
     OneRjSumCjSearch(std::shared_ptr<DDPRLabeler> labeler): labeler(labeler) {}

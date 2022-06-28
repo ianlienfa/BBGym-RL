@@ -27,7 +27,7 @@ struct OneRjSumCjGraph: SearchGraph
     int jobs_num;
     long long searched_node_num;
 
-#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS || SEARCH_STRATEGY == searchOneRjSumCj_CBFS_pure)
     map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> contours;
     map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator current_contour_iter;
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)
@@ -62,7 +62,7 @@ struct OneRjSumCjGraph: SearchGraph
             cerr << "Error: processing_time.size() != release_time.size() || jobs_num <= 0" << endl;
             exit(INVALID_INPUT);
         }
-#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS || SEARCH_STRATEGY == searchOneRjSumCj_CBFS_pure)
         contours = map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>();
         current_contour_iter = contours.begin();
 #endif
@@ -87,8 +87,11 @@ struct OneRjSumCjGraph: SearchGraph
         return contour_snapshot;
     }
     // clip inserting for rnn, with max_num_contour
-    void clip_insert(int max_num_contour, map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &contour, OneRjSumCjNode &node, float label)
+    void clip_insert(int max_num_contour, map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>> &contour, OneRjSumCjNode &node, float label_in)
     {
+        // Dagerous!!! only for debug! //
+        CONTOUR_TYPE label = 0;
+
         if(contour.size() < max_num_contour)
         {
             assertm("label_decision(): label is out of range", (label > 0) && (label < 5));
@@ -98,7 +101,7 @@ struct OneRjSumCjGraph: SearchGraph
                 PriorityQueue<OneRjSumCjNode> pq_insert(OneRjSumCjNode::cmpr);
                 pq_insert.push(node);
                 #if DEBUG_LEVEL >=2
-                    cout << "inserting node to contour " << label << ": " << *it  << endl;
+                    cout << "inserting node to contour " << label << ": " << node  << endl;
                 #endif
                 contours.insert(make_pair(label, pq_insert));
             }
@@ -106,7 +109,7 @@ struct OneRjSumCjGraph: SearchGraph
             {
                 target_contour_iter->second.push(node);
                 #if DEBUG_LEVEL >=2
-                    cout << "inserting node to contour " << label << ": " << *it  << endl;
+                    cout << "inserting node to contour " << label << ": " << node  << endl;
                 #endif
             }      
         }  

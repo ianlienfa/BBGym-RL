@@ -27,7 +27,7 @@ OneRjSumCjGraph OneRjSumCjSearch::init(OneRjSumCjNode rootProblem) {
     OneRjSumCjGraph graph(rootProblem.processing_time, rootProblem.release_time, rootProblem.job_weight, rootProblem.jobs_num);
 
 /* initialization for CBFS data structures */
-#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS || SEARCH_STRATEGY == searchOneRjSumCj_CBFS_pure)
     PriorityQueue<OneRjSumCjNode> contour_0(OneRjSumCjNode::cmpr);
     contour_0.push(OneRjSumCjNode(B(0), Vi(), 0));
     graph.contours.insert(make_pair(0, contour_0));
@@ -47,7 +47,7 @@ we can save them in a ordered map
     return graph;
 }
 
-#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS || SEARCH_STRATEGY == searchOneRjSumCj_CBFS_pure)
 OneRjSumCjNode OneRjSumCjSearch::search_next() {
     // pop element from the current contour
     #if DEBUG_LEVEL >=2         
@@ -136,7 +136,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             
             vector<float> action_prep = {prob, noise};
             action_prep.insert(action_prep.end(), softmax.begin(), softmax.end());
+            #if TORCH_DEBUG >= -1
             cout << "action_prep: " << endl << action_prep << endl;
+            #endif
 
             MEASURE(buffer_measurer, "buffer_measurer",
             if(!labeler->buffer->isin_prep()) 
@@ -253,6 +255,79 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
 
     return branched_nodes;
 }
+#elif (SEARCH_STRATEGY == searchOneRjSumCj_CBFS_pure)
+vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_node, vector<OneRjSumCjNode> branched_nodes) {
+    (void) current_node;
+    this->graph->searched_node_num++;  
+    // push branched nodes into the contour
+    for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){
+        float label = (*labeler)(*it); 
+        auto &contours = this->graph->contours;
+        auto &node = (*it);
+        map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator target_contour_iter = contours.find(label);
+        if(target_contour_iter == contours.end())
+        {
+            PriorityQueue<OneRjSumCjNode> pq_insert(OneRjSumCjNode::cmpr);
+            pq_insert.push(*it);
+            #if DEBUG_LEVEL >=2
+                cout << "inserting node to contour " << label << ": " << *it  << endl;
+            #endif
+            contours.insert(make_pair(label, pq_insert));
+        }
+        else
+        {
+            target_contour_iter->second.push(node);
+            #if DEBUG_LEVEL >=2
+                cout << "inserting node to contour " << label << ": " << *it  << endl;
+            #endif
+        }      
+    }
+    // #if DEBUG_LEVEL >= 2
+    // cout << "last level: " << this->graph->current_level - 1 << "[" << endl;    
+    // for(auto it: this->graph->contours[this->graph->current_level - 1]){
+    //     cout << it << endl;
+    // }
+    // cout << endl << "]" << endl;
+    // cout << "current level: " << this->graph->current_level << "[" << endl;
+    //     for(auto it: this->graph->contours[this->graph->current_level]){
+    //     cout << it << endl;
+    // }
+    // cout << endl << "]" << endl;
+    // cout << "-" << endl;
+    // cout << "searched_node_num: " << this->graph->searched_node_num << endl;    
+    // cout << "current_level: " << this->graph->current_level << endl;
+    // #endif
+
+    // locate the next contour
+    map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator next_iter = this->graph->current_contour_iter;
+    // if there's contour left after deletion, cycle back or go to the next
+    if(this->graph->contours.size() > 1)
+    {        
+        next_iter++;
+        if(next_iter == this->graph->contours.end())
+        {
+            next_iter = this->graph->contours.begin();
+        }        
+    }
+
+    // clean current contour if needed
+    if(this->graph->current_contour_iter->second.empty())
+    {
+        // if the current contour is empty, we need to find the next contour
+        map<CONTOUR_TYPE, PriorityQueue<OneRjSumCjNode>>::iterator current_iter = this->graph->current_contour_iter;       
+ 
+        if(this->graph->contours.size() <= 1) /* early leaving from the environment */
+        {
+            // only one contour left and the contour is empty, we need to stop
+            this->graph->optimal_found = true;
+        }
+        this->graph->contours.erase(current_iter);
+    }
+    
+    // update the current contour
+    this->graph->current_contour_iter = next_iter;
+    return branched_nodes;
+}
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)
 vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_node, vector<OneRjSumCjNode> branched_nodes) {
 
@@ -317,10 +392,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
 }
 #endif
 
-
-#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS)
+#if (SEARCH_STRATEGY == searchOneRjSumCj_CBFS || SEARCH_STRATEGY == searchOneRjSumCj_CBFS_pure)
 bool OneRjSumCjSearch::is_incumbent(const OneRjSumCjNode &current_node) {
-    return ((((int)current_node.seq.size()) == OneRjSumCjNode::jobs_num));
+    return (int(current_node.seq.size()) == OneRjSumCjNode::jobs_num);
 }
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_LU_AND_SAL)
 bool OneRjSumCjSearch::is_incumbent(const OneRjSumCjNode &current_node) {
@@ -328,8 +402,3 @@ bool OneRjSumCjSearch::is_incumbent(const OneRjSumCjNode &current_node) {
     return false;
 }
 #endif
-
-void OneRjSumCjSearch::history_fill()
-{
-    
-}

@@ -29,13 +29,12 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
     /// -----------------------------------------------------------
     );
 
-
     // a incumbent init for Lu & Sal
     OneRjSumCjNode initIncumbent = OneRjSumCjNode::getInitESTSeq();
     this->graph.min_obj = initIncumbent.weighted_completion_time;
     this->graph.min_seq = initIncumbent.seq;
 
-    #if DEBUG_LEVEL >= 3
+    #if DEBUG_LEVEL >= 2
     cout << "init incumbent: " << initIncumbent.weighted_completion_time << ", { ";
     for(auto it : initIncumbent.seq)
         cout << it << " ";

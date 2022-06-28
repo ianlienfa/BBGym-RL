@@ -1,5 +1,6 @@
 #include "TorchUtil.h"
 
+#if LAYER_WEIGHT_DEBUG >= 0
 void layer_weight_print(const torch::nn::Module &net)
 {    
     using namespace std;
@@ -30,7 +31,12 @@ void layer_weight_print(const torch::nn::Module &net)
         break;
     }
 };
+#else
+void layer_weight_print(const torch::nn::Module &net)
+{    
 
+};
+#endif
 void tabs(size_t num) {
   for (size_t i = 0; i < num; i++) {
 	std::cout << "\t";
