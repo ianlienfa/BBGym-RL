@@ -103,12 +103,14 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
  * modified: this->graph.min_obj & this->graph.min_seq
 --------------------------------------------------------------------------*/
 void OneRjSumCj_engine::update_incumbent(const OneRjSumCjNode &current_node) {
-    double obj = this->objSolve(current_node);   
+    assertm("weighted completion time of current_node is not computed", current_node.weighted_completion_time != 0.0);
+    double obj = current_node.weighted_completion_time;
     if(obj < this->graph.min_obj)
     {
     #if DEBUG_LEVEL >= 1
         std::cout << "========update_incumbent=======" << std::endl;
-        std::cout << "obj: " << this->graph.min_obj << std::endl;
+        std::cout << "current node: " << current_node << std::endl;
+        std::cout << "old obj: " << this->graph.min_obj << ", new obj: " << obj << std::endl;
     #endif
         this->graph.min_obj = obj;
         this->graph.min_seq = current_node.seq;
@@ -117,18 +119,10 @@ void OneRjSumCj_engine::update_incumbent(const OneRjSumCjNode &current_node) {
 
 
 TIME_TYPE OneRjSumCj_engine::objSolve(const OneRjSumCjNode &current_node) {
-        // feasibility check
-    if(current_node.processing_time.size() != current_node.release_time.size() ||
-        current_node.job_weight.empty())
-    {
-        cout << "[main.cpp::objSolve] INVALID_INPUT: the input data is not in the correct format" << endl;
-        exit(INVALID_INPUT);
-    }
-    if(current_node.seq.size() != current_node.jobs_num)
-    {
-        cout << "[main.cpp::objSolve] LOGIC_ERROR: the sequence is not completed!" << endl;
-        exit(LOGIC_ERROR);
-    }
+    // feasibility check
+    assertm("[main.cpp::objSolve] INVALID_INPUT: the input data is not in the correct format", current_node.processing_time.size() == current_node.release_time.size());
+    assertm("[main.cpp::objSolve] INVALID_INPUT: job_weight should not be empty", (!current_node.job_weight.empty()));
+    assertm("[main.cpp::objSolve] LOGIC_ERROR: the sequence is not completed!", current_node.seq.size() == current_node.jobs_num);
 
     // calculate the objective value
     auto start_time = [](int current_time, int release_date){return std::max(current_time, release_date);};
@@ -136,15 +130,15 @@ TIME_TYPE OneRjSumCj_engine::objSolve(const OneRjSumCjNode &current_node) {
     int obj = 0;
     vector<int> start_arr;
     vector<int> complete_arr;
+
     for(size_t i = 0; i < current_node.seq.size(); i++)
     {
         int s_i = start_time(current_time, current_node.release_time[current_node.seq[i]]);
         int c_i = s_i + current_node.processing_time[current_node.seq[i]];
         current_time = c_i;
-        obj += c_i;
+        obj += c_i * current_node.job_weight[current_node.seq[i]];
     }
     return obj;
-
 }
 
 void print_config(){
@@ -167,7 +161,6 @@ void print_config(){
 
     cout << "jobs_num = " << OneRjSumCjNode::jobs_num << endl;
     cout << "bit mask = " << OneRjSumCjNode::jobs_mask  << endl;
-    sleep(2);
     #endif
 }
 

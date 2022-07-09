@@ -361,7 +361,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
     {
         optimizer_q->zero_grad();
         torch::Tensor v_loss = compute_q_loss(batch);
-        cout << "v_loss: " << v_loss.item<float>() << endl;
+        // cout << "v_loss: " << v_loss.item<float>() << endl;
         v_loss.backward();
         optimizer_q->step();
     }    

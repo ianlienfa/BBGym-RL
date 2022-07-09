@@ -101,7 +101,7 @@ void prune__OneRjSumCj__LU_AND_SAL__Theorem1(vector<OneRjSumCjNode>& branched_no
         {
             seq_wspt.push_back(make_pair(V_j[i], OneRjSumCjNode::processing_time[V_j[i]]/OneRjSumCjNode::job_weight[V_j[i]]));
         }
-        sort(seq_wspt.begin(), seq_wspt.end(), [](const pair<int, int> &a, const pair<int, int> &b) {return a.second < b.second;});
+        sort(seq_wspt.begin(), seq_wspt.end(), [](const pair<int, int> &a, const pair<int, int> &b) {return (a.second == b.second) ? (a.first < b.first) : (a.second < b.second);});
 
         // update incumbent solution
         OneRjSumCjNode incumbent(branched_nodes[0]);

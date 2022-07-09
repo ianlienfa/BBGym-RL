@@ -82,16 +82,16 @@ add_subdirectory(include)
 ###########################################################################
 # executables
 
-# add_executable(main src/main.cpp)
-# target_link_libraries(
-#     main    # target 
-#     "${TORCH_LIBRARIES}" # Torch
-#     "${Python3_LIBRARIES}" # Python3
-#     problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler # Base
-#     oneRjSumCj_engine oneRjSumCjNode oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
-#     LowerBound PriorityQueue JobWithReleaseDate # Util
-#     NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler# Net
-# )
+add_executable(main src/main.cpp)
+target_link_libraries(
+    main    # target 
+    "${TORCH_LIBRARIES}" TorchUtil # Torch 
+    "${Python3_LIBRARIES}" # Python3
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
+    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler NetPPOActor NetPPOQNet NetPPO PPOLabeler# Net
+    oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    LowerBound PriorityQueue JobWithReleaseDate PlacementList# Util
+)
 
 add_executable(net src/net.cpp)
 target_link_libraries(

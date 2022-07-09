@@ -40,7 +40,10 @@ void updateCallbackImpl(void* engine_ptr)
     if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING)
     {
         PPO::SampleBatch batch = labeler->buffer->get();
-        labeler->update(batch);
+        if(batch.v_r.size() > 1)
+        {
+            labeler->update(batch);
+        }        
     }
 
     // step reset
@@ -172,9 +175,9 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(20) 
+                .num_epoch(10000) 
                 .epoch_per_instance(10)
-                .inference_start_epoch(10)
+                .inference_start_epoch(99990)
                 .entropy_lambda(1)                
                 .lr_pi(1e-5*0.3)      
                 .lr_q(1e-4*0.3)                
@@ -283,22 +286,28 @@ int main(int argc, char* argv[])
             }        
             if((epoch % labeler->opt.epoch_per_instance() == 0 || epoch == 1) && epoch < labeler->opt.inference_start_epoch())
             {                
-                int step_size = 1;            
+                int step_size = rand() % 5;            
                 do
                 {
                     filepath = inputHandler.getNextFileName();  
                     if(filepath.empty())
-                        inputHandler.reset();
+                    {
+                        inputHandler.reset(); 
+                        filepath = inputHandler.getNextFileName();  
+                    }
                 }while(step_size--);
             }
             else if(epoch >= labeler->opt.inference_start_epoch())
             {
-                int step_size = 1;  
+                int step_size = 1;                  
                 do
                 {
                     filepath = inputHandler_test.getNextFileName();  
                     if(filepath.empty())
+                    {
                         inputHandler_test.reset(); 
+                        filepath = inputHandler_test.getNextFileName();  
+                    }
                 } while (step_size--);                               
             }
 

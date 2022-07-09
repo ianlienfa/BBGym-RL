@@ -5,19 +5,34 @@
 #include <iomanip>
 #include <list>
 #include "util/PriorityQueue.h"
-using std::vector, std::string, std::cout, std::endl;
+#include "problem_parser/problemParser.h"
+using std::vector, std::string, std::cout, std::endl, std::cerr;
 
-int main()
+
+int main(int argc, char* argv[])
 {
-    torch::Tensor dist = torch::tensor({0.1, 0.2, 0.6, 0.1});
-    vector<int> indices(4, 0);
-    for(int i = 0; i < 1000; i++)
-    {
-        int64_t a = torch::multinomial(dist, 1).item<int64_t>();        
-        indices[a]++;
+
+    if (argc >= 3 && !(strcmp(argv[1], "-d")))
+    {        
+        int rand_seed = RANDOM_SEED;
+        torch::manual_seed(RANDOM_SEED);    
+        cerr << "Random seed: " << rand_seed << endl;
+        
+        // read problem
+        InputHandler inputHandler((string(argv[2])));
+        InputHandler inputHandler_test((string(argv[2])) + "/test");
+        string filepath;
+        int step_size = 1;            
+        for(int i = 0; i < 100; i++)
+        {
+            filepath = inputHandler.getNextFileName();  
+            if(filepath.empty())
+            {
+                cout << "empty!" << endl;
+                inputHandler.reset(); 
+                filepath = inputHandler.getNextFileName();  
+            }
+            cout << "processing: " << filepath << endl;
+        }while(!filepath.empty());              
     }
-    for(auto it: indices)
-        it = it/1000;
-    cout << indices << endl;
-    
 }

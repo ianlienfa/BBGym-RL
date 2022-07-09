@@ -9,7 +9,7 @@
 #define RANDOM_SEED 1000
 const float node_reward = -1e-2;
 const float move_reward = -1e-4;
-const float move_encouragement_reward = 1e-5;
+const float move_encouragement_reward = 1e-7;
 const float end_emphasize_multiplier = 1.5;
 const float move_reward_min = -1e-2;
 const float move_reward_slope = 3;
@@ -28,6 +28,14 @@ const float pos_zero_reward = 1e-7;
 #define PiNetPath "../saved_model/piNet.pt"
 #define PiOptimPath "../saved_model/optimizer_pi.pt"
 #define QOptimPath "../saved_model/optimizer_q.pt"
+#define QNetPathInf "../saved_model/inf/qNet.pt"
+#define PiNetPathInf "../saved_model/inf/piNet.pt"
+#define PiOptimPathInf "../saved_model/inf/optimizer_pi.pt"
+#define QOptimPathInf "../saved_model/inf/optimizer_q.pt"
+#define PlainCBFSVerbose "base-compute"
+#define PlainCBFSBFS "base-compute-pure"
+#define PlainCBFSLevel "base-compute-level"
+#define PlainCBFSRand "base-compute-rand"
 #define INF_MODE 0
 #define MEASURE_MODE 0
 #define LAYER_WEIGHT_PRINT 1

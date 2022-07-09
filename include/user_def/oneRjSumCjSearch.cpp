@@ -192,7 +192,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     (void) current_node;
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
-    
+
     // push the branched nodes into the contour
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){        
         MEASURE(stateInput_measurer, "stateInput",
@@ -203,7 +203,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
         );        
         torch::Tensor tensor_s = torch::from_blob(s.data(), {1, int64_t(s.size())}).clone();        
 
-        // label and push        
+        // label and push    
         int64_t label = (*labeler)((*it), s, (*this->graph));
 
         // take care of early leaving from the environment
