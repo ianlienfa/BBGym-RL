@@ -48,6 +48,7 @@
 #define labeler_unify 0
 #define labeler_bylevel 1
 #define labeler_bynet 2
+#define labeler_rand 3
 
 /* Available Solver Bundles */
 #define bundle_NULL 0
@@ -118,7 +119,8 @@
 #endif
 
 /* debugging */
-#define DEBUG_LEVEL 2
+#define PURE_SEARCH_NODE_NUM 1
+#define DEBUG_LEVEL 0
 #define TORCH_DEBUG -2
 #define LAYER_WEIGHT_DEBUG -1
 

@@ -8,7 +8,10 @@ int PlainLabeler::operator()(const OneRjSumCjNode &node) const {
 }
 #elif LABELER == labeler_bylevel
 int PlainLabeler::operator()(const OneRjSumCjNode &node) const {
-    // return node.seq.size();
-    return 0;
+    return node.seq.size();    
+}
+#elif LABELER == labeler_rand
+int PlainLabeler::operator()(const OneRjSumCjNode &node) const {
+    return rand() % 10;
 }
 #endif

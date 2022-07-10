@@ -96,11 +96,13 @@ OneRjSumCjNode OneRjSumCjNode::getInitESTSeq() {
     sort(ESTseq.begin(), ESTseq.end(), [](const pair<int, int> &a, const pair<int, int> &b) {
         return (a.second == b.second) ? (a.first < b.first) : (a.second < b.second);
     });
+    #if DEBUG_LEVEL >= 2
     for(auto it = ESTseq.begin(); it != ESTseq.end(); it++)
     {
         cout << "<" << it->first << ", " << it->second  << "> ";
-    }
+    }    
     cout << endl;
+    #endif
     for(size_t i = 0; i < ESTseq.size(); i++)
         node.seq.push_back(ESTseq[i].first);
     pair<int, int> incumbent = getObj(node.seq);
