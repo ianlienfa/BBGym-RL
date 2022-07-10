@@ -72,6 +72,10 @@ void pruneIncumbentCmpr(vector<OneRjSumCjNode>& branched_nodes, const OneRjSumCj
 }
 
 void prune__OneRjSumCj__LU_AND_SAL__Theorem1(vector<OneRjSumCjNode>& branched_nodes, OneRjSumCjGraph &graph) {    
+    #if DEBUG_LEVEL == 2
+    cout << "prune__OneRjSumCj__LU_AND_SAL__Theorem1: enter "<< endl;
+    #endif     
+
     if(branched_nodes.size() == 0)
         return;
     #if (VALIDATION_LEVEL == validation_level_HIGH)
@@ -88,49 +92,48 @@ void prune__OneRjSumCj__LU_AND_SAL__Theorem1(vector<OneRjSumCjNode>& branched_no
        then update incumbent solution with WSPT rule to find the corresponding feasible solution for the current partial sequence,
        prune all nodes, and go back       
     */
-   if(branched_nodes[0].earliest_start_time == branched_nodes[branched_nodes.size()-1].earliest_start_time && int(branched_nodes.size()) == graph.current_node.get_unfinished_jobs_num())
-   {
-        // compute WSPT seq (id, p/w)
-        vector<int> V_j;
-        vector<pair<int, int>> seq_wspt;
+    if(branched_nodes[0].earliest_start_time == branched_nodes[branched_nodes.size()-1].earliest_start_time && int(branched_nodes.size()) == graph.current_node.get_unfinished_jobs_num())
+    {
+        // reorder the branch nodes by WSPT
+        vector<pair<OneRjSumCjNode*, float>> wspt_node;
         for(size_t i = 0; i < branched_nodes.size(); i++)
         {
-            V_j.push_back(branched_nodes[i].seq.back());
+            int last_job = branched_nodes[i].seq.back();
+            wspt_node.push_back(make_pair(&branched_nodes[i], OneRjSumCjNode::processing_time[last_job]/OneRjSumCjNode::job_weight[last_job]));
         }
-        for(size_t i = 0; i < V_j.size(); i++)
-        {
-            seq_wspt.push_back(make_pair(V_j[i], OneRjSumCjNode::processing_time[V_j[i]]/OneRjSumCjNode::job_weight[V_j[i]]));
-        }
-        sort(seq_wspt.begin(), seq_wspt.end(), [](const pair<int, int> &a, const pair<int, int> &b) {return (a.second == b.second) ? (a.first < b.first) : (a.second < b.second);});
+        sort(wspt_node.begin(), wspt_node.end(), [](const pair<OneRjSumCjNode*, float>& a, const pair<OneRjSumCjNode*, float>& b) {
+            return (a.second == b.second) ? (a.first->seq.back() < b.first->seq.back()) : (a.second < b.second);
+        });
 
-        // update incumbent solution
-        OneRjSumCjNode incumbent(branched_nodes[0]);
-        incumbent.seq.pop_back(); // clear branched node
-        
-        // push new partial sequence to the back
-        for(size_t i = 0; i < seq_wspt.size(); i++)
+        // extend the first node to be the incumbent solution
+        OneRjSumCjNode incumbent_candidate(*wspt_node[0].first);
+        OneRjSumCjNode node_to_branch(*wspt_node[0].first);      
+
+        // fill the remaining jobs to the incumbent
+        for(size_t i = 1; i < wspt_node.size(); i++)
         {
-            incumbent.seq.push_back(seq_wspt[i].first);
-            incumbent.is_processed.set(seq_wspt[i].first);
-        }
-        pair<int, int> wjcj_cj = OneRjSumCjNode::getObj(incumbent.seq);
-        incumbent.weighted_completion_time = wjcj_cj.first;
-        incumbent.completion_time = wjcj_cj.second;
-        if(incumbent.weighted_completion_time < graph.min_obj)
+            incumbent_candidate.seq.push_back(wspt_node[i].first->seq.back());
+            incumbent_candidate.is_processed.set(wspt_node[i].first->seq.back());
+        }                
+        pair<int, int> wjcj_cj = OneRjSumCjNode::getObj(incumbent_candidate.seq);
+        incumbent_candidate.weighted_completion_time = wjcj_cj.first;
+        incumbent_candidate.completion_time = wjcj_cj.second;
+
+        if(incumbent_candidate.weighted_completion_time < graph.min_obj)
         {
-            graph.min_obj = incumbent.weighted_completion_time;
-            graph.min_seq = incumbent.seq;
+            graph.min_obj = incumbent_candidate.weighted_completion_time;
+            graph.min_seq = incumbent_candidate.seq;
             #if DEBUG_LEVEL >= 1
-            cout << "new incumbent: " << incumbent << endl;        
+            cout << "new incumbent: " << incumbent_candidate << endl;        
             #endif
         }
-        // clear branched_nodes
+
+        // clear branched_nodes     
         branched_nodes.clear();
+        branched_nodes.push_back(node_to_branch);
+        cout << "branched_nodes: " << branched_nodes << endl;
         #if DEBUG_LEVEL == 2
         cout << "prune__OneRjSumCj__LU_AND_SAL__Theorem1 triggered, multiple node pruned" << endl;
         #endif
-   }
+    }
 }
-// void prune__OneRjSumCj__LU_AND_SAL__basicFilter(vector<OneRjSumCjNode>& branched_nodes, const OneRjSumCjGraph &graph) {    
-    
-// }
