@@ -7,6 +7,13 @@ project(BranchAndBoundSmart CXX)
 set(CMAKE_BUILD_TYPE Debug)
 
 
+############### GRID SEARCH VARIABLES ###############
+add_compile_definitions(V_HIDDEN_DIM=${V_HIDDEN_DIM})
+add_compile_definitions(V_MAX_NUM_CNTR=${V_MAX_NUM_CNTR})
+add_compile_definitions(V_LR_PI=${V_LR_PI})
+add_compile_definitions(V_LR_Q=${V_LR_Q})
+
+
 ############### ARCHITECTURE-RELATED VARIABLES ###############
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(MACOSX TRUE)

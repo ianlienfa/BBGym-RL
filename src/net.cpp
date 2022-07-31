@@ -169,14 +169,20 @@ int main(int argc, char* argv[])
         qOptimPath = "";
     if(!std::filesystem::exists(piOptimPath))
         piOptimPath = "";    
-    
-    const int64_t max_num_contour = 10;
+
+    cerr << "hidden dim: " << V_HIDDEN_DIM << endl;
+    cerr << "max num contour: " << V_MAX_NUM_CNTR << endl;
+    cerr << "lr pi: " << V_LR_PI << endl;
+    cerr << "lr q: " << V_LR_Q << endl;
+
+    const int64_t max_num_contour = V_MAX_NUM_CNTR;
 
     std::shared_ptr<PPO::PPOLabeler> labeler = 
         std::make_shared<PPO::PPOLabeler>(
             PPO::PPOLabelerOptions()                
                 .state_dim(int64_t(PPO::StateInput(OneRjSumCjNode(), OneRjSumCjNode(), OneRjSumCjGraph().set_max_size(max_num_contour)).get_state_encoding(max_num_contour).size()))
                 .action_dim(4)
+                .hidden_dim(V_HIDDEN_DIM)
                 .load_q_path(qNetPath)
                 .load_pi_path(piNetPath)
                 .q_optim_path(qOptimPath)
@@ -187,11 +193,12 @@ int main(int argc, char* argv[])
                 .epoch_per_instance(20)
                 .validation_interval(20)
                 .entropy_lambda(1)                
-                .lr_pi(1e-5*0.3)      
-                .lr_q(1e-4*0.3)                
+                .lr_pi(V_LR_PI)      
+                .lr_q(V_LR_Q)                
                 .steps_per_epoch(10000)                
                 .buffer_size(5000)
         );
+    
     
     /* validate */
     auto validate = [&](string dirpath){
