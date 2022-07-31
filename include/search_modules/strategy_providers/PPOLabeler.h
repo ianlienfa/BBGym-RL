@@ -16,7 +16,8 @@ struct PPOLabelerOptions{
     // hyper parameters
     BBARG(PPOLabelerOptions, int64_t, num_epoch, 300);
     BBARG(PPOLabelerOptions, int64_t, epoch_per_instance, 10);
-    BBARG(PPOLabelerOptions, int64_t, inference_start_epoch, 280);
+    BBARG(PPOLabelerOptions, int64_t, inference_start_epoch, INT_MAX);
+    BBARG(PPOLabelerOptions, int64_t, validation_interval, 5);  // instances per validation
     BBARG(PPOLabelerOptions, int64_t, steps_per_epoch, 4000);
     BBARG(PPOLabelerOptions, int64_t, train_pi_iter, 80);
     BBARG(PPOLabelerOptions, int64_t, train_q_iter, 80);
@@ -51,9 +52,13 @@ public:
     vector<float> q_mean_loss;
     vector<float> pi_mean_loss;    
     vector<float> ewma_reward_vec;
+    vector<float> avg_search_decrease_ratio_vec;
+    vector<float> ewma_search_decrease_ratio_vec;
+    float avg_search_decrease_ratio = 0;
     float accu_reward = 0;
     float avg_reward = 0;
     float avg_inf_reward = 0;
+    float last_searched_node_num = 0.0;
   
     // Trackers tracks training state
     enum LabelerState {UNDEFINED, TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    

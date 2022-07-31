@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <memory>
+#include <unordered_map>
 #include <fstream>
 #include <chrono>
 
@@ -76,7 +77,6 @@ void updateCallbackImpl(void* engine_ptr)
         outfile << engine.searcher.labeler->avg_reward << ", ";  
         outfile.close();
     }
-
 }
 
 void earlyStoppingCallbackImpl(void* engine_ptr)
@@ -91,7 +91,10 @@ void optimalFoundCallbackImpl(void* engine_ptr)
 
 int main(int argc, char* argv[])
 {            
+    // trainer global variables    
     string filename = "";
+    string validation_dirname = "";
+
     // parse command line arguments
     if(argc < 2)
     {
@@ -126,7 +129,11 @@ int main(int argc, char* argv[])
                 }
                 filename = command.second[0];
             }
-            else if(command.first == "-v")
+            else if(command.first == "-d")
+            {   
+                validation_dirname = command.second[0];
+            }
+            else if(command.first == "-param")
             {
                 for(auto &hyper_param : command.second)
                 {
@@ -175,22 +182,114 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(10000) 
+                .num_epoch(1000)
+                .inference_start_epoch(100)
                 .epoch_per_instance(10)
-                .inference_start_epoch(99990)
+                .validation_interval(10)
                 .entropy_lambda(1)                
                 .lr_pi(1e-5*0.3)      
                 .lr_q(1e-4*0.3)                
-                .steps_per_epoch(10000)
+                .steps_per_epoch(10000)                
                 .buffer_size(5000)
         );
     
+    /* validate */
+    auto validate = [&](string dirpath){
+
+        labeler->eval();
+        
+        // Input handeler
+        InputHandler inputHandler_test(dirpath);
+        // count number of files
+        int num_valid_files = stoi(exec(string("ls " + dirpath +  " | wc -l").c_str()));
+
+        cerr << "validating : " << labeler->epoch() << " / " << labeler->opt.num_epoch() << endl;
+
+        // initialize if not initialized before;
+        static std::unordered_map<string, int> base_searchnum_map;
+        if(!base_searchnum_map.size())
+        {
+            InputHandler base_searchnum_initializer(dirpath);
+            for(int file = 0; file <= num_valid_files; file++)
+            {
+                string filepath = base_searchnum_initializer.getNextFileName();                 
+                string plain_bfs_cmd = "./" + string(PlainCBFSBFS) + " -f " + filepath;
+                int search_num = stoi(exec(plain_bfs_cmd.c_str()));
+                base_searchnum_map.insert(make_pair(filepath, search_num));
+            }
+        }
+
+        for(int epoch = 1; epoch <= num_valid_files; epoch++)      
+        {
+            string filepath = inputHandler_test.getNextFileName();  
+            if(parse_and_init_oneRjSumCj(filepath))
+            {
+                cout <<  "validating on: " << filepath << endl;            
+                OneRjSumCjSearch searcher(labeler);
+                OneRjSumCjBranch brancher;
+                OneRjSumCjPrune pruner;
+                LowerBound lowerbound;
+                OneRjSumCjGraph graph;
+                OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
+                graph = solver.solve(OneRjSumCjNode());  
+
+                // Create file if not exist 
+                if(!std::filesystem::exists("../saved_model/ratio.txt"))
+                {
+                    std::ofstream outfile("../saved_model/ratio.txt");
+                    outfile.close();
+                }          
+
+                // clean up loss_vec (leave this to prevent validation loss polluting the vectors)
+                labeler->q_loss_vec.clear();
+                labeler->pi_loss_vec.clear();
+
+                // get corresponding bfs search (base) node search num
+                auto base_node_search_num_ptr = base_searchnum_map.find(filepath);
+                int base_node_search_num;
+                if(base_node_search_num_ptr == base_searchnum_map.end())
+                {
+                    string msg = "base number of node search is not filled for " + filepath; 
+                    assertm(msg, false);
+                }
+                else
+                {
+                    base_node_search_num = base_node_search_num_ptr->second;
+                }
+
+                // track search node saved ratio                 
+                float node_saved_ratio = float(base_node_search_num - graph.searched_node_num) / float(base_node_search_num);
+                cout << filepath << " | base: " << base_node_search_num << ", trained: " << graph.searched_node_num << ", node-saved-ratio: " << node_saved_ratio << endl;
+                labeler->ewma_search_decrease_ratio_vec.push_back(node_saved_ratio);            
+            }
+        }        
+
+        // save average performance into ratio.txt
+        float search_decrease_ratio = std::accumulate(labeler->ewma_search_decrease_ratio_vec.begin(), labeler->ewma_search_decrease_ratio_vec.end(), 0.0) / labeler->ewma_search_decrease_ratio_vec.size();                
+        labeler->avg_search_decrease_ratio = search_decrease_ratio * 0.9 + labeler->avg_search_decrease_ratio * 0.1;
+        labeler->ewma_search_decrease_ratio_vec.clear();
+        cerr << "avg_search_decrease_ratio: " << labeler->avg_search_decrease_ratio << endl;
+        if(!std::filesystem::exists("../saved_model/ratio.txt"))
+        {
+            std::ofstream outfile("../saved_model/ratio.txt");
+            outfile.close();
+        }
+        std::ofstream outfile;
+        outfile.open("../saved_model/ratio.txt", std::ios_base::app);    
+        outfile << labeler->avg_search_decrease_ratio << ", ";
+        outfile.close();
+        labeler->avg_search_decrease_ratio_vec.push_back(labeler->avg_search_decrease_ratio);
+
+
+        // toggle the training mode on to leave the validation process
+        labeler->train();
+    };
+
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
     {              
         int rand_seed = RANDOM_SEED;
         torch::manual_seed(RANDOM_SEED);    
-        cerr << "Random seed: " << rand_seed << endl;
-                      
+        cerr << "Random seed: " << rand_seed << endl;                    
         string filename(argv[2]);  
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
@@ -271,44 +370,27 @@ int main(int argc, char* argv[])
         int rand_seed = RANDOM_SEED;
         torch::manual_seed(RANDOM_SEED);    
         cerr << "Random seed: " << rand_seed << endl;
+
+        // count number of files
+        // int num_files = stoi(exec(string("ls " + string(argv[2]) +  " | wc -l").c_str()));
         
         // read problem
         InputHandler inputHandler((string(argv[2])));
         InputHandler inputHandler_test((string(argv[2])) + "/test");
-        string filepath;
+        string validation_filepath = string((string(argv[2])) + "/test");
+        string filepath = "";
                       
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
-
-            if(epoch == labeler->opt.inference_start_epoch())
-            {
-                labeler->eval();
-            }        
-            if((epoch % labeler->opt.epoch_per_instance() == 0 || epoch == 1) && epoch < labeler->opt.inference_start_epoch())
-            {                
-                int step_size = rand() % 5;            
-                do
+            if((epoch % labeler->opt.epoch_per_instance() == 0 || epoch == 1))
+            {                              
+                cerr << "training.." << endl;
+                labeler->train();
+                int step_size = rand() % 5 + 1;   
+                for(int i = 0; i < step_size; i++)
                 {
                     filepath = inputHandler.getNextFileName();  
-                    if(filepath.empty())
-                    {
-                        inputHandler.reset(); 
-                        filepath = inputHandler.getNextFileName();  
-                    }
-                }while(step_size--);
-            }
-            else if(epoch >= labeler->opt.inference_start_epoch())
-            {
-                int step_size = 1;                  
-                do
-                {
-                    filepath = inputHandler_test.getNextFileName();  
-                    if(filepath.empty())
-                    {
-                        inputHandler_test.reset(); 
-                        filepath = inputHandler_test.getNextFileName();  
-                    }
-                } while (step_size--);                               
+                }
             }
 
             if(parse_and_init_oneRjSumCj(filepath))
@@ -361,14 +443,22 @@ int main(int argc, char* argv[])
                 outfile.open("../saved_model/pi_loss.txt", std::ios_base::app);    
                 for(auto it: labeler->pi_loss_vec)
                     outfile << it << ", ";    
-                outfile.close();
+                outfile.close();                
 
                 // clean up loss_vec
                 labeler->q_loss_vec.clear();
                 labeler->pi_loss_vec.clear();
             }
+            
+            // place this before validation to sync the epoch
             labeler->epoch()++;   
-        }         
+
+            // validation at each validation interval
+            if(epoch % (labeler->opt.validation_interval() * labeler->opt.epoch_per_instance()) == 0 && epoch > labeler->opt.inference_start_epoch())
+            {
+                validate(validation_filepath);
+            }  
+        }       
     }
 
     /* For validation */

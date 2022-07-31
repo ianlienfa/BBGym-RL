@@ -30,10 +30,23 @@ struct InputHandler
     string getNextFileName()
     {
         current_file++;
+
         if(current_file != std::filesystem::end(std::filesystem::directory_iterator(path)))
         {
             string filename = string(current_file->path());
-            return filename;
+            if(std::filesystem::is_directory(string(current_file->path())))
+            {
+                return getNextFileName();
+            }
+            else
+            {
+                return filename;
+            }
+        }
+        else
+        {
+            reset();
+            return getNextFileName();
         }
         return "";
     }

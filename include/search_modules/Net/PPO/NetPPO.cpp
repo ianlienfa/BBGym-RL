@@ -457,8 +457,8 @@ PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s, bool deterministic)
 
     if(deterministic)
     {
-        cout << "dist_out: " << dist_out << endl;
-        cout << "a: " << a << endl;
+        // cout << "dist_out: " << dist_out << endl;
+        // cout << "a: " << a << endl;
     }
     auto encoded_a = to_one_hot(a);
     assertm("action should be in range", ((a >= 0) && (a < opt.action_dim)));

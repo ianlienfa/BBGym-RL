@@ -300,7 +300,7 @@ torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
     const torch::Tensor &r = batch_data.r;
     torch::Tensor v = net->q->forward(s);
     torch::Tensor v_loss = (r - v).pow(2).mean();
-    if(v_loss.item<float>() > 1e8)
+    if(v_loss.item<float>() > 1e15)
     {
         layer_weight_print(*(net->q));
         cerr << "s: " << s << endl;
@@ -308,7 +308,7 @@ torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
         cerr << "v: " << v << endl;
         cerr << "v_loss: " << v_loss.item<float>() << endl;
     }
-    assertm("v_loss too big", v_loss.item<float>() < 1e8);
+    assertm("v_loss too big", v_loss.item<float>() < 1e15);
     return v_loss;
 }
 

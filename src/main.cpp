@@ -230,12 +230,7 @@ int main(int argc, char* argv[])
 
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {               
-            filepath = inputHandler.getNextFileName();                                            
-            if(filepath.empty())
-            {
-                inputHandler.reset(); 
-                filepath = inputHandler.getNextFileName();                                            
-            }            
+            filepath = inputHandler.getNextFileName();                                                                  
 
             if(parse_and_init_oneRjSumCj(filepath))
             {
@@ -253,12 +248,12 @@ int main(int argc, char* argv[])
                 graph = solver.solve(OneRjSumCjNode());  
             
 
-                // compare with plain CBFS
-                string plain_cmd = "./" + string(PlainCBFSVerbose) + " -f " + filepath;
-                cout << "executing \"" << plain_cmd << "\"" << endl;
-                string plain_cmd_out = exec(plain_cmd.c_str());
-                cout << plain_cmd_out << endl; // redirect the output to stdout
-                cout << "execution ended" << endl;     
+                // // compare with plain CBFS
+                // string plain_cmd = "./" + string(PlainCBFSVerbose) + " -f " + filepath;
+                // cout << "executing \"" << plain_cmd << "\"" << endl;
+                // string plain_cmd_out = exec(plain_cmd.c_str());
+                // cout << plain_cmd_out << endl; // redirect the output to stdout
+                // cout << "execution ended" << endl;     
                 
                 // different command for different strategies
                 string plain_bfs_cmd = "./" + string(PlainCBFSBFS) + " -f " + filepath;

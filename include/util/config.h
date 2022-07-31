@@ -32,7 +32,7 @@ const float pos_zero_reward = 1e-7;
 #define PiNetPathInf "../saved_model/inf/piNet.pt"
 #define PiOptimPathInf "../saved_model/inf/optimizer_pi.pt"
 #define QOptimPathInf "../saved_model/inf/optimizer_q.pt"
-#define PlainCBFSVerbose "base-compute"
+#define PlainCBFSVerbose "base-compute" 
 #define PlainCBFSBFS "base-compute-pure"
 #define PlainCBFSLevel "base-compute-level"
 #define PlainCBFSRand "base-compute-rand"

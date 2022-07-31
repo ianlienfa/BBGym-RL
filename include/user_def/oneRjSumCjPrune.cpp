@@ -131,7 +131,6 @@ void prune__OneRjSumCj__LU_AND_SAL__Theorem1(vector<OneRjSumCjNode>& branched_no
         // clear branched_nodes     
         branched_nodes.clear();
         branched_nodes.push_back(node_to_branch);
-        cout << "branched_nodes: " << branched_nodes << endl;
         #if DEBUG_LEVEL == 2
         cout << "prune__OneRjSumCj__LU_AND_SAL__Theorem1 triggered, multiple node pruned" << endl;
         #endif

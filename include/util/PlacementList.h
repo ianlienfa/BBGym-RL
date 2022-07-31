@@ -160,7 +160,9 @@ public:
         // Increase contour
         if(lst.size() < max_size){
             if(picker_iter == (--lst.end())){
+                #if GAME_TRACKER == 1
                 cout << "insert: place at end" << endl;
+                #endif
                 // check the max size, only increase if it is not reached
                 
                 lst.push_back(PriorityQueue<T>(cmpr));

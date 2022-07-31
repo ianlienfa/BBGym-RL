@@ -25,14 +25,12 @@ int main(int argc, char* argv[])
         int step_size = 1;            
         for(int i = 0; i < 100; i++)
         {
-            filepath = inputHandler.getNextFileName();  
-            if(filepath.empty())
+            int rand_jump = rand() % 5 + 1;
+            for(int j = 0; j < rand_jump; j++)
             {
-                cout << "empty!" << endl;
-                inputHandler.reset(); 
-                filepath = inputHandler.getNextFileName();  
+                filepath = inputHandler.getNextFileName();              
+                cout << "processing: " << filepath << endl;
             }
-            cout << "processing: " << filepath << endl;
-        }while(!filepath.empty());              
+        }
     }
 }
