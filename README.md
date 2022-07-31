@@ -18,10 +18,11 @@
   * do inference:
     make -j5 main
     move the resulting .pt files to /inf directory
-    ./net -d **test directory name**
+    ./main -d **test directory name**
   * draw:
     change the filename for evaluation in eval.ipynb
     run it
 
 * use "-f" to provide the training set path
 * by default the program requires a **/validation** subdirectory in the training set directory for validation purpose, user can provide a different directory by "-v"
+

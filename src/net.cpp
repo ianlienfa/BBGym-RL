@@ -182,10 +182,10 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(1000)
-                .inference_start_epoch(100)
-                .epoch_per_instance(10)
-                .validation_interval(10)
+                .num_epoch(10000)
+                .inference_start_epoch(1000)
+                .epoch_per_instance(20)
+                .validation_interval(20)
                 .entropy_lambda(1)                
                 .lr_pi(1e-5*0.3)      
                 .lr_q(1e-4*0.3)                
@@ -376,8 +376,8 @@ int main(int argc, char* argv[])
         
         // read problem
         InputHandler inputHandler((string(argv[2])));
-        InputHandler inputHandler_test((string(argv[2])) + "/test");
-        string validation_filepath = string((string(argv[2])) + "/test");
+        InputHandler inputHandler_test((string(argv[2])) + "/validation");
+        string validation_filepath = string((string(argv[2])) + "/validation");
         string filepath = "";
                       
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
