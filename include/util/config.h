@@ -6,7 +6,7 @@
 #define TIME_TYPE float
 #define FIXED_JOB_SIZE 100
 #define CONTOUR_TYPE float
-#define RANDOM_SEED 1000
+#define RANDOM_SEED 50
 const float node_reward = -1e-2;
 const float move_reward = -1e-4;
 const float move_encouragement_reward = 1e-13;
@@ -15,6 +15,17 @@ const float move_reward_min = -1e-2;
 const float move_reward_slope = 3;
 const float neg_zero_reward = -1e-7;
 const float pos_zero_reward = 1e-7;
+
+// Grid search parameters
+#ifndef V_MAX_NUM_CNTR
+    #define V_MAX_NUM_CNTR 10
+#endif
+#ifndef V_LR_PI
+    #define V_LR_PI 3e-6
+#endif
+#ifndef V_LR_Q
+    #define V_LR_Q 3e-5
+#endif
 
 // #define NDEBUG
 

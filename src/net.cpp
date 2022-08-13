@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
     if(!std::filesystem::exists(piOptimPath))
         piOptimPath = "";    
     
-    const int64_t max_num_contour = 10;
+    const int64_t max_num_contour = V_MAX_NUM_CNTR;
 
     std::shared_ptr<PPO::PPOLabeler> labeler = 
         std::make_shared<PPO::PPOLabeler>(
@@ -184,11 +184,11 @@ int main(int argc, char* argv[])
                 .max_num_contour(max_num_contour)     
                 .num_epoch(10000)
                 .inference_start_epoch(1000)
-                .epoch_per_instance(20)
+                .epoch_per_instance(25)
                 .validation_interval(20)
                 .entropy_lambda(1)                
-                .lr_pi(1e-5*0.3)      
-                .lr_q(1e-4*0.3)                
+                .lr_pi(V_LR_PI)      
+                .lr_q(V_LR_Q)                
                 .steps_per_epoch(10000)                
                 .buffer_size(5000)
         );
