@@ -26,6 +26,9 @@ const float pos_zero_reward = 1e-7;
 #ifndef V_LR_Q
     #define V_LR_Q 3e-5
 #endif
+#ifndef V_HIDDEN_DIM
+    #define V_HIDDEN_DIM 64
+#endif
 
 // #define NDEBUG
 
