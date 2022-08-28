@@ -5,6 +5,7 @@
 * 刪掉optimizer的內容重跑
 
 ### 待辦
+* 先回去試著overfit單一instance
 * 加入lstm試試看
 * 或許需要把contour的行為print出來去做檢查
 * 再跑一次沒有validation的檢查能不能overfit
