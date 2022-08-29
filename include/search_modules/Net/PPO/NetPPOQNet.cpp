@@ -33,9 +33,6 @@ NetPPOQNetImpl::NetPPOQNetImpl(const NetPPOOptions &ops)
             }
         };
         this->apply(initialize_weights_norm);
-
-        cout << "After weight init" << endl;
-        layer_weight_print(*net);
     }
 }
 
