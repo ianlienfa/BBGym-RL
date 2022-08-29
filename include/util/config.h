@@ -17,18 +17,18 @@ const float neg_zero_reward = -1e-7;
 const float pos_zero_reward = 1e-7;
 
 // Grid search parameters
-#ifndef V_MAX_NUM_CNTR
+// #ifndef V_MAX_NUM_CNTR
     #define V_MAX_NUM_CNTR 10
-#endif
-#ifndef V_LR_PI
+// #endif
+// #ifndef V_LR_PI
     #define V_LR_PI 3e-6
-#endif
-#ifndef V_LR_Q
+// #endif
+// #ifndef V_LR_Q
     #define V_LR_Q 3e-5
-#endif
-#ifndef V_HIDDEN_DIM
+// #endif
+// #ifndef V_HIDDEN_DIM
     #define V_HIDDEN_DIM 64
-#endif
+// #endif
 
 // #define NDEBUG
 
@@ -53,6 +53,7 @@ const float pos_zero_reward = 1e-7;
 #define INF_MODE 0
 #define MEASURE_MODE 0
 #define LAYER_WEIGHT_PRINT 1
+#define LAYER_WEIGHT_PRINT_CT 10
 // #define NDEBUG 
 
 

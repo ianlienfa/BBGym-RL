@@ -28,12 +28,17 @@ NetPPOActorImpl::NetPPOActorImpl(const NetPPOOptions& ops)
         // weight init
         auto initialize_weights_norm = [](nn::Module& module) {
             torch::NoGradGuard no_grad;
+            torch::manual_seed(RANDOM_SEED);
             if (auto* linear = module.as<nn::Linear>()) {
                 torch::nn::init::kaiming_uniform_(linear->weight);
                 torch::nn::init::constant_(linear->bias, 0.01);
             }
         };
         this->apply(initialize_weights_norm);
+
+        cout << "After weight init" << endl;
+        layer_weight_print(*net);
+
     }
 }
 
