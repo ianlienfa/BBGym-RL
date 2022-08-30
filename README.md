@@ -23,6 +23,12 @@
     change the filename for evaluation in eval.ipynb
     run it
 
+* Reproducibility
+  * The torch and c++ share the same random seed, which is set in util/config.h with name "RANDOM_SEED"
+  * The torch::manual_seed() is called in three places, the initialization of weight of both pi and q network and the main function that powers the training. 
+  * The randomness of c++ comes from the order of choosing the instances in the training process.
+
+
 * Grid Search
   * make sure the corresponding variable is defined in config.h
   * make sure the corresponding variable is defined in cmakelist.txt

@@ -460,7 +460,27 @@ int main(int argc, char* argv[])
             }  
         }       
     }
-
+    else if (argc >= 3 && !(strcmp(argv[1], "-i")))
+    {        
+        int rand_seed = RANDOM_SEED;
+        torch::manual_seed(RANDOM_SEED);    
+        cerr << "Random seed: " << rand_seed << endl;                    
+        string filename(argv[2]);  
+        
+        // inference
+        labeler->eval();
+        
+        if(parse_and_init_oneRjSumCj(filename))
+        {
+            OneRjSumCjSearch searcher(labeler);
+            OneRjSumCjBranch brancher;
+            OneRjSumCjPrune pruner;
+            LowerBound lowerbound;
+            OneRjSumCjGraph graph;
+            OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
+            graph = solver.solve(OneRjSumCjNode());  
+        }
+    }
     /* For validation */
     // int min_obj = INT_MAX;
     // vector<int> min_seq;
