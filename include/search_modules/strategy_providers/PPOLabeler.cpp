@@ -200,7 +200,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
     else if(labeler_state_ == LabelerState::INFERENCE)
     {
         // increase step
-        PPO::StepOutput out = net->step(tensor_s, true /*deterministic*/);
+        PPO::StepOutput out = net->step(tensor_s, false /*deterministic*/);
         auto &action = out.a;
         auto &val = out.v;
         auto &logp = out.logp;

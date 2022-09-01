@@ -314,13 +314,13 @@ int main(int argc, char* argv[])
                 torch::save(labeler->net->pi, "../saved_model/piNet.pt"); 
                 torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q.pt");
                 torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi.pt"); 
-                if(epoch % 500 == 0)
-                {
-                    torch::save(labeler->net->q, "../saved_model/qNet_" + std::to_string(epoch) + ".pt");
-                    torch::save(labeler->net->pi, "../saved_model/piNet_" + std::to_string(epoch) + ".pt");
-                    torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q_" + std::to_string(epoch) + ".pt");
-                    torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi_" + std::to_string(epoch) + ".pt"); 
-                }
+                // if(epoch % 500 == 0)
+                // {
+                //     torch::save(labeler->net->q, "../saved_model/qNet_" + std::to_string(epoch) + ".pt");
+                //     torch::save(labeler->net->pi, "../saved_model/piNet_" + std::to_string(epoch) + ".pt");
+                //     torch::save((*labeler->optimizer_q), "../saved_model/optimizer_q_" + std::to_string(epoch) + ".pt");
+                //     torch::save((*labeler->optimizer_pi), "../saved_model/optimizer_pi_" + std::to_string(epoch) + ".pt"); 
+                // }                
                 #endif
 
                 // Create file if not exist 
@@ -351,11 +351,11 @@ int main(int argc, char* argv[])
                 labeler->pi_loss_vec.clear();                
 
                 // stage save
-                if(labeler->opt.num_epoch() > 5 && epoch % (int(labeler->opt.num_epoch() / 5)) == 0)
+                if(epoch % 100 == 0)
                 {
-                    string cmd = "cp ../saved_model/qNet.pt ../saved_model/qNet" + std::to_string(epoch) + ".pt";
+                    string cmd = "cp ../saved_model/qNet.pt ../saved_model/qNet_" + std::to_string(epoch) + ".pt";
                     exec(cmd.c_str());
-                    cmd = "cp ../saved_model/piNet.pt ../saved_model/piNet" + std::to_string(epoch) + ".pt";
+                    cmd = "cp ../saved_model/piNet.pt ../saved_model/piNet_" + std::to_string(epoch) + ".pt";
                     exec(cmd.c_str());
                 }
             }

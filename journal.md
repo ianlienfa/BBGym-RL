@@ -7,6 +7,8 @@
 ### train-Aug-30 - Overfitting single instance
 * 跑10000個epoch以後可以把rfinwzwvtl的node數從12..->1078
 * 畫個圖
+### Tracking the training process
+* ./track -bt 10000 ../saved_model/rfin ../case/case0/rfinwzwvtl.in
 
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！)

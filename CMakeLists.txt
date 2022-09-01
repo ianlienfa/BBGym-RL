@@ -100,6 +100,17 @@ target_link_libraries(
     LowerBound PriorityQueue JobWithReleaseDate PlacementList# Util
 )
 
+add_executable(track src/histrack.cpp)
+target_link_libraries(
+    track    # target 
+    "${TORCH_LIBRARIES}" TorchUtil # Torch 
+    "${Python3_LIBRARIES}" # Python3
+    problemNode searchGraph problemParser searchMod pruneMod branchMod Labeler types PlainLabeler# Base
+    oneRjSumCjNode NetDDPRActor NetDDPRQNet NetDDPR DDPRLabeler NetPPOActor NetPPOQNet NetPPO PPOLabeler# Net
+    oneRjSumCjGraph oneRjSumCj_engine oneRjSumCjBranch oneRjSumCjPrune oneRjSumCjSearch # OneRjSumCj
+    LowerBound PriorityQueue JobWithReleaseDate PlacementList# Util
+)
+
 add_executable(net src/net.cpp)
 target_link_libraries(
     net    # target 
