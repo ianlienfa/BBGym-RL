@@ -118,6 +118,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         cout << "operator getting train epoch end" << endl;
         auto &val = out.v;
         this->accu_reward = buffer->finish_epoch(val);      
+        cout << "accu_reward: " << this->accu_reward << endl;
         cout << "_step" << _step << "step_per_epoch" << opt.steps_per_epoch() << endl;  
         return 0;
     }

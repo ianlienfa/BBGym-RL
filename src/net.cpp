@@ -204,7 +204,7 @@ int main(int argc, char* argv[])
                 .entropy_lambda(1)                
                 .lr_pi(V_LR_PI)      
                 .lr_q(V_LR_Q)                
-                .steps_per_epoch(10000)                
+                .steps_per_epoch(100000)             
                 .buffer_size(5000)
         );
     

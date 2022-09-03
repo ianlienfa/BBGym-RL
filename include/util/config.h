@@ -167,7 +167,7 @@ const float pos_zero_reward = 1e-7;
 
 /* debugging */
 #define DEBUG_LEVEL 0
-#define TORCH_DEBUG -1
+#define TORCH_DEBUG -2
 
 /* validations (some extra checking is done if validation level is high) */
 #define VALIDATION_LEVEL validation_level_HIGH

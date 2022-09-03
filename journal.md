@@ -15,6 +15,7 @@
 * optimal found -> 填補r
 * 現在在修理「於epoch_end時不能call buffer->get的問題」，感覺idx出問題了
 * 找到問題，要做一個大改動：將idx的上限調成max_size, 原本的上限是max_size-1
+* 但是要小心放滿的問題，直接把idx改成max_size有可能壞掉
 
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！)
