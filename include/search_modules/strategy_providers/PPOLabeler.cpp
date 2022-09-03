@@ -95,7 +95,6 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         }
     }
     labeler_state_ = current_labeler_state;
-
     // get current state
     torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
 
@@ -105,7 +104,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         buffer->prep.r() = graph.get_node_reward();      
     }
     if(this->buffer->safe_to_submit())
-    {
+    {        
         this->buffer->submit();            
     }
 
@@ -114,9 +113,12 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
     {
         cout << "Train epoch end operator called" << endl;
         // step == step_per_epoch, time out
+        cout << "tensor s: " << tensor_s << endl;
         PPO::StepOutput out = net->step(tensor_s);
+        cout << "operator getting train epoch end" << endl;
         auto &val = out.v;
-        buffer->finish_epoch(val);
+        this->accu_reward = buffer->finish_epoch(val);      
+        cout << "_step" << _step << "step_per_epoch" << opt.steps_per_epoch() << endl;  
         return 0;
     }
     else if(labeler_state_ == LabelerState::TRAIN_RUNNING)

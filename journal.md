@@ -9,6 +9,12 @@
 * 畫個圖
 ### Tracking the training process
 * ./track -bt 10000 ../saved_model/rfin ../case/case0/rfinwzwvtl.in
+* 檢查step_per_epoch 超過會壞掉的問題
+* 為什麼會壞掉勒？ -> 不是step沒歸零，目前猜測是沒有進行last update
+* 研究在early_stopping update那邊把update打開會不會壞掉
+* optimal found -> 填補r
+* 現在在修理「於epoch_end時不能call buffer->get的問題」，感覺idx出問題了
+* 找到問題，要做一個大改動：將idx的上限調成max_size, 原本的上限是max_size-1
 
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！)

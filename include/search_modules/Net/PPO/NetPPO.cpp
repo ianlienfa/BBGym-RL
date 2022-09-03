@@ -58,6 +58,11 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
     this->val[this->idx] = raw_batch.val();
     this->logp[this->idx] = raw_batch.logp();
     this->idx = (this->idx + 1) % max_size;    
+    // debug print
+    #if TORCH_DEBUG >= -1
+        cout << "pushed to replay buffer, s: " << raw_batch.s() << ", a: " << raw_batch.a() << ", r: " << raw_batch.r() << ", val: " << raw_batch.val() << ", logp: " << raw_batch.logp() << endl;
+    #endif
+    cout << "pushing... current idx: " << this->idx << endl;
 }
 
 
@@ -66,6 +71,7 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
 // remember to fill the accu reward when calling this function
 float PPO::ReplayBufferImpl::finish_epoch(float end_val)
 {
+    cout << "start idx: " << start_idx << ", current idx: " << idx << endl;
     if(!((safe_to_submit()) || (this->prep.empty())))
     {
         assertm("calling finish_epoch when it is not safe to submit", false);
@@ -144,6 +150,8 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
 
     // flatten s and a
+    cout << "s: " << s << endl;
+    cout << "a: " << a << endl;
     int traj_size = s.size();
     assertm("traj_size should be greater than 0", traj_size > 0 && traj_size == a.size());
     vector<float> s_flat;
