@@ -38,17 +38,32 @@ void updateCallbackImpl(void* engine_ptr)
     OneRjSumCj_engine &engine = *(static_cast<OneRjSumCj_engine*>(engine_ptr));
     auto &labeler = engine.searcher.labeler;
     auto current_labeler_state = labeler->get_labeler_state();
-    if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING)
+    if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING || current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
     {
-        PPO::SampleBatch batch = labeler->buffer->get();
+        if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
+        {
+            cout << "printing buffer content" << endl;   
+            cout << "s, size: " << labeler->buffer->s.size()      << "  "<<  labeler->buffer->s << endl;
+            cout << "a, size: " << labeler->buffer->a.size()      << " " <<  labeler->buffer->a << endl;
+            cout << "r, size: " << labeler->buffer->r.size()      << " " <<  labeler->buffer->r << endl;
+            cout << "val, size: " << labeler->buffer->val.size() << " "  << labeler->buffer->val << endl;
+            cout << "logp, size: " << labeler->buffer->logp.size()<< " " <<  labeler->buffer->logp << endl;
+        }       PPO::SampleBatch batch = labeler->buffer->get();
         if(batch.v_r.size() > 1)
         {
             labeler->update(batch);
         }        
+        else
+        {
+            std::cout << "batch size is too small, skip update" << std::endl;
+            exit(1);
+        }
     }
 
     // step reset
+    cout << "before reset, step = " << labeler->step() << endl;
     engine.searcher.labeler->step() = 0;
+    cout << "step reset, step = " << labeler->step() << endl;
 
     // reward tracking
     if(current_labeler_state == PPO::PPOLabeler::LabelerState::INFERENCE)
@@ -189,7 +204,7 @@ int main(int argc, char* argv[])
                 .entropy_lambda(1)                
                 .lr_pi(V_LR_PI)      
                 .lr_q(V_LR_Q)                
-                .steps_per_epoch(10000)                
+                .steps_per_epoch(100000)             
                 .buffer_size(5000)
         );
     
@@ -454,10 +469,10 @@ int main(int argc, char* argv[])
             labeler->epoch()++;   
 
             // validation at each validation interval
-            if(epoch % (labeler->opt.validation_interval() * labeler->opt.epoch_per_instance()) == 0 && epoch > labeler->opt.inference_start_epoch())
-            {
-                validate(validation_filepath);
-            }  
+            // if(epoch % (labeler->opt.validation_interval() * labeler->opt.epoch_per_instance()) == 0 && epoch > labeler->opt.inference_start_epoch())
+            // {
+            //     validate(validation_filepath);
+            // }  
         }       
     }
     else if (argc >= 3 && !(strcmp(argv[1], "-i")))

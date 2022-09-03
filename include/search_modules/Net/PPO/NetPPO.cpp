@@ -42,12 +42,16 @@ bool PPO::ReplayBufferImpl::safe_to_submit()
 
 
 void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batch)
-{    
+{        
     if(idx >= max_size)
     {
         cout << "replay buffer index out of bound" << endl;
         exit(LOGIC_ERROR);
-    }    
+    }        
+    if(idx == max_size - 1)
+    {
+        this->is_full = true;
+    }
     if(!s_feature_size)
         s_feature_size = int(s.size());
     if(!a_feature_size)
@@ -57,7 +61,11 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
     this->r[this->idx] = raw_batch.r();
     this->val[this->idx] = raw_batch.val();
     this->logp[this->idx] = raw_batch.logp();
-    this->idx = (this->idx + 1) % max_size;    
+    this->idx = (this->idx + 1) % max_size;        
+    // debug print
+    #if TORCH_DEBUG >= -1
+        cout << "pushed to replay buffer, s: " << raw_batch.s() << ", a: " << raw_batch.a() << ", r: " << raw_batch.r() << ", val: " << raw_batch.val() << ", logp: " << raw_batch.logp() << endl;
+    #endif
 }
 
 
@@ -66,6 +74,21 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
 // remember to fill the accu reward when calling this function
 float PPO::ReplayBufferImpl::finish_epoch(float end_val)
 {
+    cout << "===finish epoch===" << endl;
+
+    // dealing with full buffer
+    int idx;
+    if(this->is_full)
+    {
+        // this->idx = 0 in reality, but we need to use the last idx
+        idx = this->max_size;
+    }
+    else
+    {
+        idx = this->idx;
+    }
+
+    cout << "start idx: " << start_idx << ", current idx: " << idx << endl;
     if(!((safe_to_submit()) || (this->prep.empty())))
     {
         assertm("calling finish_epoch when it is not safe to submit", false);
@@ -105,6 +128,13 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
 // Debug: print mean and std
 vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_idx, int idx)
 {
+    // dealing with full buffer    
+    if(this->is_full && idx == 0)
+    {
+        // this->idx = 0 in reality, but we need to use the last idx
+        idx = this->max_size;
+    }
+    
     vector<float> &adv = vec;
     float adv_mean = 0.0, adv_sum = 0.0, adv_std = 0.0;
     for(int i = start_idx; i < idx; i++)
@@ -133,6 +163,18 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
 // return by constructing new array
 PPO::SampleBatch PPO::ReplayBufferImpl::get()
 {
+    // dealing with full buffer
+    int idx;
+    if(this->is_full)
+    {
+        // this->idx = 0 in reality, but we need to use the last idx
+        idx = this->max_size;
+    }
+    else
+    {
+        idx = this->idx;
+    }
+    
     if(!epoch_done)
         assertm("calling get when epoch is not done", false);
     else
@@ -144,6 +186,8 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
 
     // flatten s and a
+    cout << "s: " << s << endl;
+    cout << "a: " << a << endl;
     int traj_size = s.size();
     assertm("traj_size should be greater than 0", traj_size > 0 && traj_size == a.size());
     vector<float> s_flat;
@@ -172,6 +216,7 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     // reset
     this->idx = 0;
     this->start_idx = 0;
+    this->is_full = false;
 
     return PPO::SampleBatch({
         .v_s = s_flat,

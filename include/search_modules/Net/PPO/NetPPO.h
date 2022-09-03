@@ -96,7 +96,7 @@ public:
     vector<float> adv;
     vector<float> val;
     vector<float> ret;
-    vector<float> logp;
+    vector<float> logp;        
 
     // prep
     struct PrepArea{
@@ -110,7 +110,7 @@ public:
         }
         bool empty(){
             return (!s_set) && (!a_set) && (!r_set) && (!val_set) && (!logp_set);
-        }
+        }        
     } prep;
 
     // tracking variables
@@ -120,6 +120,7 @@ public:
     int start_idx;
     int idx;
     bool epoch_done = false;
+    bool is_full = false;
     // int batch_size;
     
     // hyperparam
