@@ -10,8 +10,18 @@
 ### Tracking the training process
 * ./track -bt 10000 ../saved_model/rfin ../case/case0/rfinwzwvtl.in
 
+### train Sep-1 - Overfitting single instance
+* overfit kdy 的狀況：跑10000個epoch以後可以把kdy的node數從7968 -> 7824
+* 小結：即使要overfit一個instance，也要跑很久，而且可能是需要tune parameter的，效果也沒有很好
+* 小結：這次沒有出現週期性跳動，所以或許可以相信實作沒有問題
+* 小結：現在的reward設計依然會出現一直選擇移動來小賺分數的情況
+    ? 為什麼可以全部都選1 ?
+    try: 改reward
+* 待辦：根據現在的結果，我們可以把instance的數量拉大，估計相應訓練需要的epoch數去train train看
+* step_per_epoch爆掉之後壞掉有可能原因是step沒有歸零->先去看training時如何歸零的
+
 ### 待辦
-* 先回去試著overfit單一instance (可以做到！)
+* 先回去試著overfit單一instance (可以做到！) (done)
 * 加入lstm試試看
 * 或許需要把contour的行為print出來去做檢查
 * 再跑一次沒有validation的檢查能不能overfit
