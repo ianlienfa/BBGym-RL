@@ -186,8 +186,6 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
 
     // flatten s and a
-    cout << "s: " << s << endl;
-    cout << "a: " << a << endl;
     int traj_size = s.size();
     assertm("traj_size should be greater than 0", traj_size > 0 && traj_size == a.size());
     vector<float> s_flat;
