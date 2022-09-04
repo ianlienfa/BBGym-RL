@@ -197,7 +197,7 @@ int main(int argc, char* argv[])
                 .lr_pi(V_LR_PI)      
                 .lr_q(V_LR_Q)                
                 .steps_per_epoch(100000)             
-                .buffer_size(5000)
+                .buffer_size(50000)
         );
     
     /* validate */
