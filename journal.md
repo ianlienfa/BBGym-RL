@@ -20,6 +20,15 @@
 * 待辦：根據現在的結果，我們可以把instance的數量拉大，估計相應訓練需要的epoch數去train train看
 * step_per_epoch爆掉之後壞掉有可能原因是step沒有歸零->先去看training時如何歸零的
 
+* 感覺還是有大問題在裡面，讓我的overfit fit不起來
+* 回去檢查這幾個部分：
+    reward discounting, especially around episode resets
+    advantage calculations, again especially around resets
+    buffering and batching, especially pairing the wrong rewards with the wrong observations
+    重新將計算過程寫過一次
+
+
+
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
 * 加入lstm試試看
