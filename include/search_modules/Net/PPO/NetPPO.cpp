@@ -43,14 +43,15 @@ bool PPO::ReplayBufferImpl::safe_to_submit()
 
 void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batch)
 {        
-    if(idx >= max_size)
+    if(this->idx >= max_size)
     {
         cout << "replay buffer index out of bound" << endl;
         exit(LOGIC_ERROR);
     }        
-    if(idx == max_size - 1)
-    {
+    if(this->idx == max_size - 1)
+    {        
         this->is_full = true;
+        cout << "is_full: true, this->idx: " << this->idx << "max_size: " << max_size << endl;
     }
     if(!s_feature_size)
         s_feature_size = int(s.size());
@@ -61,7 +62,7 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
     this->r[this->idx] = raw_batch.r();
     this->val[this->idx] = raw_batch.val();
     this->logp[this->idx] = raw_batch.logp();
-    this->idx = (this->idx + 1) % max_size;        
+    this->idx = this->idx + 1;
     // debug print
     #if TORCH_DEBUG >= -1
         cout << "pushed to replay buffer, s: " << raw_batch.s() << ", a: " << raw_batch.a() << ", r: " << raw_batch.r() << ", val: " << raw_batch.val() << ", logp: " << raw_batch.logp() << endl;
@@ -78,10 +79,11 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
 
     // dealing with full buffer
     int idx;
-    if(this->is_full)
+    if(this->is_full && idx == 0)
     {
         // this->idx = 0 in reality, but we need to use the last idx
         idx = this->max_size;
+        cout << "finish epoch, idx is set to max_size, this->idx: " << this->idx << endl;
     }
     else
     {
@@ -133,6 +135,7 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
     {
         // this->idx = 0 in reality, but we need to use the last idx
         idx = this->max_size;
+        cout << "vector_norm: idx is set to max_size, this->idx: " << this->idx << endl;
     }
     
     vector<float> &adv = vec;
@@ -186,8 +189,6 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
 
     // flatten s and a
-    cout << "s: " << s << endl;
-    cout << "a: " << a << endl;
     int traj_size = s.size();
     assertm("traj_size should be greater than 0", traj_size > 0 && traj_size == a.size());
     vector<float> s_flat;
@@ -217,6 +218,7 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     this->idx = 0;
     this->start_idx = 0;
     this->is_full = false;
+    cout << "is_full: false" << endl;
 
     return PPO::SampleBatch({
         .v_s = s_flat,

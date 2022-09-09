@@ -40,15 +40,7 @@ void updateCallbackImpl(void* engine_ptr)
     auto current_labeler_state = labeler->get_labeler_state();
     if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING || current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
     {
-        if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
-        {
-            cout << "printing buffer content" << endl;   
-            cout << "s, size: " << labeler->buffer->s.size()      << "  "<<  labeler->buffer->s << endl;
-            cout << "a, size: " << labeler->buffer->a.size()      << " " <<  labeler->buffer->a << endl;
-            cout << "r, size: " << labeler->buffer->r.size()      << " " <<  labeler->buffer->r << endl;
-            cout << "val, size: " << labeler->buffer->val.size() << " "  << labeler->buffer->val << endl;
-            cout << "logp, size: " << labeler->buffer->logp.size()<< " " <<  labeler->buffer->logp << endl;
-        }       PPO::SampleBatch batch = labeler->buffer->get();
+        PPO::SampleBatch batch = labeler->buffer->get();
         if(batch.v_r.size() > 1)
         {
             labeler->update(batch);
@@ -205,7 +197,7 @@ int main(int argc, char* argv[])
                 .lr_pi(V_LR_PI)      
                 .lr_q(V_LR_Q)                
                 .steps_per_epoch(100000)             
-                .buffer_size(5000)
+                .buffer_size(50000)
         );
     
     /* validate */
