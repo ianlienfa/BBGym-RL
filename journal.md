@@ -33,9 +33,15 @@
 * found the bug of inferencing that for the step function, the second parameter should be set as "true"
 * still have to test for the inference processes of instances, eval.py is not working
 
+### train Sep-12
 * still observes periodic jumps in the number of node search, printing out the state encoding to see 
 * 找到bug了，worst upper bound 更新得怪怪的，影響state encoding的計算
-* 
+* probably still have bug:
+    * first compute the reward in inference mode
+    * then see if the reward really goes down using the model in /anf
+    * if not, maybe there's bug for computing the discounted reward
+
+ 
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
 * 加入lstm試試看

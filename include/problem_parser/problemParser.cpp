@@ -59,6 +59,7 @@ bool parse_and_init_oneRjSumCj(const string& file_name)
         p_sum += p;
     TIME_TYPE worst_cj = r_max + p_sum;
 
+    OneRjSumCjNode::worst_upperbound = 0;
     for(int i = 1; i <= OneRjSumCjNode::jobs_num; i++){
         OneRjSumCjNode::worst_upperbound += worst_cj * OneRjSumCjNode::job_weight[i];
     }
