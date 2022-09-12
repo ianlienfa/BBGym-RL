@@ -137,9 +137,7 @@ struct SolverOptions
 SolverOptions getSolverOptions(int argc, char* argv[])
 {
     SolverOptions options;
-    cout << "here0" << endl;
     auto commands = parse_args(argc, argv);
-    cout << "here" << endl;
     for(auto &command : commands)
     {
         if(command.first == "-f")

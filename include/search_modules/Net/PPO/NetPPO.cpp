@@ -261,6 +261,7 @@ void PPO::ReplayBufferImpl::submit()
 
 vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_terminal)
 {    
+    cout << "getting state encoding" << endl;
     vector<float> state_encoding;
 
     // for terminal state
@@ -273,21 +274,26 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
     
     // node state
     vector<float> current_node_state = flatten_and_norm(this->node);
+    cout << "current_node_state: " << current_node_state << endl;
     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
 
     // contour state
     vector<float> contour_snap = this->graph.get_contour_snapshot();
+    cout << "contour_snap: " << contour_snap << endl;
     state_encoding.insert(state_encoding.end(), make_move_iterator(contour_snap.begin()), make_move_iterator(contour_snap.end()));
 
     // current_pointer
+    cout << "current_pointer: " << this->graph.contours.current_pos << endl;
     const float current_contour_pointer = this->graph.contours.current_pos / norm_factor + zero_epsilon;
     state_encoding.push_back(current_contour_pointer);
 
     // picker steps
+    cout << "picker_steps: " << this->graph.contours.picker_steps << endl;
     const float picker_steps = (float(this->graph.contours.picker_steps)) / norm_factor + zero_epsilon;
     state_encoding.push_back(picker_steps);
 
     // picker_pointer
+    cout << "picker_pointer: " << this->graph.contours.picker_pos << endl;
     const float current_picker_pos = this->graph.contours.picker_pos / norm_factor + zero_epsilon;
     state_encoding.push_back(current_picker_pos);
 
@@ -320,22 +326,32 @@ vector<float> PPO::StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     ;
     const float epsilon = 1e-6;
     vector<float> node_state_encoding;
+
+    cout << "==== debugging flatten and norm ===" << endl;
     
     // state_processed_rate
     state_processed_rate = ((float)(node.seq.size())+epsilon) / (float) OneRjSumCjNode::jobs_num;
     node_state_encoding.push_back(state_processed_rate);
 
+    cout << "node seq size: " << node.seq.size() << endl;
+
     // norm_lb    
     norm_lb = (node.lb + epsilon) / (float) OneRjSumCjNode::worst_upperbound;    
     node_state_encoding.push_back(norm_lb);
+
+    cout << "norm_lb: " << node.lb << ", epsilon: " << epsilon << ", worst_upperbound: " << OneRjSumCjNode::worst_upperbound << endl;
 
     // norm_weighted_completion_timeπ
     norm_weighted_completion_time = (node.weighted_completion_time+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
     node_state_encoding.push_back(norm_weighted_completion_time);
 
+    cout << "norm_weighted_completion_time: " << node.weighted_completion_time << ", epsilon: " << epsilon << ", worst_upperbound: " << OneRjSumCjNode::worst_upperbound << endl;
+
     // norm_feasible_solution
     norm_current_feasible_solution = (graph.min_obj+epsilon)  / (float) OneRjSumCjNode::worst_upperbound;
     node_state_encoding.push_back(norm_current_feasible_solution);
+
+    cout << "norm_current_feasible_solution: " << graph.min_obj << ", epsilon: " << epsilon << ", worst_upperbound: " << OneRjSumCjNode::worst_upperbound << endl;
 
     return node_state_encoding;
 }
@@ -503,6 +519,7 @@ PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s, bool deterministic)
         a = torch::multinomial(dist_out, 1).item().toLong();
 
     if(deterministic){
+        cout << "s: " << s << endl;
         cout << "dist_out: " << dist_out << endl;
         cout << "a: " << a << endl;
     }

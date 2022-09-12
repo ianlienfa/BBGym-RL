@@ -28,7 +28,14 @@
     重新將計算過程寫過一次
 
 
+### train Sep-9
+* network wored on probe instance, by setting reward only on "place", we get higher prob for that action
+* found the bug of inferencing that for the step function, the second parameter should be set as "true"
+* still have to test for the inference processes of instances, eval.py is not working
 
+* still observes periodic jumps in the number of node search, printing out the state encoding to see 
+* 找到bug了，worst upper bound 更新得怪怪的，影響state encoding的計算
+* 
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
 * 加入lstm試試看

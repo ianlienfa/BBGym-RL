@@ -190,6 +190,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     using namespace PPO;
 
     (void) current_node;
+    cout << "here" << endl;
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
 
@@ -197,7 +198,7 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     for(vector<OneRjSumCjNode>::iterator it = branched_nodes.begin(); it != branched_nodes.end(); ++it){        
         MEASURE(stateInput_measurer, "stateInput",
         StateInput stateInput(current_node, *it, *this->graph);
-        );
+        );        
         MEASURE(get_state_encoding_measurer, "get_state_encoding",
         vector<float> s = stateInput.get_state_encoding(this->labeler->opt.max_num_contour());  
         );        
