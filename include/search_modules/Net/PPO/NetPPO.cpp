@@ -236,7 +236,6 @@ void PPO::ReplayBufferImpl::reset()
 
 void PPO::ReplayBufferImpl::submit(bool dry_submit)
 {    
-    (dry_submit) ? cout << "dry submit" << endl : cout << "submit" << endl;
     #if TORCH_DEBUG == 1    
         cout << "label buffer dynamics: " << endl; 
         cout << "idx: " << idx << endl;                   
@@ -254,7 +253,7 @@ void PPO::ReplayBufferImpl::submit(bool dry_submit)
         }
         const float reward = this->prep._r;
         this->real_rewards += reward;
-        cout << "real rewards added" << reward <<  " to" << this->real_rewards << endl;
+        cout << "real rewards added " << reward <<  " to " << this->real_rewards << endl;
     }
     else
     {
