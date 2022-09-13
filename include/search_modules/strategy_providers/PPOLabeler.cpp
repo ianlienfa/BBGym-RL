@@ -69,7 +69,7 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
 void PPOLabeler::reset_instance_trackers()
 {
     accu_reward = 0;
-    real_reward = 0;
+    buffer->real_rewards = 0;
 }
 
 // Do training and buffering here, return the label if created, otherwise go throgh the network again
@@ -100,17 +100,21 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         }
     }
     labeler_state_ = current_labeler_state;
+
+    // dry submit?
+    const bool dry_submit = (labeler_state_ == LabelerState::INFERENCE);
+
     // get current state
     torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
 
     // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
     if(!buffer->prep.empty()) // if not the first round, for the first round, ignore the r
     {
-        buffer->prep.r() = graph.get_node_reward();      
+        buffer->prep.r() = graph.get_node_reward();    
     }
     if(this->buffer->safe_to_submit())
     {        
-        this->buffer->submit();            
+        this->buffer->submit(dry_submit);            
     }
 
 
@@ -127,7 +131,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         cout << "_step" << _step << "step_per_epoch" << opt.steps_per_epoch() << endl;  
         return 0;
     }
-    else if(labeler_state_ == LabelerState::TRAIN_RUNNING)
+    else if((labeler_state_ == LabelerState::TRAIN_RUNNING) || (labeler_state_ == LabelerState::INFERENCE))
     {        
         PPO::StepOutput out = net->step(tensor_s);
         auto &action = out.a;
@@ -150,7 +154,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             buffer->prep.r() = graph.contours.get_picker_reward();
             if(buffer->safe_to_submit())
             {
-                buffer->submit();
+                buffer->submit(dry_submit);
             }
 
             // update contour pointer 
@@ -203,54 +207,133 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             assertm("Invalid action", false);            
         }             
         return 0;
-
     }
-    else if(labeler_state_ == LabelerState::INFERENCE)
-    {
-        // increase step
-        PPO::StepOutput out = net->step(tensor_s, true /*deterministic*/);
-        auto &action = out.a;
-        auto &val = out.v;
-        auto &logp = out.logp;
 
-        while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
-        {
-            // update contour pointer 
-            if(action == PPO::ACTIONS::LEFT)
-                graph.contours.left();
-            else if(action == PPO::ACTIONS::RIGHT)
-                graph.contours.right();
-            else
-            {
-                assertm("Invalid action", false);
-            }
 
-            // get state
-            STATE_ENCODING tweaked_state = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
-            torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
+//     else if(labeler_state_ == LabelerState::TRAIN_RUNNING)
+//     {        
+//         PPO::StepOutput out = net->step(tensor_s);
+//         auto &action = out.a;
+//         auto &val = out.v;
+//         auto &logp = out.logp;
+//         auto &encoded_a = out.encoded_a;
 
-            // keep going        
-            out = net->step(tensor_s);
-            std::tie(action, val, logp) = std::tie(out.a, out.v, out.logp);
-        }
+//         // update buffer () -> (s, a, '', v, logp)
+//         buffer->prep.s() = state_flat;
+//         buffer->prep.a() = encoded_a;
+//         buffer->prep.val() = val;
+//         buffer->prep.logp() = logp;
+
+//         // increase step
+//         this->step()++;
+
+//         while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
+//         {        
+//             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
+//             buffer->prep.r() = graph.contours.get_picker_reward();
+//             if(buffer->safe_to_submit())
+//             {
+//                 buffer->submit();
+//             }
+
+//             // update contour pointer 
+//             if(action == PPO::ACTIONS::LEFT)
+//                 graph.contours.left();
+//             else if(action == PPO::ACTIONS::RIGHT)
+//                 graph.contours.right();
+//             else
+//             {
+//                 assertm("Invalid action", false);
+//             }
+
+//             // get state
+//             STATE_ENCODING tweaked_state = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
+//             #if GAME_TRACKER == 1
+//             cout << "state encoding: " << tweaked_state << endl;
+//             #endif
+//             torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
+
+//             PPO::StepOutput out = net->step(tensor_s);            
+//             std::tie(action, encoded_a, val, logp) = std::tie(out.a, out.encoded_a, out.v, out.logp);
+
+//             // update buffer () -> (s, a, '', v, logp) 
+//             std::tie(buffer->prep.s(), buffer->prep.a(), buffer->prep.val(), buffer->prep.logp()) = std::tie(tweaked_state, encoded_a, val, logp);
+
+//             // increase step
+//             this->step()++;
+//         }
+
+//         /* ==== ACTION be PLACE or PLACE_INSERT START ==== */
+//         /* */
+//         assertm("Logical invalid action", action == PPO::ACTIONS::PLACE || action == PPO::ACTIONS::PLACE_INSERT);
+
+
+//         /* */
+//         /* ==== ACTION be PLACE or PLACE_INSERT END ==== */
+//         // execute action
+//         if(action == PPO::ACTIONS::PLACE)
+//         {
+//             label = graph.contours.place(node);
+//             return label;
+//         }
+//         else if(action == PPO::ACTIONS::PLACE_INSERT)
+//         {
+//             label = graph.contours.insert_and_place(node);
+//             return label;
+//         }
+//         else
+//         {
+//             assertm("Invalid action", false);            
+//         }             
+//         return 0;
+
+//     }
+//     else if(labeler_state_ == LabelerState::INFERENCE)
+//     {
+//         // increase step
+//         PPO::StepOutput out = net->step(tensor_s, true /*deterministic*/);
+//         auto &action = out.a;
+//         auto &val = out.v;
+//         auto &logp = out.logp;
+
+//         while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
+//         {
+//             // update contour pointer 
+//             if(action == PPO::ACTIONS::LEFT)
+//                 graph.contours.left();
+//             else if(action == PPO::ACTIONS::RIGHT)
+//                 graph.contours.right();
+//             else
+//             {
+//                 assertm("Invalid action", false);
+//             }
+
+//             // get state
+//             STATE_ENCODING tweaked_state = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
+//             torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
+
+//             // keep going        
+//             out = net->step(tensor_s);
+//             std::tie(action, val, logp) = std::tie(out.a, out.v, out.logp);
+//         }
         
-        // execute action
-        if(action == PPO::ACTIONS::PLACE)
-        {
-            label = graph.contours.place(node);
-            return label;
-        }
-        else if(action == PPO::ACTIONS::PLACE_INSERT)
-        {
-            label = graph.contours.insert_and_place(node);
-            return label;
-        }
-        else
-        {
-            assertm("Invalid action", false);            
-        }             
-        return 0;
-    }
+//         // execute action
+//         if(action == PPO::ACTIONS::PLACE)
+//         {
+//             label = graph.contours.place(node);
+//             return label;
+//         }
+//         else if(action == PPO::ACTIONS::PLACE_INSERT)
+//         {
+//             label = graph.contours.insert_and_place(node);
+//             return label;
+//         }
+//         else
+//         {
+//             assertm("Invalid action", false);            
+//         }             
+//         return 0;
+//     }
     assertm("Error control path", false);
     return 0;
 }

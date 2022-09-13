@@ -121,7 +121,9 @@ public:
     int idx;
     bool epoch_done = false;
     bool is_full = false;
-    // int batch_size;
+
+    // instance-wise tracking variables
+    float real_rewards = 0; 
     
     // hyperparam
     float gamma;
@@ -129,7 +131,7 @@ public:
 
     // data section for preparation
     bool safe_to_submit();
-    void submit();
+    void submit(bool dry_submit = false); /* for inference, use dry_submit = true to decrease memory use */
     vector<float> & vector_norm(vector<float> &vec, int start, int end);
 
     ReplayBufferImpl(int max_size, int batch_size);    

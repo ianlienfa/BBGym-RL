@@ -225,20 +225,16 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             
             /* complete the incomplete data prep section */
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
-            if(labeler->labeler_state == PPOLabeler::LabelerState::TRAIN_RUNNING)
+            const float optimal_found_reward = neg_zero_reward + end_emphasize_multiplier * node_reward * this->graph->searched_node_num / std::pow(float(this->graph->jobs_num), 4);
+            if(labeler->labeler_state == PPOLabeler::LabelerState::TRAIN_RUNNING || labeler->labeler_state == PPOLabeler::LabelerState::INFERENCE)
             {
-                const float optimal_found_reward = neg_zero_reward + end_emphasize_multiplier * node_reward * this->graph->searched_node_num / std::pow(float(this->graph->jobs_num), 4);
+                const bool dry_submit = (labeler->labeler_state == PPOLabeler::LabelerState::INFERENCE);
                 labeler->buffer->prep.r() = optimal_found_reward;
-                // debug
-                // const auto &prep = labeler->buffer->prep;
-                // cout << "prep reward: " << prep._r << endl;
-                // cout << "prep action: " << prep._a << endl;
-                // cout << "prep state: " << prep._s << endl;
-                // cout << "prep value: " << prep._val << endl;
-                // cout << "prep logp: " << prep._logp << endl;
-                //
-                labeler->buffer->submit();            
-                this->labeler->accu_reward = labeler->buffer->finish_epoch(0); // end the exploration
+                labeler->buffer->submit(dry_submit);       
+                if(!dry_submit)
+                {
+                    this->labeler->accu_reward = labeler->buffer->finish_epoch(0); // end the exploration
+                }
             }
         }
         this->graph->contours.erase_contour();

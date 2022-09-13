@@ -176,6 +176,7 @@ void post_print_config(const OneRjSumCj_engine &engine)
     for(auto it = graph.min_seq.begin(); it != graph.min_seq.end(); it++)
         cout << *it << " ";
     cout << endl;
+    cout << "real_reward: " << engine.searcher.labeler->buffer->real_rewards << endl;
     cout << "accu_reward: " << engine.searcher.labeler->accu_reward << endl;
     cout << "avg_reward: " << engine.searcher.labeler->avg_reward << endl;
     cout << "=============== Search Ended ===============" << endl;

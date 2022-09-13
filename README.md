@@ -8,7 +8,7 @@
   * The bad news is that bitset for STL do not support dynamically change on its size
   * For the vanilla Lu algorithm, prune__OneRjSumCj__LU_AND_SAL__Theorem1 must be on
 
-* Usage
+* Simple Usage
   * train the network first: 
     make -j5 net 
     ./net -d **directory name**
@@ -28,6 +28,8 @@
   * The torch::manual_seed() is called in three places, the initialization of weight of both pi and q network and the main function that powers the training. 
   * The randomness of c++ comes from the order of choosing the instances in the training process.
 
+* Usage
+  * for inference, use dry_submit = true at submit() to decrease memory use 
 
 * Grid Search
   * make sure the corresponding variable is defined in config.h

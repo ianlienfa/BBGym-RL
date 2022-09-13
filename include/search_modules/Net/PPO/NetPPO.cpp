@@ -231,11 +231,12 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
 
 void PPO::ReplayBufferImpl::reset()
 {
-    prep = PrepArea();
+    prep = PrepArea();    
 }
 
-void PPO::ReplayBufferImpl::submit()
+void PPO::ReplayBufferImpl::submit(bool dry_submit)
 {    
+    (dry_submit) ? cout << "dry submit" << endl : cout << "submit" << endl;
     #if TORCH_DEBUG == 1    
         cout << "label buffer dynamics: " << endl; 
         cout << "idx: " << idx << endl;                   
@@ -247,7 +248,13 @@ void PPO::ReplayBufferImpl::submit()
 
     if(safe_to_submit())
     {                
-        this->push(this->prep);
+        if(!dry_submit)
+        {
+            this->push(this->prep);             
+        }
+        const float reward = this->prep._r;
+        this->real_rewards += reward;
+        cout << "real rewards added" << reward <<  " to" << this->real_rewards << endl;
     }
     else
     {

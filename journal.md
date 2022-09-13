@@ -40,7 +40,7 @@
     * first compute the reward in inference mode
     * then see if the reward really goes down using the model in /anf
     * if not, maybe there's bug for computing the discounted reward
-
+    * 比較不會有bug的方法是讓inference也會call submit, 在該處計算real_reward
  
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)

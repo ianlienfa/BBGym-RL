@@ -57,9 +57,9 @@ public:
     float avg_search_decrease_ratio = 0;
     float accu_reward = 0;
     float avg_reward = 0;
-    float avg_inf_reward = 0;
-    float real_reward = 0;
-    float last_searched_node_num = 0.0;
+    float avg_inf_reward = 0;    
+    float last_searched_node_num = 0.0;    
+    float * const real_rewards = &buffer->real_rewards;
   
     // Trackers tracks training state
     enum LabelerState {UNDEFINED, TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    
