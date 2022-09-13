@@ -9,6 +9,8 @@ OneRjSumCjSearch::OneRjSumCjSearch(){
 
 void OneRjSumCjSearch::fill_graph(OneRjSumCjGraph *graph) {
     this->graph = graph;
+    // reset labeler instance trackers
+    labeler->reset_instance_trackers();
 }
 
 bool OneRjSumCjSearch::get_find_optimal() {
@@ -190,7 +192,6 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
     using namespace PPO;
 
     (void) current_node;
-    cout << "here" << endl;
     // update node count
     this->graph->searched_node_num += branched_nodes.size();
 

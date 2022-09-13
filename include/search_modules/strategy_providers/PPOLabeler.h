@@ -58,6 +58,7 @@ public:
     float accu_reward = 0;
     float avg_reward = 0;
     float avg_inf_reward = 0;
+    float real_reward = 0;
     float last_searched_node_num = 0.0;
   
     // Trackers tracks training state
@@ -79,6 +80,7 @@ public:
     // STATE_ENCODING get_state();
     tuple<torch::Tensor, PPO::ExtraInfo> compute_pi_loss(const PPO::Batch &batch_data);
     torch::Tensor compute_q_loss(const PPO::Batch &batch_data);
+    void reset_instance_trackers();
     void update(PPO::SampleBatch &batch_data); 
     };
 

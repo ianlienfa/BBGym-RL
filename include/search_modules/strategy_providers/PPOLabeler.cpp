@@ -66,6 +66,11 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
     }
 }
 
+void PPOLabeler::reset_instance_trackers()
+{
+    accu_reward = 0;
+    real_reward = 0;
+}
 
 // Do training and buffering here, return the label if created, otherwise go throgh the network again
 int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat, ::OneRjSumCjGraph& graph)
