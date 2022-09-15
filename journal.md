@@ -41,6 +41,25 @@
     * then see if the reward really goes down using the model in /anf
     * if not, maybe there's bug for computing the discounted reward
     * 比較不會有bug的方法是讓inference也會call submit, 在該處計算real_reward
+
+ ### Sep-13
+* real_reward tracker for inference implemented
+* model seems to be not learning, probably need another prob env to debug
+* first debug the value network and see if we can get the value network to learn right
+    * limit obs to only one state (000...000)
+    * we can still have 4 actions
+    * the reward be constant 1
+    * the value network should learn the value of the state to be 1
+    -> The value network can learn the value to be pretty close to 1, seems to be working
+
+* try debug the agent network then
+* adjust the reward magnitude, we might need to see KL divergence computation 
+
+* see if the network can learn a predictable (not constant) reward
+* limit the state to randomly two state (01 and 10)
+* 01 provide reward 1, 10 provide reward -1
+* see if the value network is able to learn the value of the state and see if the q value is the same for all action at one specific state
+
  
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
