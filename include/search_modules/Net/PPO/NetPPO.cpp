@@ -137,6 +137,13 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
         idx = this->max_size;
         cout << "vector_norm: idx is set to max_size, this->idx: " << this->idx << endl;
     }
+    else if((!this->is_full) && (idx == 1))
+    {
+        cout << "there's only one element in the buffer, no need to normalize" << endl;
+        return vec;
+    }
+    else{}
+
     
     vector<float> &adv = vec;
     float adv_mean = 0.0, adv_sum = 0.0, adv_std = 0.0;
