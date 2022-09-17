@@ -60,6 +60,13 @@
 * 01 provide reward 1, 10 provide reward -1
 * see if the value network is able to learn the value of the state and see if the q value is the same for all action at one specific state
 
+### One action, random +1/-1 observation, one timestep long, obs-dependent +1/-1 reward every time
+* {0, 1} -> 1 , {1, 0} -> -1, {1, 1} -> 0
+* need **one node** update to be set up for testing.
+* value learned, but the Q(s, a) has slightly weird value distribution, in which the first action has zero prob 
+    -> solved by tuning up the entropy ratio
+* done, seems to be working, value network can learn the observation dependent reward and the action distribution is correct
+
  
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
