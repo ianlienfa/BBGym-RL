@@ -37,6 +37,12 @@ typedef std::pair<double, double> Pdd;
     parent& name(type val) {_##name = val; return *this;}\
     type& name() {return _##name;}
 
+// define arguments that has extra things to do when setting
+#define BB_FUNC_ARG(parent, type, name, init_val, setfunc)\
+    type _##name = (init_val);\
+    parent& name(type val) {_##name = val; cout << "running setfunc" << endl; setfunc(val); return *this;}\
+    type& name() {return _##name;}
+
 // Define Tracker Variable Wrapper
 #define BB_TRACK_ARG(type, name, initval)\
     type _##name = initval;\

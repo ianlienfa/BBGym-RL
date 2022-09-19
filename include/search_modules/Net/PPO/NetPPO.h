@@ -96,7 +96,8 @@ public:
     vector<float> adv;
     vector<float> val;
     vector<float> ret;
-    vector<float> logp;        
+    vector<float> logp;    
+    BBARG(ReplayBufferImpl, int64_t, step, 0);          
 
     // prep
     struct PrepArea{

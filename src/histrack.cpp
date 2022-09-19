@@ -44,7 +44,7 @@ void updateCallbackImpl(void* engine_ptr)
     }
 
     // step reset
-    engine.searcher.labeler->step() = 0;
+    // engine.searcher.labeler->step() = 0;
 
     // reward tracking
     if(current_labeler_state == PPO::PPOLabeler::LabelerState::INFERENCE)

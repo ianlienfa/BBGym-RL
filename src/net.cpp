@@ -41,7 +41,7 @@ void updateCallbackImpl(void* engine_ptr)
     if(current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_RUNNING || current_labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
     {
         PPO::SampleBatch batch = labeler->buffer->get();
-        if(batch.v_r.size() > 1)
+        if(batch.v_r.size() > 0)
         {
             labeler->update(batch);
         }        
@@ -51,11 +51,6 @@ void updateCallbackImpl(void* engine_ptr)
             exit(1);
         }
     }
-
-    // step reset
-    cout << "before reset, step = " << labeler->step() << endl;
-    engine.searcher.labeler->step() = 0;
-    cout << "step reset, step = " << labeler->step() << endl;
 
     // reward tracking
     if(current_labeler_state == PPO::PPOLabeler::LabelerState::INFERENCE)
@@ -189,11 +184,12 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(10000)
+                .num_epoch(3000)
                 .inference_start_epoch(1000)
-                .epoch_per_instance(25)
+                .epoch_per_instance(30)
+                .epochs_per_update(10)
                 .validation_interval(20)
-                .entropy_lambda(1)                
+                .entropy_lambda(0.1)                
                 .lr_pi(V_LR_PI)      
                 .lr_q(V_LR_Q)                
                 .steps_per_epoch(100000)             
@@ -301,7 +297,7 @@ int main(int argc, char* argv[])
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
             cerr << "epoch: " << epoch << endl;
-            labeler->epoch()++;   
+            labeler->epoch(1);   
             if(epoch == labeler->opt.num_epoch())
             {
                 labeler->eval();
@@ -390,7 +386,8 @@ int main(int argc, char* argv[])
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
             if((epoch % labeler->opt.epoch_per_instance() == 0 || epoch == 1))
-            {                              
+            {        
+                labeler->per_instance_epoch = 0;                      
                 cerr << "training.." << endl;
                 labeler->train();
                 int step_size = rand() % 5 + 1;   
@@ -458,7 +455,7 @@ int main(int argc, char* argv[])
             }
             
             // place this before validation to sync the epoch
-            labeler->epoch()++;   
+            labeler->epoch(1);   
 
             // validation at each validation interval
             // if(epoch % (labeler->opt.validation_interval() * labeler->opt.epoch_per_instance()) == 0 && epoch > labeler->opt.inference_start_epoch())

@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());                  
             }
-            labeler->epoch()++;   
+            labeler->epoch(1);   
         }
     }
     else if (argc >= 3 && !(strcmp(argv[1], "-d")))
@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
                 outfile.close();
             }
 
-            labeler->epoch()++;   
+            labeler->epoch(1);   
         }         
     }
 }

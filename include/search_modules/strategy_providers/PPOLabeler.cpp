@@ -6,6 +6,7 @@ PPOLabeler::PPOLabeler(PPO::PPOLabelerOptions options) :
     // Debug
     cout << "state_dim: " << opt.state_dim() << endl;
     cout << "action_dim: " << opt.action_dim() << endl;
+    assertm("epoch_per_instance must be divisible by epochs_per_update", (opt.epoch_per_instance() % opt.epochs_per_update() == 0));
 
     // set up buffer
     buffer = std::make_shared<PPO::ReplayBufferImpl>(opt.buffer_size(), opt.max_num_contour());
@@ -38,7 +39,9 @@ PPOLabeler::PPOLabeler(PPO::PPOLabelerOptions options) :
     }
 
     // set up tracking param    
-    _step = 0;
+    real_rewards = &buffer->real_rewards;
+    step = &buffer->_step;
+    this->buffer->step() = 0; 
     _update_count = 0;
     _epoch = 0;    
 
@@ -55,12 +58,13 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
         return LabelerState::INFERENCE;
     }
     // Training 
-    if(_epoch <= opt.num_epoch() && _step < opt.steps_per_epoch()){
+    // Training 
+    if(_epoch <= opt.num_epoch() && (*this->step) < opt.steps_per_epoch()){
         labeler_state = LabelerState::TRAIN_RUNNING;
         return LabelerState::TRAIN_RUNNING;
     }
     else{
-        cout << "Train epoch end assigned: _epoch / num_epoch: " << _epoch << " / " << opt.num_epoch() << " _step / steps_per_epoch : " << _step << " / " << opt.steps_per_epoch() << endl;
+        cout << "Train epoch end assigned: _epoch / num_epoch: " << _epoch << " / " << opt.num_epoch() << " _step / steps_per_epoch : " << (*this->step) << " / " << opt.steps_per_epoch() << endl;
         labeler_state = LabelerState::TRAIN_EPOCH_END;
         return LabelerState::TRAIN_EPOCH_END;
     }
@@ -128,7 +132,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         auto &val = out.v;
         this->accu_reward = buffer->finish_epoch(val);      
         cout << "accu_reward: " << this->accu_reward << endl;
-        cout << "_step" << _step << "step_per_epoch" << opt.steps_per_epoch() << endl;  
+        cout << "step" << (*this->step) << "step_per_epoch" << opt.steps_per_epoch() << endl;  
         return 0;
     }
     else if((labeler_state_ == LabelerState::TRAIN_RUNNING) || (labeler_state_ == LabelerState::INFERENCE))
@@ -146,7 +150,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         buffer->prep.logp() = logp;
 
         // increase step
-        this->step()++;
+        this->buffer->step() += 1;
 
         while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
         {        
@@ -441,7 +445,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
         float approx_kl = info.approx_kl;        
         if(approx_kl > 1.5 * opt.target_kl())
         {
-            cerr << "Early stopping at step " << this->_step << "due to reaching max kl." << endl;
+            cerr << "Early stopping at step " << (*this->step) << "due to reaching max kl." << endl;
             break;
         }
         pi_loss.backward();

@@ -67,7 +67,25 @@
     -> solved by tuning up the entropy ratio
 * done, seems to be working, value network can learn the observation dependent reward and the action distribution is correct
 
- 
+## 4 action, random +1/-1 observation, one timestep long, reward&obs-dependent +1/-1 reward every time
+* {1, -1} + [1 0 0 0] -> 1 , {-1, 1} + [0 1 0 0] -> -1
+* with entropy_ratio = 0.1, the value get for same state can be different, which is quite weird.
+    -> the reason for this is the value network hopes to get as close as the reward every time, but the reward highly depends on the action, so the value network can always have bad predect for the value of the state
+* the value network should be updated using the mean of serveral trajectories return-to-go instead of the return-to-go of a single trajectory
+* The update on value network becomes unstable when 
+    1. the trajectory is very small
+    2. the visited state space is too large and in one update only one sample is retrieved for each state
+    These reasons provides tited value estimate therefore oscillates the update.
+    The loss function of value network is designed to be 
+    * loss = (return-to-go - value)**2.mean()
+    however this only performs good when the same state is visited multiple times in a single trajectory, which is not the case for our problem.
+
+    * solution: 
+        * update after multiple trajectories
+        * 將單一次TRPO走的量調小，用多epoch來彌補
+        * 要注意start_idx的correctness
+        * 如果buffer滿的話要怎麼控制？
+
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
 * 加入lstm試試看

@@ -87,13 +87,20 @@ OneRjSumCjGraph OneRjSumCj_engine::solve(OneRjSumCjNode rootProblem)
         }
     }
 
+    cout << "per_instance_epoch: " << searcher.labeler->per_instance_epoch << endl;
     if(searcher.labeler->labeler_state == PPO::PPOLabeler::LabelerState::TRAIN_EPOCH_END)
-    {
-        EARLY_STOPPING_CALLBACK(this);     
+    {        
+        if(searcher.labeler->per_instance_epoch % searcher.labeler->opt.epochs_per_update() == 0)
+        {
+            EARLY_STOPPING_CALLBACK(this);     
+        }        
     }
     else // optimal solution found
     {
-        OPTIMAL_FOUND_CALLBACK(this);
+        if(searcher.labeler->per_instance_epoch % searcher.labeler->opt.epochs_per_update() == 0)
+        {
+            OPTIMAL_FOUND_CALLBACK(this);
+        }        
         POST_SOLVE_PRINT_CONFIG(*this);
     }
     return graph;

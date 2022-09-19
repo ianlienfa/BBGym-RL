@@ -124,6 +124,10 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
     // turn on epoch done
     epoch_done = true;
 
+    this->step() = 0;
+    this->start_idx = idx;    
+
+
     return r[start_idx];
 }
 
@@ -158,6 +162,7 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
     }
     adv_std /= (idx - start_idx);
     adv_std = sqrt(adv_std);
+    assertm("adv_std is 0, please increase the diversity of samples, try increase the epochs_per_update", adv_std != 0);
 
     // normalize the advantage
     for(int i = start_idx; i < idx; i++)
@@ -191,13 +196,13 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
         epoch_done = false;
     cerr << "start_idx: " << start_idx << ", idx: " << idx << ", idx - start_idx : " << idx - start_idx << endl;
     typedef vector<float> Vf;
-    this->adv = vector_norm(this->adv, start_idx, idx);
-    vector<STATE_ENCODING> s = {this->s.begin() + start_idx, this->s.begin() + idx};
-    vector<ACTION_ENCODING> a = {this->a.begin() + start_idx, this->a.begin() + idx};
+    this->adv = vector_norm(this->adv, 0, idx);    
+    vector<STATE_ENCODING> s = {this->s.begin(), this->s.begin() + idx};
+    vector<ACTION_ENCODING> a = {this->a.begin(), this->a.begin() + idx};
 
     // flatten s and a
-    int traj_size = s.size();
-    assertm("traj_size should be greater than 0", traj_size > 0 && traj_size == a.size());
+    int trajs_size = idx;
+    assertm("trajs_size should be greater than 0", trajs_size > 0 && s.size() == a.size() && idx == s.size());
     vector<float> s_flat;
     vector<float> a_flat;
     for(auto it: s)
@@ -209,9 +214,9 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
         a_flat.insert(a_flat.end(), make_move_iterator(it.begin()), make_move_iterator(it.end()));
     }
 
-    Vf r = {this->r.begin() + start_idx, this->r.begin() + idx};
-    Vf adv = {this->adv.begin() + start_idx, this->adv.begin() + idx};
-    Vf logp = {this->logp.begin() + start_idx, this->logp.begin() + idx};
+    Vf r = {this->r.begin(), this->r.begin() + idx};
+    Vf adv = {this->adv.begin(), this->adv.begin() + idx};
+    Vf logp = {this->logp.begin(), this->logp.begin() + idx};
 
     #if TORCH_DEBUG >= -1
     cout << "s size: " << s.size() << " s: " << s << endl; 
