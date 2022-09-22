@@ -16,7 +16,7 @@ struct PPOLabelerOptions{
     // hyper parameters
     BBARG(PPOLabelerOptions, int64_t, num_epoch, 300);
     BBARG(PPOLabelerOptions, int64_t, epoch_per_instance, 10);
-    BBARG(PPOLabelerOptions, int64_t, epochs_per_update, 4); // sit it bigger to provide value fitting a better estimate
+    BBARG(PPOLabelerOptions, int64_t, epochs_per_update, 5); // sit it bigger to provide value fitting a better estimate
     BBARG(PPOLabelerOptions, int64_t, inference_start_epoch, INT_MAX);
     BBARG(PPOLabelerOptions, int64_t, validation_interval, 5);  // instances per validation
     BBARG(PPOLabelerOptions, int64_t, steps_per_epoch, 4000);
@@ -67,7 +67,6 @@ public:
     // Trackers tracks training state
     enum LabelerState {UNDEFINED, TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    
     BBARG(PPOLabeler, int64_t, update_count, 0);
-    BBARG(PPOLabeler, int64_t, epoch, 0);
     BB_FUNC_ARG(PPOLabeler, int64_t, epoch, 0, [&](int64_t value){this->per_instance_epoch += value; cout << "per instance epoch: " << this->per_instance_epoch << endl;});
 
     // contour status tracker

@@ -1,7 +1,7 @@
 #include "search_modules/Net/PPO/NetPPO.h"
 
 PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size, int batch_size) {
-    this->gamma = 0.99;
+    this->gamma = 0.9995;
     this->lambda = 0.95;
     this->max_size = max_size;
     // this->batch_size = batch_size;
@@ -115,7 +115,8 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
 
     // compute accumulated discounted reward for MSE
     for(int i = idx - 2; i >= start_idx; i--)
-    {
+    { 
+        cout << "r[" << i << "]: " << r[i] << "+=" << this->gamma << " * " << r[i+1] << endl;
         r[i] = r[i] + this->gamma * r[i + 1];
     }
 
@@ -124,11 +125,11 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
     // turn on epoch done
     epoch_done = true;
 
+    float return_val = r[start_idx];
     this->step() = 0;
-    this->start_idx = idx;    
-
-
-    return r[start_idx];
+    this->start_idx = idx;       
+    
+    return return_val;
 }
 
 // Debug: print mean and std
@@ -162,7 +163,14 @@ vector<float>& PPO::ReplayBufferImpl::vector_norm(vector<float> &vec, int start_
     }
     adv_std /= (idx - start_idx);
     adv_std = sqrt(adv_std);
-    assertm("adv_std is 0, please increase the diversity of samples, try increase the epochs_per_update", adv_std != 0);
+    if(adv_std < 1e-30)
+    {
+        // cout << "adv_std is too small, set to 1e-6" << endl;
+        // adv_std = 1e-6;
+        cerr << "adv_std is too small, please increase the diversity of samples, try increase the epochs_per_update, early leaving" << endl;
+        exit(1);
+    }
+    // assertm("adv_std is 0, please increase the diversity of samples, try increase the epochs_per_update", adv_std != 0);
 
     // normalize the advantage
     for(int i = start_idx; i < idx; i++)
@@ -218,13 +226,13 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
     Vf adv = {this->adv.begin(), this->adv.begin() + idx};
     Vf logp = {this->logp.begin(), this->logp.begin() + idx};
 
-    #if TORCH_DEBUG >= -1
+    // #if TORCH_DEBUG >= -1
     cout << "s size: " << s.size() << " s: " << s << endl; 
     cout << "a size: " << a.size() << " a:  " << a << endl; 
     cout << " r size: " << r.size() << " r: " << r << endl;
     cout << " adv size: " << adv.size() << " adv: " << adv << endl;
     cout << " logp size: " << logp.size() << " logp: " << logp  << endl;    
-    #endif
+    // #endif
 
     // reset
     this->idx = 0;
@@ -332,6 +340,7 @@ vector<float> PPO::StateInput::get_state_encoding_fast(vector<float> &state_enco
     vector<float> state_encoding_copy = state_encoding;
     auto current_picker_pos = graph.contours.picker_pos / norm_factor + zero_epsilon;
     state_encoding[idx_end] = current_picker_pos;
+    cout << "fast state encoding: " << state_encoding << endl;
     return state_encoding;
 }
 
@@ -370,6 +379,8 @@ vector<float> PPO::StateInput::flatten_and_norm(const OneRjSumCjNode &node)
     node_state_encoding.push_back(norm_current_feasible_solution);
 
     cout << "norm_current_feasible_solution: " << graph.min_obj << ", epsilon: " << epsilon << ", worst_upperbound: " << OneRjSumCjNode::worst_upperbound << endl;
+
+    cout << "==== end debugging flatten and norm ===" << endl;
 
     return node_state_encoding;
 }
@@ -532,15 +543,19 @@ PPO::StepOutput PPO::NetPPOImpl::step(torch::Tensor s, bool deterministic)
     }
     int64_t a;    
     if(deterministic)
+    {
         a = torch::argmax(dist_out).item<int64_t>();
+    }
     else
+    {
         a = torch::multinomial(dist_out, 1).item().toLong();
+    }
 
-    if(deterministic){
-        cout << "s: " << s << endl;
+    // if(deterministic){
+        // cout << "s: " << s << endl;
         cout << "dist_out: " << dist_out << endl;
         cout << "a: " << a << endl;
-    }
+    // }
     auto encoded_a = to_one_hot(a);
     assertm("action should be in range", ((a >= 0) && (a < opt.action_dim)));
     float logp = torch::log(dist_out[0][a]).item().toFloat();

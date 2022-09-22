@@ -225,7 +225,9 @@ vector<OneRjSumCjNode> OneRjSumCjSearch::update_graph(OneRjSumCjNode current_nod
             
             /* complete the incomplete data prep section */
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
-            const float optimal_found_reward = neg_zero_reward + end_emphasize_multiplier * node_reward * this->graph->searched_node_num / std::pow(float(this->graph->jobs_num), 4);
+            // const float optimal_found_reward = neg_zero_reward + end_emphasize_multiplier * node_reward * this->graph->searched_node_num / std::pow(float(this->graph->jobs_num), 4);            
+            const float optimal_found_reward = -labeler->buffer->get_traj_size();
+            cout << "optimal_found_reward: " << optimal_found_reward << endl;
             if(labeler->labeler_state == PPOLabeler::LabelerState::TRAIN_RUNNING || labeler->labeler_state == PPOLabeler::LabelerState::INFERENCE)
             {
                 const bool dry_submit = (labeler->labeler_state == PPOLabeler::LabelerState::INFERENCE);

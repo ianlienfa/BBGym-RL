@@ -6,6 +6,8 @@ PPOLabeler::PPOLabeler(PPO::PPOLabelerOptions options) :
     // Debug
     cout << "state_dim: " << opt.state_dim() << endl;
     cout << "action_dim: " << opt.action_dim() << endl;
+    cout << "epoch_per_instance: " << opt.epoch_per_instance() << endl;
+    cout << "epochs_per_update: " << opt.epochs_per_update() << endl;
     assertm("epoch_per_instance must be divisible by epochs_per_update", (opt.epoch_per_instance() % opt.epochs_per_update() == 0));
 
     // set up buffer
@@ -72,6 +74,7 @@ PPOLabeler::LabelerState PPOLabeler::get_labeler_state()
 
 void PPOLabeler::reset_instance_trackers()
 {
+    cout << "bf reset, accu_reward: " << accu_reward << "buffer->real_rewards: " << buffer->real_rewards << endl;
     accu_reward = 0;
     buffer->real_rewards = 0;
 }
@@ -107,6 +110,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
 
     // dry submit?
     const bool dry_submit = (labeler_state_ == LabelerState::INFERENCE);
+    const bool &inf_mode = dry_submit;
 
     // get current state
     torch::Tensor tensor_s = torch::from_blob(state_flat.data(), {1, int64_t(state_flat.size())}).clone();        
@@ -114,7 +118,8 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
     // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
     if(!buffer->prep.empty()) // if not the first round, for the first round, ignore the r
     {
-        buffer->prep.r() = graph.get_node_reward();    
+        // cout << "node reward out:" << graph.get_node_reward() << endl;
+        buffer->prep.r() = 0;  // orgn_model_debug:graph.get_node_reward()
     }
     if(this->buffer->safe_to_submit())
     {        
@@ -136,8 +141,8 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         return 0;
     }
     else if((labeler_state_ == LabelerState::TRAIN_RUNNING) || (labeler_state_ == LabelerState::INFERENCE))
-    {        
-        PPO::StepOutput out = net->step(tensor_s);
+    {                
+        PPO::StepOutput out = net->step(tensor_s, inf_mode /*true if inferencing*/);
         auto &action = out.a;
         auto &val = out.v;
         auto &logp = out.logp;
@@ -155,7 +160,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
         {        
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
-            buffer->prep.r() = graph.contours.get_picker_reward();
+            buffer->prep.r() = 0; // orgn_model_debug:graph.picker_award()
             if(buffer->safe_to_submit())
             {
                 buffer->submit(dry_submit);
@@ -178,14 +183,14 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             #endif
             torch::Tensor tensor_s = torch::from_blob(tweaked_state.data(), {1, int64_t(tweaked_state.size())}).clone();        
 
-            PPO::StepOutput out = net->step(tensor_s);            
+            PPO::StepOutput out = net->step(tensor_s, inf_mode /*true if inferencing*/);            
             std::tie(action, encoded_a, val, logp) = std::tie(out.a, out.encoded_a, out.v, out.logp);
 
             // update buffer () -> (s, a, '', v, logp) 
             std::tie(buffer->prep.s(), buffer->prep.a(), buffer->prep.val(), buffer->prep.logp()) = std::tie(tweaked_state, encoded_a, val, logp);
 
             // increase step
-            this->step()++;
+            this->buffer->step() += 1;
         }
 
         /* ==== ACTION be PLACE or PLACE_INSERT START ==== */

@@ -76,6 +76,7 @@ void ReplayBufferImpl::submit()
     if(safe_to_submit())
     {        
         cout << "a_prep: " << a_prep << endl;
+        cout << "r_prep: " << reward_prep << endl;
         this->push(this->s_prep, this->a_prep, this->reward_prep, this->s_next_prep, this->done_prep, this->contour_snapshot_prep, this->contour_snapshot_next_prep);
     }
     else

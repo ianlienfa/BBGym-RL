@@ -85,6 +85,19 @@
         * 將單一次TRPO走的量調小，用多epoch來彌補
         * 要注意start_idx的correctness
         * 如果buffer滿的話要怎麼控制？
+* 為什麼4的reward變動那麼嚴重
+* 3.out跟3.inf的結果不太ㄧ樣
+
+# Sep 22
+Overfitting works on anf, training from 53 -> 40 
+
+* 突然加入的因素太多，難debug
+* 整理新因素：不停變動的state、複雜的reward
+* -> 先就小instance來debug看看，reward只要在最後給，給的量是visit的node數，然後現在也只限制只有place
+* 檢查reward的值有沒有變大
+
+
+
 
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
