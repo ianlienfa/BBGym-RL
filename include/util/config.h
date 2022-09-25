@@ -8,7 +8,7 @@
 #define CONTOUR_TYPE float
 #define RANDOM_SEED 50
 const float node_reward = -1e-2;
-const float move_reward = -1e-4;
+const float move_reward = -1e-1 * 5;
 const float move_encouragement_reward = 1e-13; //1e-13;
 const float end_emphasize_multiplier = 1.5;
 const float move_reward_min = -1e-2;

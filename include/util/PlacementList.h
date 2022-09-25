@@ -37,7 +37,7 @@ public:
     
     void picker_step_reset()
     {
-        picker_steps = 0;
+        // picker_steps = 0;
         picker_iter = current_iter;
         picker_pos = current_pos;
     } 
@@ -45,7 +45,8 @@ public:
     float get_picker_reward()
     {
         const auto& move_reward_base = move_reward;
-        return (picker_steps < 10) ? move_encouragement_reward : std::max(move_reward_base * float(pow(2.0, picker_steps - 10)), move_reward_min); // increase negative reward exponentially
+        return move_reward_base * picker_steps;
+        // return (picker_steps < 10) ? 0 : std::max(move_reward_base * float(pow(2.0, picker_steps - 10)), move_reward_min); // increase negative reward exponentially
     }
 
     Len size() const{

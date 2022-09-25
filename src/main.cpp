@@ -43,9 +43,6 @@ void updateCallbackImpl(void* engine_ptr)
         labeler->update(batch);
     }
 
-    // step reset
-    engine.searcher.labeler->step() = 0;
-
     // reward tracking
     if(current_labeler_state == PPO::PPOLabeler::LabelerState::INFERENCE)
     {
@@ -160,7 +157,7 @@ int main(int argc, char* argv[])
     if(!std::filesystem::exists(piOptimPath))
         piOptimPath = "";    
     
-    const int64_t max_num_contour = 10;
+    const int64_t max_num_contour = V_MAX_NUM_CNTR;
 
     std::shared_ptr<PPO::PPOLabeler> labeler = 
         std::make_shared<PPO::PPOLabeler>(
@@ -172,7 +169,7 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(20) 
+                .num_epoch(10) 
                 .inference_start_epoch(1)
                 .entropy_lambda(1)                
                 .lr_pi(1e-5*0.3)      
@@ -187,7 +184,7 @@ int main(int argc, char* argv[])
         torch::manual_seed(RANDOM_SEED);    
         cerr << "Random seed: " << rand_seed << endl;
                       
-        string filename(argv[2]);  
+        string filepath(argv[2]);  
 
         /* Inference! */
         labeler->eval();
@@ -196,7 +193,7 @@ int main(int argc, char* argv[])
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
             cerr << "epoch: " << epoch << endl;
-            if(parse_and_init_oneRjSumCj(filename))
+            if(parse_and_init_oneRjSumCj(filepath))
             {
                 OneRjSumCjSearch searcher(labeler);
                 OneRjSumCjBranch brancher;
@@ -205,6 +202,23 @@ int main(int argc, char* argv[])
                 OneRjSumCjGraph graph;
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());                  
+            
+                // different command for different strategies
+                string plain_bfs_cmd = "./" + string(PlainCBFSBFS) + " -f " + filepath;
+                string plain_level_cmd = "./" + string(PlainCBFSLevel) + " -f " + filepath;
+                string plain_rand_cmd = "./" + string(PlainCBFSRand) + " -f " + filepath;
+
+                // print the result to file
+                std::time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                std::ofstream outfile;
+                string filename = "./" + std::to_string(now_time) + "." + filepath.substr(filepath.find_last_of("/") + 1);;
+                cerr << "writing in file: " << filename << endl;
+                outfile.open(filename, std::ios_base::app);    
+                outfile << graph.searched_node_num << endl; // 1
+                outfile << exec(plain_bfs_cmd.c_str()); // 2
+                outfile << exec(plain_level_cmd.c_str()); // 3
+                outfile << exec(plain_rand_cmd.c_str()); // 4
+                outfile.close();
             }
             labeler->epoch(1);   
         }

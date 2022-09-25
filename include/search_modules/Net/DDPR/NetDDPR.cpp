@@ -42,7 +42,7 @@ void ReplayBufferImpl::push(vector<float> s, vector<float> a, float r, vector<fl
 {    
     if(idx >= max_size)
     {
-        cout << "replay buffer index out of bound" << endl;
+        cerr << "replay buffer index out of bound" << endl;
         exit(LOGIC_ERROR);
     }    
     if(!s_feature_size)

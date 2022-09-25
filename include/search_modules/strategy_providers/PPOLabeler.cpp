@@ -160,7 +160,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
         {        
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
-            buffer->prep.r() = 0; // orgn_model_debug:graph.picker_award()
+            buffer->prep.r() = 0;
             if(buffer->safe_to_submit())
             {
                 buffer->submit(dry_submit);

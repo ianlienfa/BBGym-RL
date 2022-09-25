@@ -184,16 +184,16 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(30000)
+                .num_epoch(100000)
                 .inference_start_epoch(1000)
-                .epoch_per_instance(30)
-                .epochs_per_update(10)
+                .epoch_per_instance(10)
+                .epochs_per_update(5)
                 .validation_interval(20)
                 .entropy_lambda(0.1)                
                 .lr_pi(V_LR_PI)      
                 .lr_q(V_LR_Q)                
                 .steps_per_epoch(100000)             
-                .buffer_size(50000)
+                .buffer_size(150000)
         );
     
     /* validate */
@@ -296,8 +296,6 @@ int main(int argc, char* argv[])
         string filename(argv[2]);  
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
-            cerr << "epoch: " << epoch << endl;
-            labeler->epoch(1);   
             if(epoch == labeler->opt.num_epoch())
             {
                 labeler->eval();
@@ -361,6 +359,9 @@ int main(int argc, char* argv[])
                     cmd = "cp ../saved_model/piNet.pt ../saved_model/piNet_" + std::to_string(epoch) + ".pt";
                     exec(cmd.c_str());
                 }
+
+                cerr << "epoch: " << epoch << " / " << labeler->opt.num_epoch() << ", buffer: " << labeler->buffer->start_idx << "/" << labeler->opt.buffer_size() << endl;
+                labeler->epoch(1);
             }
 
             #if INF_MODE == 1
@@ -382,7 +383,7 @@ int main(int argc, char* argv[])
         InputHandler inputHandler_test((string(argv[2])) + "/validation");
         string validation_filepath = string((string(argv[2])) + "/validation");
         string filepath = "";
-                      
+
         for(int epoch = 1; epoch <= labeler->opt.num_epoch(); epoch++)              
         {                
             if((epoch % labeler->opt.epoch_per_instance() == 0 || epoch == 1))
@@ -390,16 +391,17 @@ int main(int argc, char* argv[])
                 labeler->per_instance_epoch = 0;                      
                 cerr << "training.." << endl;
                 labeler->train();
-                int step_size = rand() % 5 + 1;   
-                for(int i = 0; i < step_size; i++)
-                {
-                    filepath = inputHandler.getNextFileName();  
-                }
+                // int step_size = 1;
+                // for(int i = 0; i < step_size; i++)
+                // {
+                filepath = inputHandler.getNextFileName();  
+                cerr << filepath << endl;
+
+                // }
             }
 
             if(parse_and_init_oneRjSumCj(filepath))
             {
-                cerr << "epoch: " << epoch << " / " << labeler->opt.num_epoch() << " : " << filepath << endl;
                 string cmd = "echo \"\" >> fileSearched.txt";
                 exec(cmd.c_str());
                 cmd = "echo '" + filepath + "' >> " + "fileSearched.txt";
@@ -452,11 +454,13 @@ int main(int argc, char* argv[])
                 // clean up loss_vec
                 labeler->q_loss_vec.clear();
                 labeler->pi_loss_vec.clear();
+
+                cerr << "epoch: " << epoch << " / " << labeler->opt.num_epoch() << " : " << filepath << ", buffer: " << labeler->buffer->start_idx << "/" << labeler->opt.buffer_size() << endl;
+    
+                // place this before validation to sync the epoch
+                labeler->epoch(1);   
             }
             
-            // place this before validation to sync the epoch
-            labeler->epoch(1);   
-
             // validation at each validation interval
             // if(epoch % (labeler->opt.validation_interval() * labeler->opt.epoch_per_instance()) == 0 && epoch > labeler->opt.inference_start_epoch())
             // {

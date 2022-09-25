@@ -45,7 +45,7 @@ void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batc
 {        
     if(this->idx >= max_size)
     {
-        cout << "replay buffer index out of bound" << endl;
+        cerr << "replay buffer index out of bound" << endl;
         exit(LOGIC_ERROR);
     }        
     if(this->idx == max_size - 1)
@@ -116,8 +116,9 @@ float PPO::ReplayBufferImpl::finish_epoch(float end_val)
     // compute accumulated discounted reward for MSE
     for(int i = idx - 2; i >= start_idx; i--)
     { 
-        cout << "r[" << i << "]: " << r[i] << "+=" << this->gamma << " * " << r[i+1] << endl;
+        cout << "r[" << i << "]: " << r[i] << "+" << this->gamma << " * " << r[i+1];
         r[i] = r[i] + this->gamma * r[i + 1];
+        cout << " = " << r[i] << endl;
     }
 
     // return accumulated discounted reward
@@ -202,7 +203,7 @@ PPO::SampleBatch PPO::ReplayBufferImpl::get()
         assertm("calling get when epoch is not done", false);
     else
         epoch_done = false;
-    cerr << "start_idx: " << start_idx << ", idx: " << idx << ", idx - start_idx : " << idx - start_idx << endl;
+    
     typedef vector<float> Vf;
     this->adv = vector_norm(this->adv, 0, idx);    
     vector<STATE_ENCODING> s = {this->s.begin(), this->s.begin() + idx};

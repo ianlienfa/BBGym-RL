@@ -96,7 +96,28 @@ Overfitting works on anf, training from 53 -> 40
 * -> 先就小instance來debug看看，reward只要在最後給，給的量是visit的node數，然後現在也只限制只有place
 * 檢查reward的值有沒有變大
 
+* trained anf + awb, seems like after training those two for two epochs, we can get generally better performance on basically most of the instances
 
+* we want to ask:
+1. can we really overfit an instance to get better performance than random?
+2. can we train many instances to get better performance than the model trained on all instances?
+
+* set up early update for those instance that produces too large trajectories 
+    - but since we're just testing whether the model works, remove tremendous trajectory length instances
+    - early update: track the most recent step size, and do early update if start_idx + last_step_size + 5000 > buffer_size
+        - need to test on small instance to see if this largely unstablizes the update
+
+* need to adjust the computation method of avg reward, now uses moving average per epoch, but should be moving average per
+
+### Sep 25
+* simply using the end result for reward evaluation can lead to non-stopping strategy at testing, so the penalty of picker moving should still be there, but penalty now doesn't lead to successful training.
+    - the guess for the fail is the encoding of the state, we encode the partial state to be 0.01 when moving left or right the first time, 0.02 when moving left or right the second time..., however the "start of moving left or right" can happen at many states, so the encoding of possible state can be really large, causing many state unvisited.
+    - solution 1: will it be better that we accumulate the number of taking left/right action and give the reward at the end of the state?
+    - solution 2: will it be better that we accumulate the number of taking left/right action and encode it into the state?
+
+* 可能可以強制改動環境變成只能向左向右移動最多一半contour量的距離，這樣就不會有太多state了
+* 這樣一來reward的移動就不用penalize
+* 然後state encoding要變成是相對的移動量
 
 
 ### 待辦

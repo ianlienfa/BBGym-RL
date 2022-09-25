@@ -17,38 +17,42 @@ struct InputHandler
 {   
     string path;
     std::filesystem::directory_iterator current_file;
+    vector<string> file_list;
+    vector<string>::iterator file_list_it;
     
     InputHandler(string path)
     {
         this->path = path;
         current_file = std::filesystem::directory_iterator(path);
     }
-    string getCurrentFileName()
+    void fill_file_list()
     {
-        return string(current_file->path());
-    }
-    string getNextFileName()
-    {
-        current_file++;
-
-        if(current_file != std::filesystem::end(std::filesystem::directory_iterator(path)))
+        for (const auto & entry : current_file)
         {
-            string filename = string(current_file->path());
-            if(std::filesystem::is_directory(string(current_file->path())))
+            if(entry.is_regular_file())
             {
-                return getNextFileName();
-            }
-            else
-            {
-                return filename;
-            }
+                file_list.push_back(entry.path());
+            }            
+        }
+    }
+    string getNextFileName() // ignore file if not regular and go the start if end is meet
+    {
+        if(file_list.empty())
+        {
+            fill_file_list();
+            file_list_it = file_list.begin();
+            return *file_list_it;
         }
         else
-        {
-            reset();
-            return getNextFileName();
+        {            
+            string path = *file_list_it;
+            file_list_it++;            
+            if(file_list_it == file_list.end())
+            {
+                file_list_it = file_list.begin();
+            }
+            return path;
         }
-        return "";
     }
     void reset()
     {

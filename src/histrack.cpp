@@ -231,6 +231,9 @@ int main(int argc, char* argv[])
         const string piNetPathPrefix = options.path + "/piNet_";
         const string qNetPathPrefix = options.path + "/qNet_";
         int64_t num_epoch = 100;
+        string outfilename = "./" + splitFileName(options.filename) + ".bt";
+        string rm_command = "rm " + outfilename;
+        exec(rm_command.c_str());
         do
         {
             epoch_postfix = to_string(num_epoch) + ".pt";
@@ -262,7 +265,6 @@ int main(int argc, char* argv[])
                 graph = solver.solve(OneRjSumCjNode());                  
             
                 std::ofstream outfile;
-                string outfilename = "./" + splitFileName(options.filename) + ".bt";
                 cerr << "writing in file: " << outfilename << endl;
                 outfile.open(outfilename, std::ios_base::app);    
                 outfile << graph.searched_node_num << endl; // 1
