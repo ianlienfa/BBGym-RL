@@ -22,6 +22,9 @@ public:
     typename list<PriorityQueue<T>>::iterator picker_iter;
     list<PriorityQueue<T>> lst;    
     int picker_steps = 0; // picker step counter trackes the number of steps the picker has taken before a placement
+    static const int picker_step_limit = 5; // picker step limit is the maximum number of steps the picker is allowed to take before a placement
+
+    
 
     PlacementList(){
     }
@@ -37,7 +40,7 @@ public:
     
     void picker_step_reset()
     {
-        // picker_steps = 0;
+        picker_steps = 0;
         picker_iter = current_iter;
         picker_pos = current_pos;
     } 
@@ -47,6 +50,11 @@ public:
         const auto& move_reward_base = move_reward;
         return move_reward_base * picker_steps;
         // return (picker_steps < 10) ? 0 : std::max(move_reward_base * float(pow(2.0, picker_steps - 10)), move_reward_min); // increase negative reward exponentially
+    }
+
+    float reletive_offset() const
+    {
+        return float(picker_pos - current_pos) / float(max_size);
     }
 
     Len size() const{
@@ -72,7 +80,8 @@ public:
     }
     void set_max_size(Len max_size){this->max_size = max_size;}    
     bool empty() const {return lst.empty();}
-    typename list<PriorityQueue<T>>::iterator get_current_iter(){return current_iter;}
+    bool move_limit_met() const {return picker_steps >= picker_step_limit;}
+    typename list<PriorityQueue<T>>::iterator get_current_iter(){return current_iter;}    
     Len left() {   
         GAME_TRACK("left",
         picker_steps++;

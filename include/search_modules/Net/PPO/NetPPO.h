@@ -136,7 +136,7 @@ public:
     vector<float> & vector_norm(vector<float> &vec, int start, int end);
 
     ReplayBufferImpl(int max_size, int batch_size);    
-    int get_traj_size(){if(idx - start_idx == 0){cerr << "traj size = 0, might be calling at a wrong time" << endl; } return idx - start_idx;}
+    int get_traj_size(){if(idx - start_idx == 0){/*cerr << "traj size = 0, might be calling at a wrong time" << endl; */} return idx - start_idx;}
     void push(const PPO::ReplayBufferImpl::PrepArea &raw_batch);
     float finish_epoch(float end_val = 0.0);
     void reset();    

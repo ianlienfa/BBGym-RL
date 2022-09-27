@@ -315,13 +315,12 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
     state_encoding.push_back(current_contour_pointer);
 
     // picker steps
-    cout << "picker_steps: " << this->graph.contours.picker_steps << endl;
-    const float picker_steps = (float(this->graph.contours.picker_steps)) / norm_factor + zero_epsilon;
-    state_encoding.push_back(picker_steps);
+    // cout << "picker_steps: " << this->graph.contours.picker_steps << endl;
+    // const float picker_steps = (float(this->graph.contours.picker_steps)) / norm_factor + zero_epsilon;
+    // state_encoding.push_back(picker_steps);
 
-    // picker_pointer
-    cout << "picker_pointer: " << this->graph.contours.picker_pos << endl;
-    const float current_picker_pos = this->graph.contours.picker_pos / norm_factor + zero_epsilon;
+    // picker_pointer    
+    const float current_picker_pos = float(graph.contours.reletive_offset()) + zero_epsilon;
     state_encoding.push_back(current_picker_pos);
 
     // initialize the state encoding dimension
@@ -333,13 +332,13 @@ vector<float> PPO::StateInput::get_state_encoding_fast(vector<float> &state_enco
 {
     auto idx_end = state_encoding.size() - 1;
 
-    // picker steps
-    const float picker_steps = (float(graph.contours.picker_steps)) / norm_factor + zero_epsilon;
-    state_encoding[idx_end - 1] = picker_steps;
+    // // picker steps
+    // const float picker_steps = (float(graph.contours.picker_steps)) / norm_factor + zero_epsilon;
+    // state_encoding[idx_end - 1] = picker_steps;
 
     // picker pointer
     vector<float> state_encoding_copy = state_encoding;
-    auto current_picker_pos = graph.contours.picker_pos / norm_factor + zero_epsilon;
+    auto current_picker_pos = graph.contours.reletive_offset() + zero_epsilon;
     state_encoding[idx_end] = current_picker_pos;
     cout << "fast state encoding: " << state_encoding << endl;
     return state_encoding;

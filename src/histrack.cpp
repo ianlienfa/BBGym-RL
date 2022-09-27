@@ -99,6 +99,7 @@ enum class ProblemType {
     SingleInstanceInf,
     SingleInstanceBackTrace,
     MultipleInstanceTrain,
+    MultipleInstanceValidate,
 };
 
 std::map<string, vector<string>> parse_args(int argc, char* argv[])
@@ -164,6 +165,21 @@ SolverOptions getSolverOptions(int argc, char* argv[])
             options.path = command.second[1];
             options.filename = command.second[2];
             options.problem_type = ProblemType::SingleInstanceBackTrace;            
+        } 
+        else if(command.first == "-mulval")
+        {
+            // -mulval <trained_epoch> <dir_path> <validation_instance_path>
+            cout << command.second << endl;
+            cout << "command.second.size() = " << command.second.size() << endl;
+            if(command.second.size() != 3)
+            {
+                cout << "Usage: ./executable -bt <trained_epoch> <dir_path> <validation_instance_path>" << endl;
+                exit(1);
+            }                        
+            options.trained_epoch = int64_t(stoi(command.second[0]));            
+            options.path = command.second[1];
+            options.filename = command.second[2];
+            options.problem_type = ProblemType::MultipleInstanceValidate;            
         } 
         else
         {
@@ -274,7 +290,76 @@ int main(int argc, char* argv[])
             num_epoch += 100;
 
         } while (num_epoch <= options.trained_epoch);
+    }
+    else if(options.problem_type == ProblemType::MultipleInstanceValidate)
+    {
+        string epoch_postfix = "";
+        const string piNetPathPrefix = options.path + "/piNet_";
+        const string qNetPathPrefix = options.path + "/qNet_";
+        std::time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());        
+        string outfilename = "./" + splitFileName(options.filename) + "_"+ std::to_string(now_time) + ".bt";
+        InputHandler inputHandler(options.filename);
+        for(int64_t num_epoch = 1000; num_epoch <= options.trained_epoch; num_epoch += 1000)
+        {
+            epoch_postfix = to_string(num_epoch) + ".pt";
+            if(!std::filesystem::exists(qNetPathPrefix + epoch_postfix))
+            {
+                continue;
+            }
+            cerr << "epoch_postfix: " << epoch_postfix << endl;
+            std::shared_ptr<PPO::PPOLabeler> labeler = 
+            std::make_shared<PPO::PPOLabeler>(
+                PPO::PPOLabelerOptions()                
+                    .state_dim(int64_t(PPO::StateInput(OneRjSumCjNode(), OneRjSumCjNode(), OneRjSumCjGraph().set_max_size(max_num_contour)).get_state_encoding(max_num_contour).size()))
+                    .action_dim(4)
+                    .load_q_path(qNetPathPrefix + epoch_postfix)
+                    .load_pi_path(piNetPathPrefix + epoch_postfix)
+                    .q_optim_path("")
+                    .pi_optim_path("")
+                    .max_num_contour(max_num_contour)                             
+                    .buffer_size(5000)
+            );
 
+            /* Inference! */
+            labeler->eval();
+            /* ========== */
+
+            float total_searched_node_num = 0;
+            float total_visited_instance_num = 0;
+            string next_file = inputHandler.getNextFileName();
+            cout << "file list: " << inputHandler.file_list << endl;
+            while(!inputHandler.isEnd())
+            {   
+                next_file = inputHandler.getCurrentFileName();
+                if(!std::filesystem::is_regular_file(next_file))
+                    break;
+                cout << "next_file: " << next_file << endl;
+                if(parse_and_init_oneRjSumCj(next_file))
+                {
+                    OneRjSumCjSearch searcher(labeler);
+                    OneRjSumCjBranch brancher;
+                    OneRjSumCjPrune pruner;
+                    LowerBound lowerbound;
+                    OneRjSumCjGraph graph;
+                    OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
+                    graph = solver.solve(OneRjSumCjNode());                                  
+                    total_searched_node_num += graph.searched_node_num;
+                    total_visited_instance_num += 1;
+                }
+                inputHandler.toNextFileWithEnd();
+            }
+            std::ofstream outfile;
+            cerr << "writing in file: " << outfilename << endl;
+            outfile.open(outfilename, std::ios_base::app);   
+            cout << "total_searched_node_num: " << total_searched_node_num << "total_visited_instance_num: " << total_visited_instance_num << endl;
+            outfile << epoch_postfix << " : " << total_searched_node_num / total_visited_instance_num << endl; // 1
+            outfile.close();
+            
+            cout << "here" << endl;
+            inputHandler.reset();
+            num_epoch += 1000;
+
+        } 
     }
 
 

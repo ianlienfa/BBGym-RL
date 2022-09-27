@@ -5,6 +5,7 @@
 #include "user_def/oneRjSumCjGraph.h"
 #include "search_modules/strategy_providers/Labeler.h"
 #include "search_modules/Net/PPO/NetPPO.h"
+#include <cmath>
 namespace PPO
 {
 struct PPOLabelerOptions{
@@ -84,6 +85,7 @@ public:
     torch::Tensor compute_q_loss(const PPO::Batch &batch_data);
     void reset_instance_trackers();
     void update(PPO::SampleBatch &batch_data); 
+    torch::Tensor step_based_entropy_loss_decorator(torch::Tensor loss, float entropy, float epoch);
     };
 
 }; //namespace: PPO

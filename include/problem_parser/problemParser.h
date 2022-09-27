@@ -35,6 +35,15 @@ struct InputHandler
             }            
         }
     }
+    string getCurrentFileName()
+    {
+        if(file_list_it == file_list.end())
+        {
+            std::cerr << "No more files to read" << endl;
+            return "";
+        }        
+        return (*file_list_it);
+    }
     string getNextFileName() // ignore file if not regular and go the start if end is meet
     {
         if(file_list.empty())
@@ -54,9 +63,30 @@ struct InputHandler
             return path;
         }
     }
+    void toNextFileWithEnd() // ignore file if not regular and go the start if end is meet
+    {
+        if(file_list.empty())
+        {
+            fill_file_list();
+            file_list_it = file_list.begin();
+        }
+        else if(file_list_it == file_list.end())
+        {
+            
+        }
+        else
+        {            
+            file_list_it++;            
+        }
+    }
+    bool isEnd()
+    {
+        return file_list_it == file_list.end();
+    }
     void reset()
     {
         current_file = std::filesystem::directory_iterator(path);
+        file_list_it = file_list.begin();
     }
 };
 bool parse_and_init_oneRjSumCj();

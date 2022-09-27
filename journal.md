@@ -116,8 +116,13 @@ Overfitting works on anf, training from 53 -> 40
     - solution 2: will it be better that we accumulate the number of taking left/right action and encode it into the state?
 
 * 可能可以強制改動環境變成只能向左向右移動最多一半contour量的距離，這樣就不會有太多state了
-* 這樣一來reward的移動就不用penalize
 * 然後state encoding要變成是相對的移動量
+* 這樣一來reward的移動就不用penalize
+* It will be hard for the model to learn at the branch if the prob of meeting that branch is too small, 
+try to introduce epoch-based entropy
+
+
+average random
 
 
 ### 待辦

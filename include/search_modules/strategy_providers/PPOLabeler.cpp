@@ -157,7 +157,7 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
         // increase step
         this->buffer->step() += 1;
 
-        while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT)
+        while(action != PPO::ACTIONS::PLACE && action != PPO::ACTIONS::PLACE_INSERT && (!graph.contours.move_limit_met()))
         {        
             // update buffer (s, a, '', v, logp) -> (s, a, r, v, logp)
             buffer->prep.r() = 0;
@@ -175,6 +175,8 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             {
                 assertm("Invalid action", false);
             }
+            cout << "move action: " << ((action == PPO::ACTIONS::LEFT) ? "left" : "right");
+            cout << " , " << graph.contours.picker_steps << " / " << graph.contours.picker_step_limit << endl;
 
             // get state
             STATE_ENCODING tweaked_state = PPO::StateInput::get_state_encoding_fast(state_flat, graph);
@@ -193,16 +195,15 @@ int64_t PPOLabeler::operator()(::OneRjSumCjNode& node, vector<float>& state_flat
             this->buffer->step() += 1;
         }
 
-        /* ==== ACTION be PLACE or PLACE_INSERT START ==== */
         /* */
-        assertm("Logical invalid action", action == PPO::ACTIONS::PLACE || action == PPO::ACTIONS::PLACE_INSERT);
-
-
-        /* */
-        /* ==== ACTION be PLACE or PLACE_INSERT END ==== */
+        /* ==== ACTION be PLACE or PLACE_INSERT END or left/right that moves too far ==== */
         // execute action
-        if(action == PPO::ACTIONS::PLACE)
+        if(action == PPO::ACTIONS::PLACE || graph.contours.move_limit_met())
         {
+            if(graph.contours.move_limit_met())
+            {
+                cout << "move limit met" << endl;
+            }
             label = graph.contours.place(node);
             return label;
         }
@@ -394,6 +395,15 @@ tuple<torch::Tensor, PPO::ExtraInfo> PPOLabeler::compute_pi_loss(const PPO::Batc
     return std::make_tuple(loss, extra_info);
 }
 
+// making the entropy effect of loss be larger at the beginning
+// torch::Tensor PPOLabeler::step_based_entropy_loss_decorator(torch::Tensor loss, float entropy, float step)
+// {    
+//     cout << "loss: " << loss << endl << "entropy: " << entropy << " step: " << step << " entropy ratio: " <<  (1 - (opt.entropy_lambda() / (log(step) + 1))) << "log(step): " << log(step) << endl;
+//     loss = loss + (entropy * (1 - opt.entropy_lambda() / (log(step) + 1)));
+//     cout << " end loss: " << loss << endl;
+//     return loss;
+// }
+
 torch::Tensor PPOLabeler::compute_q_loss(const PPO::Batch &batch_data)
 {    
     const torch::Tensor &s = batch_data.s;
@@ -430,6 +440,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
     torch::Tensor pi_loss_old, v_loss_old;
     PPO::ExtraInfo info;
     std::tie(pi_loss_old, info) = compute_pi_loss(batch);
+    // pi_loss_old = step_based_entropy_loss_decorator(pi_loss_old, info.entropy, (*this->step));
     v_loss_old = compute_q_loss(batch);
     float pi_loss_old_val = pi_loss_old.item<float>();
     float v_loss_old_val = v_loss_old.item<float>();
@@ -446,6 +457,7 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
         torch::Tensor pi_loss;
         PPO::ExtraInfo info;
         std::tie(pi_loss, info) = compute_pi_loss(batch);
+        // pi_loss = step_based_entropy_loss_decorator(pi_loss, info.entropy, this->epoch());
         // cout << "pi_loss: " << pi_loss.item<float>() << endl;
         float approx_kl = info.approx_kl;        
         if(approx_kl > 1.5 * opt.target_kl())
