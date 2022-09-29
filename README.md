@@ -15,13 +15,18 @@
   * prepare binary for inference
     change to "tester" branch, and compile binary for different labeler 
     move the binaries to current "build" directory and rename them with 
-  * do inference:
+  * do valiation after training and pick the model that performs best
+    ./track -mulval 100000 ../saved_model ../case/case-small/validation > case-small.valid
+  * copy the best model for testing:
+    cp ../saved_model/piNet_41000.pt ../saved_model/inf/piNet.pt
+  * do testing:
     make -j5 main
     move the resulting .pt files to /inf directory
     ./main -d **test directory name**
   * draw:
     change the filename for evaluation in eval.ipynb
     run it
+
 
 * Reproducibility
   * The torch and c++ share the same random seed, which is set in util/config.h with name "RANDOM_SEED"

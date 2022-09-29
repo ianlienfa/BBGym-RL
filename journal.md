@@ -122,7 +122,14 @@ Overfitting works on anf, training from 53 -> 40
 try to introduce epoch-based entropy
 
 
+* change the code to fit the big instances
+* see if we can fit the bigger instance with smaller kl divergence
+
+Two workers
+1. use the trained case-small model as a starting point to train the larger model
+2. 
 average random
+
 
 
 ### 待辦
