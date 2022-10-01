@@ -147,6 +147,15 @@ add_custom_target(cls
     WORKING_DIRECTORY ${PROJECT_PATH}/build
 )
 
+add_custom_target(init    
+    rm -f ../saved_model/*.pt 
+    && cp ../saved_model/init_model/piNet.pt ../saved_model/piNet.pt 
+    && cp ../saved_model/init_model/qNet.pt ../saved_model/qNet.pt
+    && rm -f ../saved_model/*.txt
+    WORKING_DIRECTORY ${PROJECT_PATH}/build
+)
+
+
 
 # enable_testing()
 # add_executable(Gtest src/Gtest.cpp)

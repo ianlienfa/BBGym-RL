@@ -459,7 +459,8 @@ void PPOLabeler::update(PPO::SampleBatch &batch_data)
         std::tie(pi_loss, info) = compute_pi_loss(batch);
         // pi_loss = step_based_entropy_loss_decorator(pi_loss, info.entropy, this->epoch());
         // cout << "pi_loss: " << pi_loss.item<float>() << endl;
-        float approx_kl = info.approx_kl;        
+        float approx_kl = info.approx_kl; 
+        cout << "approx_kl: " << approx_kl << endl;       
         if(approx_kl > 1.5 * opt.target_kl())
         {
             cerr << "Early stopping at step " << (*this->step) << "due to reaching max kl." << endl;

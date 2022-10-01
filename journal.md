@@ -123,11 +123,27 @@ try to introduce epoch-based entropy
 
 
 * change the code to fit the big instances
-* see if we can fit the bigger instance with smaller kl divergence
+    * epoch per update先調成1
+    * 先測試不調KL的，看train 3000個epoch後結果
+    * 然後再調KL，看train 3000個epoch後結果
+    -> currently ran 400 epochs, no big difference between the two
+    * 調完之後沒什麼差別的感覺 -> 測試此功能是否真的會work
 
-Two workers
-1. use the trained case-small model as a starting point to train the larger model
-2. 
+* try fitting 1.txt with smaller target_KL and update number
+    * epoch per update: 5, epochs: 1500, target KL: 0.01 : awbanf_1664525389.bt
+    * epoch per update: 1, epochs: 6000, target KL: 0.01 : awbanf_1664528861.bt
+    * epoch per update: 1, epochs: 6000, target KL: 0.0001, train_q_iter: 80, train_pi_iter: 80
+* 先測試第二種方式能不能overfit 1.txt
+    * epoch per update: 1, epochs: 6000, target KL: 0.00001, 1.txt
+
+
+
+* start fitting medium instances
+
+* see if we can fit the bigger instance with smaller kl divergence
+    Two workers
+    1. use the trained case-small model as a starting point to train the larger model
+    2. 
 average random
 
 

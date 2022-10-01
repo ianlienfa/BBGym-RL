@@ -243,6 +243,7 @@ int main(int argc, char* argv[])
     
     if(options.problem_type == ProblemType::SingleInstanceBackTrace)
     {
+        cerr << "SingleInstanceBackTrace start" << endl;
         string epoch_postfix = "";
         const string piNetPathPrefix = options.path + "/piNet_";
         const string qNetPathPrefix = options.path + "/qNet_";
@@ -293,15 +294,19 @@ int main(int argc, char* argv[])
     }
     else if(options.problem_type == ProblemType::MultipleInstanceValidate)
     {
+        cerr << "MultipleInstanceValidate start" << endl;
         string epoch_postfix = "";
         const string piNetPathPrefix = options.path + "/piNet_";
         const string qNetPathPrefix = options.path + "/qNet_";
         std::time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());        
         string outfilename = "./" + splitFileName(options.filename) + "_"+ std::to_string(now_time) + ".bt";
         InputHandler inputHandler(options.filename);
-        for(int64_t num_epoch = 1000; num_epoch <= options.trained_epoch; num_epoch += 1000)
+
+        cout << "trained_epoch: " << options.trained_epoch << endl;
+        for(int64_t num_epoch = 100; num_epoch <= options.trained_epoch; num_epoch += 100)
         {
             epoch_postfix = to_string(num_epoch) + ".pt";
+            cerr << "attempt to read: " << piNetPathPrefix + epoch_postfix << ", " << qNetPathPrefix + epoch_postfix << endl;
             if(!std::filesystem::exists(qNetPathPrefix + epoch_postfix))
             {
                 continue;
@@ -357,11 +362,14 @@ int main(int argc, char* argv[])
             
             cout << "here" << endl;
             inputHandler.reset();
-            num_epoch += 1000;
+            num_epoch += 100;
 
         } 
     }
-
+    else
+    {
+        cerr << "problem type is not defined" << endl;
+    }
 
 }
 
