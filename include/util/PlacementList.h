@@ -15,6 +15,7 @@ struct PlacementList{
 private:
     Len max_size = numeric_limits<Len>::max();
     bool (*cmpr)(const T &i1, const T &i2) = nullptr;
+    // float past_decision_mul_term = 1.0;
 public:
     Len current_pos;  // now searched position
     Len picker_pos;   // picker position for placement

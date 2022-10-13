@@ -133,10 +133,37 @@ try to introduce epoch-based entropy
     * epoch per update: 5, epochs: 1500, target KL: 0.01 : awbanf_1664525389.bt
     * epoch per update: 1, epochs: 6000, target KL: 0.01 : awbanf_1664528861.bt
     * epoch per update: 1, epochs: 6000, target KL: 0.0001, train_q_iter: 80, train_pi_iter: 80
-* 先測試第二種方式能不能overfit 1.txt
-    * epoch per update: 1, epochs: 6000, target KL: 0.00001, 1.txt
+
+* 先測試第二種方式能不能overfit 1.txt  
+* Test 1 on 1.txt:
+    * clone: epoch per update: 1, epochs: 6000, target KL: 0.00001, 1.txt
+    * medium: epoch per update: 5, epochs: 6000, target KL: 0.01, 1.txt
+    * clone: epoch per update: 1, epochs: 6000, target KL: 0.01, 1.txt
+    * medium: epoch per update: 5, epochs: 6000, target KL: 0.00001, 1.txt
+-> 結論：
+    1. 在同樣update數的情況下，target KL越小可以train得越好
+    2. update數很重要，不夠的話甚至train不太起來（體現在update數1的部分)
+
+Test 2: 想辦法找到一個kl值讓model可以在夠少的update數下被train起來
+    * clone: epoch per update: 1, epochs: 6000, target KL: 1e-8, iter: 80, 1.txt
+    * medium: epoch per update: 1, epochs: 6000, target KL: 1e-6, iter: 80, 1.txt
+結論：1e-8太小了, 1e-6表現的也普普
+
+Test 2-1: 看多加一個update數的結果好多少
+    * clone: epoch per update: 2, epochs: 6000, target KL: 1e-8, iter: 80, 1.txt
+    * medium: epoch per update: 2, epochs: 6000, target KL: 1e-6, iter: 80, 1.txt
+    <!-- * clone: epoch per update: 2, epochs: 6000, target KL: 1e-3, iter: 150, 1.txt -->
+Test 2-2: 看這樣的調整能不能至少勉強勾到update 5的水準
+    * medium: epoch per update: 2, epochs: 12000, target KL: 1e-6, iter: 150, 3.txt
+    * clone: epoch per update: 5, epochs: 6000, target KL: 1e-3, iter: 80, 3.txt
+    -> 感覺現在KL設小一點可以讓model的training比較stable，但不一定train得好
+    * 現在測試到底能不能overfit anf，用1e-4, 150 iter
 
 
+Test 2-3: 
+
+
+* regenerate instance with different kind of categories
 
 * start fitting medium instances
 

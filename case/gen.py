@@ -3,8 +3,8 @@ import random
 import string
 import sys
 
-job_num_min = 5
-job_num_max = 10
+job_num_min = 20
+job_num_max = 30
 size = np.random.randint(job_num_min, job_num_max, size=(1,))[0]
 p = np.random.randint(1, 50, size=(size,))
 r = np.random.randint(1, 50, size=(size,))
