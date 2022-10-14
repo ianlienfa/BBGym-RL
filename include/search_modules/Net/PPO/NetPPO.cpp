@@ -309,6 +309,11 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
     cout << "contour_snap: " << contour_snap << endl;
     state_encoding.insert(state_encoding.end(), make_move_iterator(contour_snap.begin()), make_move_iterator(contour_snap.end()));
 
+    // past decision term
+    float past_decision_term = this->graph.contours.get_past_decision_mul_term();
+    cout << "past_decision_term: " << past_decision_term << endl;
+    state_encoding.push_back(past_decision_term);
+
     // current_pointer
     cout << "current_pointer: " << this->graph.contours.current_pos << endl;
     const float current_contour_pointer = this->graph.contours.current_pos / norm_factor + zero_epsilon;

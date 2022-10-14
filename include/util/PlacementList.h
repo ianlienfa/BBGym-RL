@@ -15,7 +15,7 @@ struct PlacementList{
 private:
     Len max_size = numeric_limits<Len>::max();
     bool (*cmpr)(const T &i1, const T &i2) = nullptr;
-    // float past_decision_mul_term = 1.0;
+    float past_decision_mul_term = 1.0;
 public:
     Len current_pos;  // now searched position
     Len picker_pos;   // picker position for placement
@@ -24,8 +24,9 @@ public:
     list<PriorityQueue<T>> lst;    
     int picker_steps = 0; // picker step counter trackes the number of steps the picker has taken before a placement
     static const int picker_step_limit = 5; // picker step limit is the maximum number of steps the picker is allowed to take before a placement
-
-    
+    static constexpr float past_decision_mul_term_decay = 0.99;
+    static constexpr float past_decision_mul_term_epsilon = 1e-5;
+    float get_past_decision_mul_term() const { return past_decision_mul_term; }
 
     PlacementList(){
     }
@@ -37,6 +38,7 @@ public:
         picker_iter = lst.begin();   
         current_pos = 0;
         picker_pos = 0;
+        past_decision_mul_term = 1.0;
     }
     
     void picker_step_reset()
@@ -141,7 +143,11 @@ public:
         }
         picker_iter->push(element);
         auto placed_pos = picker_pos;
-        picker_step_reset();
+        cout << "relative offset: " << reletive_offset() << endl;
+        cout << "past decision mul term =  tan(past_decision_mul_term (" << past_decision_mul_term << ") * past_decision_mul_term_decay (" << past_decision_mul_term_decay << ") ) + relative_offset + epsilon (" << reletive_offset() + past_decision_mul_term_epsilon << ")" << endl;
+        past_decision_mul_term = (tanh(past_decision_mul_term * past_decision_mul_term_decay) + (picker_pos - current_pos + past_decision_mul_term_epsilon)) / max_size;    
+        cout << "past_decision_mul_term: " << past_decision_mul_term << endl;    
+        picker_step_reset();        
         return placed_pos;
     }
     
