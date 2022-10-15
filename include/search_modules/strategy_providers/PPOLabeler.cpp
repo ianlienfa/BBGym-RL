@@ -391,7 +391,8 @@ tuple<torch::Tensor, PPO::ExtraInfo> PPOLabeler::compute_pi_loss(const PPO::Batc
     }
 
     // add entropy to loss!
-    loss = loss + entropy * opt.entropy_lambda();
+    cout << "epoch: " << epoch() << "entropy lambda: " << opt.entropy_lambda() * (1 - (float(epoch()) / opt.num_epoch())) << endl;
+    loss = loss + entropy * opt.entropy_lambda() * (1 - (float(epoch()) / opt.num_epoch()));
     return std::make_tuple(loss, extra_info);
 }
 
