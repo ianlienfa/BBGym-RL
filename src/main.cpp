@@ -220,7 +220,7 @@ int main(int argc, char* argv[])
                 outfile << exec(plain_rand_cmd.c_str()); // 4
                 outfile.close();
             }
-            labeler->epoch(1);   
+            labeler->epoch(epoch); 
         }
     }
     else if (argc >= 3 && !(strcmp(argv[1], "-d")))
@@ -286,7 +286,7 @@ int main(int argc, char* argv[])
                 outfile.close();
             }
 
-            labeler->epoch(1);   
+            labeler->epoch(epoch);
         }         
     }
 }
