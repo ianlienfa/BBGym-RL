@@ -173,6 +173,9 @@ Test 2-3:
     2. 
 average random
 
+maybe try adjusting the contour encoding, for better flexibility
+
+
 
 
 ### 待辦

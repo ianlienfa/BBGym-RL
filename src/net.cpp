@@ -184,19 +184,16 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(15000)
+                .num_epoch(100000)
                 .inference_start_epoch(1000)
-                .epoch_per_instance(20)
+                .epoch_per_instance(10)
                 .epochs_per_update(5)
                 .validation_interval(20)
-                .entropy_lambda(0.3)                
+                .entropy_lambda(1)                
                 .lr_pi(V_LR_PI)      
                 .lr_q(V_LR_Q)                
                 .steps_per_epoch(100000)             
-                .buffer_size(200000)
-                .target_kl(1e-4)
-                .train_pi_iter(150)
-                .train_q_iter(150)
+                .buffer_size(150000)
         );
     
     /* validate */
@@ -364,7 +361,7 @@ int main(int argc, char* argv[])
                 }
 
                 cerr << "epoch: " << epoch << " / " << labeler->opt.num_epoch() << ", buffer: " << labeler->buffer->start_idx << "/" << labeler->opt.buffer_size() << endl;
-                labeler->epoch(1);
+                labeler->epoch(epoch);
             }
 
             #if INF_MODE == 1
@@ -461,7 +458,7 @@ int main(int argc, char* argv[])
                 cerr << "epoch: " << epoch << " / " << labeler->opt.num_epoch() << " : " << filepath << ", buffer: " << labeler->buffer->start_idx << "/" << labeler->opt.buffer_size() << endl;
     
                 // place this before validation to sync the epoch
-                labeler->epoch(1);   
+                labeler->epoch(epoch);   
             }
             
             // validation at each validation interval

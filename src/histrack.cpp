@@ -132,6 +132,41 @@ struct SolverOptions
     string filename = "";
     ProblemType problem_type = ProblemType::NullType;
     int64_t trained_epoch;
+    bool average = false;
+    int64_t avg_quant = 10;        
+};
+
+struct AvgCounter
+{
+    int quant = 0;    
+    int count = 0;
+    float accum = 0;
+    AvgCounter(int64_t quant): quant(quant) {}
+    void add(float val)
+    {        
+        cout << "adding " << val << " to avg counter: " << count << " / " << quant << endl;
+        count++;
+        accum += val;
+    }
+    bool is_full()
+    {
+        return count == quant;
+    }
+    float_t get_avg_and_reset()
+    {
+        if(count < quant)
+        {
+            cout << "Warning: avg counter is not full" << endl;
+            exit(1);
+        }
+        else
+        {            
+            float avg = accum / quant;
+            count = 0;
+            accum = 0;
+            return avg;
+        }
+    }
 };
 
 
@@ -141,6 +176,20 @@ SolverOptions getSolverOptions(int argc, char* argv[])
     auto commands = parse_args(argc, argv);
     for(auto &command : commands)
     {
+        if(command.first == "-avg")
+        {
+            options.average = true;
+            if(command.second.size() == 1)
+            {
+                auto is_num = [](const std::string &s) {
+                    return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
+                };
+                if(is_num(command.second[0]))
+                {
+                    options.avg_quant = stoi(command.second[0]);
+                }
+            }
+        }
         if(command.first == "-f")
         {
             if(command.second.size() != 1)
@@ -194,6 +243,11 @@ SolverOptions getSolverOptions(int argc, char* argv[])
 int main(int argc, char* argv[])
 {                
     SolverOptions options = getSolverOptions(argc, argv);
+    AvgCounter* avg_counter = nullptr;
+    if(options.average)
+    {
+        avg_counter = new AvgCounter(options.avg_quant);
+    }
 
     OneRjSumCjPrune::prune_funcs = {
         prune__OneRjSumCj__LU_AND_SAL__Theorem1
@@ -247,7 +301,7 @@ int main(int argc, char* argv[])
         string epoch_postfix = "";
         const string piNetPathPrefix = options.path + "/piNet_";
         const string qNetPathPrefix = options.path + "/qNet_";
-        int64_t num_epoch = 100;
+        int64_t num_epoch = 100;        
         string outfilename = "./" + splitFileName(options.filename) + ".bt";
         string rm_command = "rm " + outfilename;
         exec(rm_command.c_str());
@@ -281,11 +335,26 @@ int main(int argc, char* argv[])
                 OneRjSumCj_engine solver(graph, searcher, brancher, pruner, lowerbound); 
                 graph = solver.solve(OneRjSumCjNode());                  
             
-                std::ofstream outfile;
-                cerr << "writing in file: " << outfilename << endl;
-                outfile.open(outfilename, std::ios_base::app);    
-                outfile << graph.searched_node_num << endl; // 1
-                outfile.close();
+                if(options.average)
+                {
+                    avg_counter->add(graph.searched_node_num);
+                    if(avg_counter->is_full())
+                    {
+                        std::ofstream outfile;
+                        cerr << "writing in file: " << outfilename << endl;
+                        outfile.open(outfilename, std::ios_base::app);    
+                        outfile << avg_counter->get_avg_and_reset() << endl;
+                        outfile.close();
+                    }
+                }
+                else
+                {
+                    std::ofstream outfile;
+                    cerr << "writing in file: " << outfilename << endl;
+                    outfile.open(outfilename, std::ios_base::app);    
+                    outfile << graph.searched_node_num << endl; // 1
+                    outfile.close();
+                }
             }
 
             num_epoch += 100;
@@ -353,14 +422,28 @@ int main(int argc, char* argv[])
                 }
                 inputHandler.toNextFileWithEnd();
             }
-            std::ofstream outfile;
-            cerr << "writing in file: " << outfilename << endl;
-            outfile.open(outfilename, std::ios_base::app);   
-            cout << "total_searched_node_num: " << total_searched_node_num << "total_visited_instance_num: " << total_visited_instance_num << endl;
-            outfile << epoch_postfix << " : " << total_searched_node_num / total_visited_instance_num << endl; // 1
-            outfile.close();
-            
-            cout << "here" << endl;
+            if(options.average)
+            {
+                avg_counter->add(total_searched_node_num / total_visited_instance_num);
+                if(avg_counter->is_full())
+                {
+                    std::ofstream outfile;
+                    cerr << "writing in file: " << outfilename << endl;
+                    outfile.open(outfilename, std::ios_base::app);    
+                    outfile << avg_counter->get_avg_and_reset() << endl;
+                    outfile.close();
+                }
+            }
+            else
+            {
+                std::ofstream outfile;
+                cerr << "writing in file: " << outfilename << endl;
+                outfile.open(outfilename, std::ios_base::app);   
+                cout << "total_searched_node_num: " << total_searched_node_num << "total_visited_instance_num: " << total_visited_instance_num << endl;
+                outfile << epoch_postfix << " : " << total_searched_node_num / total_visited_instance_num << endl; // 1
+                outfile.close();
+            }
+        
             inputHandler.reset();
             // num_epoch += 100;
 

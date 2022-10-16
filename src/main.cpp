@@ -169,7 +169,7 @@ int main(int argc, char* argv[])
                 .q_optim_path(qOptimPath)
                 .pi_optim_path(piOptimPath)
                 .max_num_contour(max_num_contour)     
-                .num_epoch(20) 
+                .num_epoch(50) 
                 .inference_start_epoch(1)
                 .entropy_lambda(1)                
                 .lr_pi(1e-5*0.3)      
@@ -180,6 +180,9 @@ int main(int argc, char* argv[])
     
     if (argc >= 3 && !(strcmp(argv[1], "-f")))
     {              
+        vector<int> strategy_searched_nodes;
+        vector<int> strategy_won = vector<int>(4);
+        float total_trials = 0;
         int rand_seed = RANDOM_SEED;
         torch::manual_seed(RANDOM_SEED);    
         cerr << "Random seed: " << rand_seed << endl;
@@ -213,18 +216,33 @@ int main(int argc, char* argv[])
                 std::ofstream outfile;
                 string filename = "./" + std::to_string(now_time) + "." + filepath.substr(filepath.find_last_of("/") + 1);;
                 cerr << "writing in file: " << filename << endl;
-                outfile.open(filename, std::ios_base::app);    
+                outfile.open(filename, std::ios_base::app);   
+                strategy_searched_nodes[0] = graph.searched_node_num;
+                strategy_searched_nodes[1] = stoi(exec(plain_bfs_cmd.c_str()));
+                strategy_searched_nodes[2] = stoi(exec(plain_level_cmd.c_str()));
+                strategy_searched_nodes[3] = stoi(exec(plain_rand_cmd.c_str()));
                 outfile << graph.searched_node_num << endl; // 1
-                outfile << exec(plain_bfs_cmd.c_str()); // 2
-                outfile << exec(plain_level_cmd.c_str()); // 3
-                outfile << exec(plain_rand_cmd.c_str()); // 4
+                outfile << strategy_searched_nodes[1]; // 2
+                outfile << strategy_searched_nodes[2]; // 3
+                outfile << strategy_searched_nodes[3]; // 4
+                strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
+                total_trials++;
                 outfile.close();
             }
             labeler->epoch(epoch); 
         }
+        auto percentage = [](int val, int total_trials) { return (float)val / total_trials; };
+        cerr << "----- summary: -----" << endl;
+        cerr << "net: " << percentage(strategy_won[0], total_trials) << "%" << endl;
+        cerr << "bfs: " << percentage(strategy_won[1], total_trials) << "%" << endl;
+        cerr << "level: " << percentage(strategy_won[2], total_trials) << "%" << endl;
+        cerr << "rand: " << percentage(strategy_won[3], total_trials) << "%" << endl;
     }
     else if (argc >= 3 && !(strcmp(argv[1], "-d")))
     {        
+        vector<int> strategy_searched_nodes = vector<int>(4);
+        vector<int> strategy_won = vector<int>(4);
+        float total_trials = 0;
         int rand_seed = RANDOM_SEED;
         torch::manual_seed(RANDOM_SEED);    
         cerr << "Random seed: " << rand_seed << endl;
@@ -278,16 +296,29 @@ int main(int argc, char* argv[])
                 std::ofstream outfile;
                 string filename = "./" + std::to_string(now_time) + "/" + filepath.substr(filepath.find_last_of("/") + 1);;
                 cerr << "writing in file: " << filename << endl;
-                outfile.open(filename, std::ios_base::app);    
+                outfile.open(filename, std::ios_base::app);   
+                strategy_searched_nodes[0] = graph.searched_node_num;
+                strategy_searched_nodes[1] = stoi(exec(plain_bfs_cmd.c_str()));
+                strategy_searched_nodes[2] = stoi(exec(plain_level_cmd.c_str()));
+                strategy_searched_nodes[3] = stoi(exec(plain_rand_cmd.c_str()));
                 outfile << graph.searched_node_num << endl; // 1
-                outfile << exec(plain_bfs_cmd.c_str()); // 2
-                outfile << exec(plain_level_cmd.c_str()); // 3
-                outfile << exec(plain_rand_cmd.c_str()); // 4
+                outfile << strategy_searched_nodes[1]; // 2
+                outfile << strategy_searched_nodes[2]; // 3
+                outfile << strategy_searched_nodes[3]; // 4
+                strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
+                total_trials++;
                 outfile.close();
             }
 
             labeler->epoch(epoch);
         }         
+        auto percentage = [](int val, int total_trials) { return (float)val / total_trials; };
+        cerr << "----- summary: -----" << endl;
+        cerr << std::setprecision(3);
+        cerr << "net: " << percentage(strategy_won[0], total_trials) << "%" << endl;
+        cerr << "bfs: " << percentage(strategy_won[1], total_trials) << "%" << endl;
+        cerr << "level: " << percentage(strategy_won[2], total_trials) << "%" << endl;
+        cerr << "rand: " << percentage(strategy_won[3], total_trials) << "%" << endl;
     }
 }
 
