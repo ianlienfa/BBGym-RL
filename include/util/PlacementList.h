@@ -16,6 +16,8 @@ private:
     Len max_size = numeric_limits<Len>::max();
     bool (*cmpr)(const T &i1, const T &i2) = nullptr;
     float past_decision_mul_term = 1.0;
+    vector<T> contour_leaders;
+    bool changed_flag = false;
 public:
     Len current_pos;  // now searched position
     Len picker_pos;   // picker position for placement
@@ -27,6 +29,12 @@ public:
     static constexpr float past_decision_mul_term_decay = 0.99;
     static constexpr float past_decision_mul_term_epsilon = 1e-5;
     float get_past_decision_mul_term() const { return past_decision_mul_term; }
+    const vector<T> &get_contour_leaders() const { return contour_leaders; }
+    const vector<T> &get_contour_detailed_snap() const { return contour_leaders; }
+    const bool contour_is_changed() const { return changed_flag; }
+    void acknowledge_change() { changed_flag = false; }
+    const Len get_current_pos() const { return current_pos; }
+
 
     PlacementList(){
     }
@@ -38,7 +46,7 @@ public:
         picker_iter = lst.begin();   
         current_pos = 0;
         picker_pos = 0;
-        past_decision_mul_term = 1.0;
+        past_decision_mul_term = 1.0;        
     }
     
     void picker_step_reset()
@@ -81,7 +89,7 @@ public:
     bool max_size_set() const {
         return max_size != numeric_limits<Len>::max();
     }
-    void set_max_size(Len max_size){this->max_size = max_size;}    
+    void set_max_size(Len max_size){this->max_size = max_size; contour_leaders.assign(max_size, T());}    
     bool empty() const {return lst.empty();}
     bool move_limit_met() const {return picker_steps >= picker_step_limit;}
     typename list<PriorityQueue<T>>::iterator get_current_iter(){return current_iter;}    
@@ -137,23 +145,35 @@ public:
     }
 
     Len _place(T element){
+        // if(changed_flag)
+        // {
+        //     cerr << "the change on contour is not synced with the current snapshot" << endl;
+        //     assert(false);
+        // }
+        for(auto iter = lst.begin(); iter != lst.end(); iter++){
+            iter->bst_print();
+        }
         if(cmpr == nullptr)
         {
             assertm("comparator not set, call init() before calling place", false);
         }
         picker_iter->push(element);
+        changed_flag = true;
         auto placed_pos = picker_pos;
+        cout << "placing at " << placed_pos << endl;
         cout << "relative offset: " << reletive_offset() << endl;
         cout << "past decision mul term =  tan(past_decision_mul_term (" << past_decision_mul_term << ") * past_decision_mul_term_decay (" << past_decision_mul_term_decay << ") ) + relative_offset + epsilon (" << reletive_offset() + past_decision_mul_term_epsilon << ")" << endl;
         past_decision_mul_term = (tanh(past_decision_mul_term * past_decision_mul_term_decay) + (picker_pos - current_pos + past_decision_mul_term_epsilon)) / max_size;    
-        cout << "past_decision_mul_term: " << past_decision_mul_term << endl;    
-        picker_step_reset();        
+        cout << "past_decision_mul_term: " << past_decision_mul_term << endl;   
+        contour_leaders[placed_pos] = picker_iter->top();
+        picker_step_reset();                
         return placed_pos;
     }
     
     Len place(T element){
         GAME_TRACK("place",
         Len picker_pos = _place(element);
+        cout << contour_leaders << endl;        
         );
         return picker_pos;
     }
@@ -170,7 +190,7 @@ public:
         // if current contour is empty, directly place it in
         if(picker_iter->empty()) // happens when intended to place in the contour that the parent is poped from
         {
-            picker_iter->push(element);            
+            _place(element);
             return current_pos;
         }
 
@@ -209,7 +229,7 @@ public:
         cout << "pushing element: " << element << endl;
         #endif
         auto placed_pos = _place(std::move(element));
-        picker_step_reset();
+        // picker_step_reset();
         );
         return placed_pos;
     }

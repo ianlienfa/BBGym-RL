@@ -72,13 +72,14 @@ struct StateInput
 {
     constexpr static const float norm_factor = 1e3;
     constexpr static const float zero_epsilon = 1e-11;
+    vector<vector<float>> contour_snapshot_static;
 
     const OneRjSumCjNode &node_parent;   
     const OneRjSumCjNode &node;   
     const OneRjSumCjGraph &graph;
     int state_dim = 0;
     StateInput(const OneRjSumCjNode &node_parent, const OneRjSumCjNode &node, const OneRjSumCjGraph &graph) : node_parent(node_parent), node(node), graph(graph) {}
-    vector<float> flatten_and_norm(const OneRjSumCjNode &node);
+    static vector<float> flatten_and_norm(const ::OneRjSumCjNode &node, const ::OneRjSumCjGraph &graph);
     vector<float> get_state_encoding(int max_num_contour, bool get_terminal = false);
     static vector<float> get_state_encoding_fast(vector<float> &state_encoding, ::OneRjSumCjGraph &graph);
 };
