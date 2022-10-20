@@ -38,7 +38,7 @@ struct OneRjSumCjGraph: SearchGraph
     vector<deque<OneRjSumCjNode>> contours;
     int current_level;
 #elif (SEARCH_STRATEGY == searchOneRjSumCj_CBFS_LIST)
-    PlacementList<OneRjSumCjNode, int64_t> contours;
+    PlacementList<OneRjSumCjNode, int64_t> contours;    
 #endif
 
     // dynamic during search
@@ -78,6 +78,50 @@ struct OneRjSumCjGraph: SearchGraph
     vector<float> get_contour_snapshot() const
     {
         return contours.get_snapshot();
+    }    
+    vector<float> get_contour_detailed_snapshot(vector<float> (*node_flatten_func)(const OneRjSumCjNode &node, const OneRjSumCjGraph &graph), vector<vector<float>> &contour_snapshot_static) const 
+    {
+        vector<float> contour_snapshot;
+        vector<float> contour_snapshot_valid;
+        const vector<OneRjSumCjNode> &contour_win = contours.get_contour_leaders();        
+        if(contour_snapshot_static.empty())
+        {
+            for(int i = 0; i < contour_win.size(); i++){
+                vector<float> node_snap = node_flatten_func(contour_win[i], *this);           
+                contour_snapshot_static.push_back(node_snap);
+                cout << "node: " << contour_win[i] << endl;
+                cout << "node_snap: " << node_snap << endl;
+            }
+        }
+        else
+        {
+            int current_pos = contours.get_current_pos();
+            contour_snapshot_static[current_pos] = node_flatten_func(contour_win[current_pos], *this);
+        }
+
+        // for(int i = 0; i < contour_win.size(); i++){
+        //     vector<float> node_snap = node_flatten_func(contour_win[i], *this);           
+        //     contour_snapshot_valid.insert(contour_snapshot_valid.end(), node_snap.begin(), node_snap.end());
+        //     cout << "node: " << contour_win[i] << endl;
+        //     cout << "node_snap: " << node_snap << endl;
+        // }
+
+        for(int i = 0; i < contour_snapshot_static.size(); i++){
+            contour_snapshot.insert(contour_snapshot.end(), contour_snapshot_static[i].begin(), contour_snapshot_static[i].end());
+        }
+
+        // validate
+        // for(int i = 0; i < contour_snapshot.size(); i++){
+        //     if(contour_snapshot[i] != contour_snapshot_valid[i]){
+        //         cerr << "Error: contour_snapshot[i] != contour_snapshot_valid[i]" << endl;
+        //         cerr << "contour_snapshot: " << contour_snapshot << endl;
+        //         cerr << "contour_snapshot_valid: " << contour_snapshot_valid << endl;
+        //         exit(INVALID_INPUT);
+        //     }
+        // }
+        
+        cout << "contour_snapshot: " << contour_snapshot << endl;
+        return contour_snapshot;
     }    
     OneRjSumCjGraph& set_max_size(int max_num_contour){
         contours.set_max_size(max_num_contour);

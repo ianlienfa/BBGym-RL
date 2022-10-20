@@ -175,7 +175,8 @@ average random
 
 maybe try adjusting the contour encoding, for better flexibility
 
-
+* 小心_place那邊的bug造成past計算錯誤
+* 小心placement的bug
 
 
 ### 待辦

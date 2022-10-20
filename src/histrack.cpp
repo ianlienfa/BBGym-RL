@@ -372,7 +372,7 @@ int main(int argc, char* argv[])
         InputHandler inputHandler(options.filename);
 
         cout << "trained_epoch: " << options.trained_epoch << endl;
-        for(int64_t num_epoch = 1000; num_epoch <= options.trained_epoch; num_epoch += 1000)
+        for(int64_t num_epoch = 100; num_epoch <= options.trained_epoch; num_epoch += 100)
         {
             epoch_postfix = to_string(num_epoch) + ".pt";
             cerr << "attempt to read: " << piNetPathPrefix + epoch_postfix << ", " << qNetPathPrefix + epoch_postfix << endl;

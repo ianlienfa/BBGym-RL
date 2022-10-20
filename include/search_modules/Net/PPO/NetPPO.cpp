@@ -300,12 +300,12 @@ vector<float> PPO::StateInput::get_state_encoding(int max_num_contour, bool get_
     }
     
     // node state
-    vector<float> current_node_state = flatten_and_norm(this->node);
+    vector<float> current_node_state = flatten_and_norm(this->node, this->graph);
     cout << "current_node_state: " << current_node_state << endl;
     state_encoding.insert(state_encoding.end(), make_move_iterator(current_node_state.begin()), make_move_iterator(current_node_state.end()));
 
     // contour state
-    vector<float> contour_snap = this->graph.get_contour_snapshot();
+    vector<float> contour_snap = this->graph.get_contour_detailed_snapshot(PPO::StateInput::flatten_and_norm, contour_snapshot_static);
     cout << "contour_snap: " << contour_snap << endl;
     state_encoding.insert(state_encoding.end(), make_move_iterator(contour_snap.begin()), make_move_iterator(contour_snap.end()));
 
@@ -351,7 +351,7 @@ vector<float> PPO::StateInput::get_state_encoding_fast(vector<float> &state_enco
     return state_encoding;
 }
 
-vector<float> PPO::StateInput::flatten_and_norm(const OneRjSumCjNode &node)
+vector<float> PPO::StateInput::flatten_and_norm(const OneRjSumCjNode &node, const OneRjSumCjGraph &graph)
 {   
     float state_processed_rate = 0.0,
         norm_lb = 0.0,
