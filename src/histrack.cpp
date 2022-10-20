@@ -133,7 +133,8 @@ struct SolverOptions
     ProblemType problem_type = ProblemType::NullType;
     int64_t trained_epoch;
     bool average = false;
-    int64_t avg_quant = 10;        
+    int64_t avg_quant = 10;  
+    int64_t start_epoch = 100;      
 };
 
 struct AvgCounter
@@ -187,6 +188,19 @@ SolverOptions getSolverOptions(int argc, char* argv[])
                 if(is_num(command.second[0]))
                 {
                     options.avg_quant = stoi(command.second[0]);
+                }
+            }
+        }
+        if(command.first == "-st")
+        {            
+            if(command.second.size() == 1)
+            {
+                auto is_num = [](const std::string &s) {
+                    return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
+                };
+                if(is_num(command.second[0]))
+                {
+                    options.start_epoch = stoi(command.second[0]);
                 }
             }
         }
@@ -301,7 +315,7 @@ int main(int argc, char* argv[])
         string epoch_postfix = "";
         const string piNetPathPrefix = options.path + "/piNet_";
         const string qNetPathPrefix = options.path + "/qNet_";
-        int64_t num_epoch = 100;        
+        int64_t num_epoch = options.start_epoch;        
         string outfilename = "./" + splitFileName(options.filename) + ".bt";
         string rm_command = "rm " + outfilename;
         exec(rm_command.c_str());
@@ -372,7 +386,7 @@ int main(int argc, char* argv[])
         InputHandler inputHandler(options.filename);
 
         cout << "trained_epoch: " << options.trained_epoch << endl;
-        for(int64_t num_epoch = 100; num_epoch <= options.trained_epoch; num_epoch += 100)
+        for(int64_t num_epoch = options.start_epoch; num_epoch <= options.trained_epoch; num_epoch += 100)
         {
             epoch_postfix = to_string(num_epoch) + ".pt";
             cerr << "attempt to read: " << piNetPathPrefix + epoch_postfix << ", " << qNetPathPrefix + epoch_postfix << endl;

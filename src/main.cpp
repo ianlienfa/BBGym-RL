@@ -222,9 +222,9 @@ int main(int argc, char* argv[])
                 strategy_searched_nodes[2] = stoi(exec(plain_level_cmd.c_str()));
                 strategy_searched_nodes[3] = stoi(exec(plain_rand_cmd.c_str()));
                 outfile << graph.searched_node_num << endl; // 1
-                outfile << strategy_searched_nodes[1]; // 2
-                outfile << strategy_searched_nodes[2]; // 3
-                outfile << strategy_searched_nodes[3]; // 4
+                outfile << strategy_searched_nodes[1] << endl; // 2
+                outfile << strategy_searched_nodes[2] << endl; // 3
+                outfile << strategy_searched_nodes[3]<< endl; // 4
                 strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
                 total_trials++;
                 outfile.close();
@@ -302,9 +302,9 @@ int main(int argc, char* argv[])
                 strategy_searched_nodes[2] = stoi(exec(plain_level_cmd.c_str()));
                 strategy_searched_nodes[3] = stoi(exec(plain_rand_cmd.c_str()));
                 outfile << graph.searched_node_num << endl; // 1
-                outfile << strategy_searched_nodes[1]; // 2
-                outfile << strategy_searched_nodes[2]; // 3
-                outfile << strategy_searched_nodes[3]; // 4
+                outfile << strategy_searched_nodes[1] << endl; // 2
+                outfile << strategy_searched_nodes[2] << endl; // 3
+                outfile << strategy_searched_nodes[3] << endl; // 4
                 strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
                 total_trials++;
                 outfile.close();
