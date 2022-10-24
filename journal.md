@@ -147,6 +147,10 @@ try to introduce epoch-based entropy
 average random
 
 
+* what will happen if long term memory and less contour configuration is added
+* will lstm make it even harder for similar state to be visited?
+* what about 在 encoding 裡面自己加入類似 lstm 的 encoding, 比如說做前20個step的移動方式紀錄，然後把這個當作一個state的一部分
+
 
 ### 待辦
 * 先回去試著overfit單一instance (可以做到！) (done)
