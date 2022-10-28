@@ -222,9 +222,9 @@ int main(int argc, char* argv[])
                 strategy_searched_nodes[2] = stoi(exec(plain_level_cmd.c_str()));
                 strategy_searched_nodes[3] = stoi(exec(plain_rand_cmd.c_str()));
                 outfile << graph.searched_node_num << endl; // 1
-                outfile << strategy_searched_nodes[1] << endl; // 2
-                outfile << strategy_searched_nodes[2] << endl; // 3
-                outfile << strategy_searched_nodes[3]<< endl; // 4
+                outfile << strategy_searched_nodes[1]; // 2
+                outfile << strategy_searched_nodes[2]; // 3
+                outfile << strategy_searched_nodes[3]; // 4
                 strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
                 total_trials++;
                 outfile.close();
@@ -242,6 +242,7 @@ int main(int argc, char* argv[])
     {        
         vector<int> strategy_searched_nodes = vector<int>(4);
         vector<int> strategy_won = vector<int>(4);
+        vector<float> best_worst_gaps;
         float total_trials = 0;
         int rand_seed = RANDOM_SEED;
         torch::manual_seed(RANDOM_SEED);    
@@ -304,10 +305,13 @@ int main(int argc, char* argv[])
                 outfile << graph.searched_node_num << endl; // 1
                 outfile << strategy_searched_nodes[1] << endl; // 2
                 outfile << strategy_searched_nodes[2] << endl; // 3
-                outfile << strategy_searched_nodes[3] << endl; // 4
-                strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
-                total_trials++;
+                outfile << strategy_searched_nodes[3]<< endl; // 4
                 outfile.close();
+                strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
+                float largest = *std::max_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end());
+                float smallest = *std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end());
+                best_worst_gaps.push_back((largest - smallest) / smallest);
+                total_trials++;
             }
 
             labeler->epoch(epoch);
@@ -318,7 +322,8 @@ int main(int argc, char* argv[])
         cerr << "net: " << percentage(strategy_won[0], total_trials) << "%" << endl;
         cerr << "bfs: " << percentage(strategy_won[1], total_trials) << "%" << endl;
         cerr << "level: " << percentage(strategy_won[2], total_trials) << "%" << endl;
-        cerr << "rand: " << percentage(strategy_won[3], total_trials) << "%" << endl;
+        cerr << "rand: " << percentage(strategy_won[3], total_trials) << "%" << endl;        
+        cerr << "best/worst gap: " << std::accumulate(best_worst_gaps.begin(), best_worst_gaps.end(), 0.0) / best_worst_gaps.size() << endl;
     }
 }
 
