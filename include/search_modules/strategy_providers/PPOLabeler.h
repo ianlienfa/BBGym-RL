@@ -68,7 +68,7 @@ public:
     // Trackers tracks training state
     enum LabelerState {UNDEFINED, TRAIN_RUNNING, TRAIN_EPOCH_END, INFERENCE, TESTING} labeler_state;    
     BBARG(PPOLabeler, int64_t, update_count, 0);
-    BB_FUNC_ARG(PPOLabeler, int64_t, epoch, 0, [&](int64_t value){this->per_instance_epoch += value; cout << "per instance epoch: " << this->per_instance_epoch << endl;});
+    BB_FUNC_ARG(PPOLabeler, int64_t, epoch, 0, [&](int64_t value){this->per_instance_epoch += 1; cout << "per instance epoch: " << this->per_instance_epoch << endl;});
 
     // contour status tracker
     BBARG(PPOLabeler, int64_t, current_contour_pointer, 0);    
