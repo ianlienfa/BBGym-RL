@@ -1,9 +1,10 @@
 #include "search_modules/Net/PPO/NetPPO.h"
 
-PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size, int batch_size) {
+PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size, int batch_size, bool entend_enable) {
     this->gamma = 0.9995;
     this->lambda = 0.95;
     this->max_size = max_size;
+    this->extend_enable = entend_enable;
     // this->batch_size = batch_size;
     this->idx = 0;    
     this->start_idx = 0;
@@ -17,6 +18,18 @@ PPO::ReplayBufferImpl::ReplayBufferImpl(int max_size, int batch_size) {
     ret.resize(max_size);
     logp.resize(max_size);
     this->reset();
+}
+
+void PPO::ReplayBufferImpl::buffer_extend()
+{
+    this->max_size = this->max_size * 2;
+    s.resize(max_size);
+    a.resize(max_size);
+    r.resize(max_size);
+    val.resize(max_size);
+    adv.resize(max_size);    
+    ret.resize(max_size);
+    logp.resize(max_size);
 }
 
 bool PPO::ReplayBufferImpl::safe_to_submit()
@@ -43,6 +56,15 @@ bool PPO::ReplayBufferImpl::safe_to_submit()
 
 void PPO::ReplayBufferImpl::push(const PPO::ReplayBufferImpl::PrepArea &raw_batch)
 {        
+    if(extend_enable)
+    {
+        if(this->idx >= (this->max_size * 0.9))
+        {
+            this->buffer_extend();            
+            cerr << this->idx << " / " << this->max_size << " , buffer too small, extended to " << this->max_size << endl;
+        }
+    }
+
     if(this->idx >= max_size)
     {
         cerr << "replay buffer index out of bound" << endl;

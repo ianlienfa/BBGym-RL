@@ -11,7 +11,7 @@ PPOLabeler::PPOLabeler(PPO::PPOLabelerOptions options) :
     assertm("epoch_per_instance must be divisible by epochs_per_update", (opt.epoch_per_instance() % opt.epochs_per_update() == 0));
 
     // set up buffer
-    buffer = std::make_shared<PPO::ReplayBufferImpl>(opt.buffer_size(), opt.max_num_contour());
+    buffer = std::make_shared<PPO::ReplayBufferImpl>(opt.buffer_size(), opt.max_num_contour(), opt.extendable_buffer());
 
     // set up MLP    
     net = std::make_shared<NetPPOImpl>(NetPPOOptions({

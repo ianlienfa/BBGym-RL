@@ -37,6 +37,7 @@ struct PPOLabelerOptions{
     BBARG(PPOLabelerOptions, string, pi_optim_path, "");
 
     BBARG(PPOLabelerOptions, int64_t, buffer_size, 5000);
+    BBARG(PPOLabelerOptions, bool, extendable_buffer, true);
     BBARG(PPOLabelerOptions, int64_t, max_num_contour, 100);
 };
 

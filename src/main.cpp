@@ -149,9 +149,18 @@ int main(int argc, char* argv[])
     string qOptimPath = QOptimPathInf;
     string piOptimPath = PiOptimPathInf;
     if(!std::filesystem::exists(qNetPath))
+    {
         qNetPath = "";
+        cerr << "qNet model for evaluation not exist" << endl;
+        exit(1);
+    }
+
     if(!std::filesystem::exists(piNetPath))
+    {
         piNetPath = "";
+        cerr << "qNet model for evaluation not exist" << endl;
+        exit(1);
+    }
     if(!std::filesystem::exists(qOptimPath))
         qOptimPath = "";
     if(!std::filesystem::exists(piOptimPath))
@@ -310,7 +319,9 @@ int main(int argc, char* argv[])
                 strategy_won[std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end()) - strategy_searched_nodes.begin()] += 1;
                 float largest = *std::max_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end());
                 float smallest = *std::min_element(strategy_searched_nodes.begin(), strategy_searched_nodes.end());
-                best_worst_gaps.push_back((largest - smallest) / smallest);
+
+                // only compute the comparison of net and worst strategy                
+                best_worst_gaps.push_back((largest - strategy_searched_nodes[0]) / largest);
                 total_trials++;
             }
 
@@ -323,7 +334,8 @@ int main(int argc, char* argv[])
         cerr << "bfs: " << percentage(strategy_won[1], total_trials) << "%" << endl;
         cerr << "level: " << percentage(strategy_won[2], total_trials) << "%" << endl;
         cerr << "rand: " << percentage(strategy_won[3], total_trials) << "%" << endl;        
-        cerr << "best/worst gap: " << std::accumulate(best_worst_gaps.begin(), best_worst_gaps.end(), 0.0) / best_worst_gaps.size() << endl;
+        cerr << best_worst_gaps << endl;
+        cerr << "Adjusted best/worst gap: " << std::accumulate(best_worst_gaps.begin(), best_worst_gaps.end(), 0.0) / best_worst_gaps.size() << endl;
     }
 }
 

@@ -97,13 +97,13 @@ int LowerBound::SRPT(QQjr qu, bool debug)
         }
 
         // priority queue inspection
-        if (debug) 
-        {
-            cout << "pq snapshot: " << endl;
-            pq.bst_print();
-            cout << "extract: " << pq.top() << endl;
-            cout << endl;
-        }
+        // if (debug) 
+        // {
+        //     cout << "pq snapshot: " << endl;
+        //     pq.bst_print();
+        //     cout << "extract: " << pq.top() << endl;
+        //     cout << endl;
+        // }
 
         Jr leading;
         if(pq.size())

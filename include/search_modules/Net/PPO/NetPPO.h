@@ -89,8 +89,9 @@ The Replay Buffer for PPO does not mix up different epochs
 */
 struct ReplayBufferImpl
 {
+    bool extend_enable = true;
 public:
-    const float neg_epsilon = -1e-11;
+    const float neg_epsilon = -1e-11;    
     vector<STATE_ENCODING> s;
     vector<ACTION_ENCODING> a;
     vector<float> r;    
@@ -136,13 +137,14 @@ public:
     void submit(bool dry_submit = false); /* for inference, use dry_submit = true to decrease memory use */
     vector<float> & vector_norm(vector<float> &vec, int start, int end);
 
-    ReplayBufferImpl(int max_size, int batch_size);    
+    ReplayBufferImpl(int max_size, int batch_size, bool extend_enable = true);    
     int get_traj_size(){if(idx - start_idx == 0){/*cerr << "traj size = 0, might be calling at a wrong time" << endl; */} return idx - start_idx;}
     void push(const PPO::ReplayBufferImpl::PrepArea &raw_batch);
     float finish_epoch(float end_val = 0.0);
     void reset();    
     PPO::SampleBatch get();
     Batch getBatchTensor(SampleBatch &raw_batch);
+    void buffer_extend();
     tuple<int64_t, float, float /*a, v, logp*/> step(torch::Tensor s);
 };
 typedef std::shared_ptr<ReplayBufferImpl> ReplayBuffer;

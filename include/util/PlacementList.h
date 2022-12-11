@@ -150,9 +150,9 @@ public:
         //     cerr << "the change on contour is not synced with the current snapshot" << endl;
         //     assert(false);
         // }
-        for(auto iter = lst.begin(); iter != lst.end(); iter++){
-            iter->bst_print();
-        }
+        // for(auto iter = lst.begin(); iter != lst.end(); iter++){
+        //     iter->bst_print();
+        // }
         if(cmpr == nullptr)
         {
             assertm("comparator not set, call init() before calling place", false);
@@ -302,7 +302,7 @@ public:
                 cout << " ";        
                 
             printf("[%3d] ", pos);
-            iter->bst_print();
+            // iter->bst_print();
             cout << endl;
             pos++;
         }
